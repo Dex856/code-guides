@@ -6652,12 +6652,791 @@ int largestPathValue(String colors, int[][] edges) {
     <p class="cx"><b>Complexity:</b> O(26 · (n + m)) time · O(26 · n) space.</p>
   </section>
 </section>
+<section class="chapter" id="t09">
+  <h2><span class="num">9</span> Dynamic Programming</h2>
+  <p class="tagline">Name the state, write the transition, set the base case — the rest is bookkeeping.</p>
+  <div class="card"><p><b>What this topic trains.</b> Every DP problem in this topic is one of six shapes: a one-variable recurrence over a sequence, an unbounded or 0/1 knapsack, a grid table, a two-string table, an interval table, or a state machine with a few named modes. The hard problems do not use a new shape — they add a second dimension (two travellers, k transactions, a memo over subsets) or a proof that the greedy order is safe.</p>
+<p class="small muted">Ordering: easy 1–6 are single-sequence recurrences plus one grid table and one win/lose table; medium 1–2 open with the two canonical linear state machines (best-sum-so-far and take-or-skip), 3–5 are knapsack and grid tables, 6–8 are string DP and the circular case, 9–10 are subset-sum counting and feasibility, 11–12 are the two-string tables; hard 1–4 are memoised searches and multi-state machines, 5–8 are two-string and partition tables, 9–10 are the interval family, 11–12 add a third dimension.</p></div>
+  <section class="sub" id="climbing-stairs">
+    <h3><span class="pn">E1</span> Climbing Stairs <span class="pill">Easy</span> <span class="muted small">· one-variable recurrence (Fibonacci shape)</span></h3>
+    <p><b>Problem.</b> You climb a staircase of n steps, taking one or two steps at a time. Return the number of distinct ways to reach the top.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 2
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 3
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 45; the answer fits in a 32-bit integer.</p>
+    <p><b>Approach.</b> The number of ways to stand on step i is the sum of the ways to stand on i-1 and i-2, because the last move was either a single step or a double one. Only the previous two values are ever needed, so the table collapses into two variables.</p>
+    <pre><code>// dp[i] = dp[i-1] + dp[i-2]; only two values are ever needed
+int climbStairs(int n) {
+    int a = 1, b = 1;                            // ways to stand on step 0 and step 1
+    for (int i = 2; i &lt;= n; i++) {
+        int c = a + b;
+        a = b;
+        b = c;
+    }
+    return b;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="n-th-tribonacci-number">
+    <h3><span class="pn">E2</span> N-th Tribonacci Number <span class="pill">Easy</span> <span class="muted small">· recurrence with a three-value window</span></h3>
+    <p><b>Problem.</b> T0 = 0, T1 = 1, T2 = 1 and each later term is the sum of the previous three. Return Tn.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 4
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 25
+Output: 1389537</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= n &lt;= 37; the sequence is fixed by T0, T1, T2; the answer fits in a 32-bit integer.</p>
+    <p><b>Approach.</b> The same rolling-window idea as climbing stairs, one term wider. Only the last three values are ever needed, so three variables replace the whole table.</p>
+    <pre><code>// The window is three wide instead of two
+int tribonacci(int n) {
+    if (n &lt; 2) return n;                         // T0 = 0, T1 = 1
+    int a = 0, b = 1, c = 1;                     // T0, T1, T2
+    for (int i = 3; i &lt;= n; i++) {
+        int d = a + b + c;                       // slide the window by one
+        a = b;
+        b = c;
+        c = d;
+    }
+    return c;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="min-cost-climbing-stairs">
+    <h3><span class="pn">E3</span> Min Cost Climbing Stairs <span class="pill">Easy</span> <span class="muted small">· recurrence with a cost per step</span></h3>
+    <p><b>Problem.</b> Each step of the staircase has a cost. Once you pay it you may climb one or two steps further. Starting from step 0 or step 1, return the cheapest way to pass the top of the floor.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  cost = [10,15,20]
+Output: 15</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  cost = [1,100,1,1,1,100,1,1,100,1]
+Output: 6</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= cost.length &lt;= 1000; 0 &lt;= cost[i] &lt;= 999; may start at index 0 or index 1.</p>
+    <p><b>Approach.</b> Same shape as climbing stairs, with the cost folded in: the cheapest way to be *past* step i is the cost of the steps taken plus the cheaper of arriving from i-1 or i-2. Two rolling variables keep the answer in O(1) space.</p>
+    <pre><code>// Same recurrence as climbing stairs, with each step's cost added
+int minCostClimbingStairs(int[] cost) {
+    int a = 0, b = 0;                            // cheapest way past the two previous steps
+    for (int i = 2; i &lt;= cost.length; i++) {
+        int c = Math.min(a + cost[i - 2], b + cost[i - 1]);   // from two or one below
+        a = b;
+        b = c;
+    }
+    return b;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="best-time-to-buy-and-sell-stock">
+    <h3><span class="pn">E4</span> Best Time to Buy and Sell Stock <span class="pill">Easy</span> <span class="muted small">· running minimum (one-transaction state)</span></h3>
+    <p><b>Problem.</b> Given daily prices, choose one day to buy and a later day to sell. Return the maximum profit, or 0 if no profit is possible.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  prices = [7,1,5,3,6,4]
+Output: 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  prices = [7,6,4,3,1]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= prices.length &lt;= 10^5; 0 &lt;= prices[i] &lt;= 10^4; the selling day must come after the buying day.</p>
+    <p><b>Approach.</b> A single pass keeps the cheapest price seen so far; selling today is only worth considering against that minimum. This is the one-state version of the multi-state stock problems later in this topic.</p>
+    <pre><code>// Keep the cheapest buy so far; try selling on every later day
+int maxProfit(int[] prices) {
+    int best = 0, lowest = Integer.MAX_VALUE;
+    for (int p : prices) {
+        lowest = Math.min(lowest, p);            // cheapest day to have bought
+        best = Math.max(best, p - lowest);       // profit if we sell today
+    }
+    return best;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="pascals-triangle">
+    <h3><span class="pn">E5</span> Pascal's Triangle <span class="pill">Easy</span> <span class="muted small">· grid DP with a boundary condition</span></h3>
+    <p><b>Problem.</b> Return the first numRows rows of Pascal's triangle, where every entry is the sum of the two above it.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  numRows = 5
+Output: [[1],[1,1],[1,2,1],[1,3,3,1],[1,4,6,4,1]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  numRows = 1
+Output: [[1]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= numRows &lt;= 30; each row starts and ends with 1.</p>
+    <p><b>Approach.</b> Row i is built from row i-1: the edges stay 1 and the middle entries add their two parents. It is the simplest possible two-dimensional table, and the shape returns in the grid problems of the medium section.</p>
+    <pre><code>// Each row is the sum of the two entries above it
+List&lt;List&lt;Integer&gt;&gt; generate(int numRows) {
+    List&lt;List&lt;Integer&gt;&gt; rows = new ArrayList&lt;&gt;();
+    for (int i = 0; i &lt; numRows; i++) {
+        List&lt;Integer&gt; row = new ArrayList&lt;&gt;();
+        for (int j = 0; j &lt;= i; j++) row.add(1);          // both edges are 1
+        for (int j = 1; j &lt; i; j++)
+            row.set(j, rows.get(i-1).get(j-1) + rows.get(i-1).get(j));
+        rows.add(row);
+    }
+    return rows;
+}   // O(numRows²) time · O(numRows²) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(numRows²) time · O(numRows²) for the output space.</p>
+  </section>
+  <section class="sub" id="divisor-game">
+    <h3><span class="pn">E6</span> Divisor Game <span class="pill">Easy</span> <span class="muted small">· win/lose DP over positions</span></h3>
+    <p><b>Problem.</b> Starting from n, players alternately subtract a divisor of the current number (any divisor smaller than it) from that number. Whoever cannot move loses. Alice moves first — does she win with best play?</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 2
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 3
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 1000; a move must subtract a proper divisor; n = 1 means the player to move has already lost.</p>
+    <p><b>Approach.</b> The honest solution is a win/lose table: a position is winning when some legal move hands the opponent a losing position. The pattern that falls out — even wins, odd loses — is a bonus, but the table shows *why* without any leap of insight.</p>
+    <pre><code>// win[x]: the player to move wins; hand over a losing position
+boolean divisorGame(int n) {
+    boolean[] win = new boolean[n + 1];          // x = 1 loses: no legal move
+    for (int x = 2; x &lt;= n; x++)
+        for (int d = 1; d &lt; x; d++)
+            if (x % d == 0 &amp;&amp; !win[x - d]) { win[x] = true; break; }
+    return win[n];
+}   // O(n²) time · O(n) space (the pattern is: even wins, odd loses)</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="maximum-subarray">
+    <h3><span class="pn">M1</span> Maximum Subarray <span class="pill">Medium</span> <span class="muted small">· Kadane (best ending here)</span></h3>
+    <p><b>Problem.</b> Return the largest sum of any non-empty contiguous subarray.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [-2,1,-3,4,-1,2,1,-5,4]
+Output: 6</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1]
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [5,4,-1,7,8]
+Output: 23</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 10^5; -10^4 &lt;= nums[i] &lt;= 10^4; the subarray must be non-empty.</p>
+    <p><b>Approach.</b> Track the best sum of a subarray *ending at the current index*: either extend the previous one or start fresh here. The running maximum of that quantity is the answer, and negatives are handled because restarting is always an option.</p>
+    <pre><code>// Kadane: best sum of a subarray ending at the current position
+int maxSubArray(int[] nums) {
+    int best = nums[0], cur = nums[0];
+    for (int i = 1; i &lt; nums.length; i++) {
+        cur = Math.max(nums[i], cur + nums[i]);  // extend, or restart here
+        best = Math.max(best, cur);
+    }
+    return best;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="house-robber">
+    <h3><span class="pn">M2</span> House Robber <span class="pill">Medium</span> <span class="muted small">· take-or-skip on a line</span></h3>
+    <p><b>Problem.</b> Houses in a row hold the given amounts of money, but two adjacent houses cannot both be robbed. Return the maximum amount that can be taken.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,2,3,1]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [2,7,9,3,1]
+Output: 12</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 100; 0 &lt;= nums[i] &lt;= 400; no two adjacent houses may be robbed.</p>
+    <p><b>Approach.</b> At each house there are exactly two choices: rob it, which forbids the previous house, or skip it. Carrying the best answer for the previous two positions is enough, so the classic two-variable walk gives the answer in constant space.</p>
+    <pre><code>// Two choices per house: take it (skip the previous) or leave it
+int rob(int[] nums) {
+    int prev2 = 0, prev1 = 0;                    // best up to the two houses back
+    for (int x : nums) {
+        int take = prev2 + x;                    // rob this one, skip the previous
+        prev2 = prev1;
+        prev1 = Math.max(prev1, take);
+    }
+    return prev1;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="coin-change">
+    <h3><span class="pn">M3</span> Coin Change <span class="pill">Medium</span> <span class="muted small">· unbounded knapsack (fewest coins)</span></h3>
+    <p><b>Problem.</b> Given coin denominations and a target amount, return the fewest coins that make the amount exactly, or -1 if it cannot be made. Coins may be reused.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  coins = [1,2,5], amount = 11
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  coins = [2], amount = 3
+Output: -1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  coins = [1], amount = 0
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= coins.length &lt;= 12; 1 &lt;= coins[i] &lt;= 2^31 - 1; 0 &lt;= amount &lt;= 10^4.</p>
+    <p><b>Approach.</b> Let dp[a] be the fewest coins summing to a. Trying each coin as the *last* one gives dp[a] = 1 + min over coins of dp[a - coin]. Iterating amounts outwards lets a coin be reused any number of times — that is what makes this knapsack unbounded.</p>
+    <pre><code>// Unbounded knapsack: dp[a] = fewest coins that make amount a
+int coinChange(int[] coins, int amount) {
+    final int INF = 1_000_000_000;
+    int[] dp = new int[amount + 1];
+    Arrays.fill(dp, INF);
+    dp[0] = 0;                                   // zero coins make zero
+    for (int a = 1; a &lt;= amount; a++)
+        for (int c : coins)
+            if (c &lt;= a &amp;&amp; dp[a - c] + 1 &lt; dp[a]) dp[a] = dp[a - c] + 1;
+    return dp[amount] == INF ? -1 : dp[amount];
+}   // O(amount · coins) time · O(amount) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(amount · coins) time · O(amount) space.</p>
+  </section>
+  <section class="sub" id="coin-change-ii">
+    <h3><span class="pn">M4</span> Coin Change II <span class="pill">Medium</span> <span class="muted small">· unbounded knapsack (count the combinations)</span></h3>
+    <p><b>Problem.</b> Count the combinations of coins that make the amount exactly. Two combinations are the same if they use the same multiset of coins, whatever the order.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  amount = 5, coins = [1,2,5]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  amount = 3, coins = [2]
+Output: 0</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  amount = 10, coins = [10]
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= coins.length &lt;= 300; 1 &lt;= coins[i] &lt;= 5000; 0 &lt;= amount &lt;= 5000; the answer fits in a 32-bit signed integer.</p>
+    <p><b>Approach.</b> The order of the two loops is the whole trick here. Putting the *coins* in the outer loop means each coin is considered once and later coins can never be reordered, so 1+2 and 2+1 are counted once. Swapping the loops would count permutations instead.</p>
+    <pre><code>// Coins in the outer loop: each combination is counted exactly once
+int change(int amount, int[] coins) {
+    int[] dp = new int[amount + 1];
+    dp[0] = 1;                                   // one way to make nothing
+    for (int c : coins)
+        for (int a = c; a &lt;= amount; a++)
+            dp[a] += dp[a - c];                  // add combinations that end with c
+    return dp[amount];
+}   // O(amount · coins) time · O(amount) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(amount · coins) time · O(amount) space.</p>
+  </section>
+  <section class="sub" id="unique-paths">
+    <h3><span class="pn">M5</span> Unique Paths <span class="pill">Medium</span> <span class="muted small">· grid table (count the routes)</span></h3>
+    <p><b>Problem.</b> A robot starts at the top-left of an m x n grid and may only move right or down. Count the distinct routes to the bottom-right corner.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  m = 3, n = 7
+Output: 28</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  m = 3, n = 2
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= m, n &lt;= 100; the answer fits in a 32-bit integer for these limits.</p>
+    <p><b>Approach.</b> The number of routes to a cell is the sum of the routes to the cell above and the cell to the left, because any route arrives from exactly one of them. One row of the table suffices: updating left to right reuses the value from above in place.</p>
+    <pre><code>// One row is enough: dp[j] holds the cell above until it is overwritten
+int uniquePaths(int m, int n) {
+    int[] dp = new int[n];
+    Arrays.fill(dp, 1);                          // top row: one route along it
+    for (int i = 1; i &lt; m; i++)
+        for (int j = 1; j &lt; n; j++)
+            dp[j] += dp[j - 1];                  // from above + from the left
+    return dp[n - 1];
+}   // O(m · n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m · n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="decode-ways">
+    <h3><span class="pn">M6</span> Decode Ways <span class="pill">Medium</span> <span class="muted small">· string DP with two cases per position</span></h3>
+    <p><b>Problem.</b> Letters A-Z map to 1-26. Given a digit string, count the ways to decode it, treating 0 as un-decodable on its own.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "12"
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "226"
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  s = "06"
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 100; s contains digits only; "06" cannot be decoded as 6.</p>
+    <p><b>Approach.</b> Walk the string left to right and ask two questions at each position: is the last single digit a valid letter (1-9), and is the last pair a valid letter (10-26)? Each valid option inherits the count from one or two positions back. Zero digits are what make the bookkeeping interesting.</p>
+    <pre><code>// A digit may decode alone (1-9) or as a pair (10-26)
+int numDecodings(String s) {
+    int n = s.length();
+    int[] dp = new int[n + 1];
+    dp[0] = 1;                                   // the empty prefix: one way
+    dp[1] = s.charAt(0) == '0' ? 0 : 1;
+    for (int i = 2; i &lt;= n; i++) {
+        int one = s.charAt(i-1) - '0';
+        int two = (s.charAt(i-2) - '0') * 10 + one;
+        if (one &gt;= 1) dp[i] += dp[i-1];                    // take i alone
+        if (two &gt;= 10 &amp;&amp; two &lt;= 26) dp[i] += dp[i-2];      // take i-1 and i
+    }
+    return dp[n];
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="word-break">
+    <h3><span class="pn">M7</span> Word Break <span class="pill">Medium</span> <span class="muted small">· string DP over dictionary splits</span></h3>
+    <p><b>Problem.</b> Decide whether the string can be split into a sequence of dictionary words, reusing words as often as needed.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "leetcode", wordDict = ["leet","code"]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "applepenapple", wordDict = ["apple","pen"]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  s = "catsandog", wordDict = ["cats","dog","sand","and","cat"]
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 300; 1 &lt;= words &lt;= 1000; 1 &lt;= word length &lt;= 20.</p>
+    <p><b>Approach.</b> dp[i] means the first i characters can be segmented. It is true when some earlier position j is reachable and the slice between j and i is a dictionary word, so the state is a boolean per prefix and the transition scans back over the string.</p>
+    <pre><code>// dp[i]: the first i characters can be split into dictionary words
+boolean wordBreak(String s, List&lt;String&gt; wordDict) {
+    Set&lt;String&gt; dict = new HashSet&lt;&gt;(wordDict);
+    int n = s.length();
+    boolean[] dp = new boolean[n + 1];
+    dp[0] = true;                                // empty prefix is reachable
+    for (int i = 1; i &lt;= n; i++)
+        for (int j = 0; j &lt; i; j++)
+            if (dp[j] &amp;&amp; dict.contains(s.substring(j, i))) { dp[i] = true; break; }
+    return dp[n];
+}   // O(n² · L) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n² · L) with a set lookup time · O(n) space.</p>
+  </section>
+  <section class="sub" id="house-robber-ii">
+    <h3><span class="pn">M8</span> House Robber II <span class="pill">Medium</span> <span class="muted small">· two passes around a circle</span></h3>
+    <p><b>Problem.</b> The houses now form a circle, so the first and last cannot both be robbed. Return the maximum amount that can be taken.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [2,3,2]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,2,3,1]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [1,2,3]
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 100; 0 &lt;= nums[i] &lt;= 1000; the first and last houses are adjacent.</p>
+    <p><b>Approach.</b> A circle is just two overlapping lines. Either the last house is not robbed, which leaves the line 0..n-2, or the first is not robbed, which leaves 1..n-1. Solving the linear problem twice and taking the better of the two covers every arrangement.</p>
+    <pre><code>// A circle is two lines: skip the last house, or skip the first
+int robLine(int[] nums, int lo, int hi) {
+    int prev2 = 0, prev1 = 0;
+    for (int i = lo; i &lt;= hi; i++) {
+        int take = prev2 + nums[i];
+        prev2 = prev1;
+        prev1 = Math.max(prev1, take);
+    }
+    return prev1;
+}
+int rob(int[] nums) {
+    int n = nums.length;
+    if (n == 1) return nums[0];                  // a single house: no wrap-around
+    return Math.max(robLine(nums, 0, n - 2), robLine(nums, 1, n - 1));
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="target-sum">
+    <h3><span class="pn">M9</span> Target Sum <span class="pill">Medium</span> <span class="muted small">· subset-sum counting after an algebraic rewrite</span></h3>
+    <p><b>Problem.</b> Assign + or - to every number and count the assignments whose total equals the target.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,1,1,1,1], target = 3
+Output: 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1], target = 1
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 20; 0 &lt;= nums[i] &lt;= 1000; 0 &lt;= sum(nums) &lt;= 1000; -1000 &lt;= target &lt;= 1000.</p>
+    <p><b>Approach.</b> Two exponential searches become one polynomial count: if P is the sum of the positive group and N the negative one, then P - N = target and P + N = total, so P = (total + target) / 2. Counting subsets that sum to that fixed value is the 0/1 knapsack counting pass.</p>
+    <pre><code>// P - N = target and P + N = total  =&gt;  count subsets summing to (total+target)/2
+int findTargetSumWays(int[] nums, int target) {
+    int total = 0;
+    for (int x : nums) total += x;
+    int diff = total - target;                   // sum of the minus signs, doubled
+    if (diff &lt; 0 || diff % 2 != 0) return 0;     // impossible parity or sign
+    int P = diff / 2;
+    int[] dp = new int[P + 1];
+    dp[0] = 1;                                   // the empty subset
+    for (int x : nums)
+        for (int s = P; s &gt;= x; s--)             // backwards: 0/1, not unbounded
+            dp[s] += dp[s - x];
+    return dp[P];
+}   // O(n · total) time · O(total) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n · total) time · O(total) space.</p>
+  </section>
+  <section class="sub" id="partition-equal-subset-sum">
+    <h3><span class="pn">M10</span> Partition Equal Subset Sum <span class="pill">Medium</span> <span class="muted small">· subset-sum feasibility (0/1 knapsack)</span></h3>
+    <p><b>Problem.</b> Decide whether the array can be split into two parts with equal sums.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,5,11,5]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,2,3,5]
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 200; 1 &lt;= nums[i] &lt;= 100; each number is used at most once.</p>
+    <p><b>Approach.</b> Equal halves exist exactly when some subset sums to half the total, so this is feasibility rather than counting. Scanning each capacity downwards stops a number from being used twice in the same subset — the 0/1 rule.</p>
+    <pre><code>// Feasibility: can some subset reach exactly half the total?
+boolean canPartition(int[] nums) {
+    int total = 0;
+    for (int x : nums) total += x;
+    if (total % 2 != 0) return false;            // an odd total cannot split
+    int half = total / 2;
+    boolean[] dp = new boolean[half + 1];
+    dp[0] = true;                                // sum 0 is always reachable
+    for (int x : nums)
+        for (int s = half; s &gt;= x; s--)          // downwards: use x at most once
+            dp[s] = dp[s] || dp[s - x];
+    return dp[half];
+}   // O(n · total) time · O(total) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n · total) time · O(total) space.</p>
+  </section>
+  <section class="sub" id="longest-common-subsequence">
+    <h3><span class="pn">M11</span> Longest Common Subsequence <span class="pill">Medium</span> <span class="muted small">· two-string table</span></h3>
+    <p><b>Problem.</b> Return the length of the longest subsequence appearing in both strings, where a subsequence keeps order but need not be contiguous.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  text1 = "abcde", text2 = "ace"
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  text1 = "abc", text2 = "abc"
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  text1 = "abc", text2 = "def"
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= lengths &lt;= 1000; strings contain lowercase English letters; subsequences may skip characters.</p>
+    <p><b>Approach.</b> dp[i][j] is the answer for the first i characters of one string and the first j of the other. If the current characters match, they extend the diagonal cell; otherwise the best is whichever prefix pair is already better. Two rows are enough to run it, which matters for the edit-distance family that follows.</p>
+    <pre><code>// dp[i][j]: best length using the first i and first j characters
+int longestCommonSubsequence(String a, String b) {
+    int m = a.length(), n = b.length();
+    int[][] dp = new int[m + 1][n + 1];
+    for (int i = 1; i &lt;= m; i++)
+        for (int j = 1; j &lt;= n; j++)
+            dp[i][j] = a.charAt(i-1) == b.charAt(j-1)
+                     ? dp[i-1][j-1] + 1              // extend the diagonal
+                     : Math.max(dp[i-1][j], dp[i][j-1]);   // drop a character
+    return dp[m][n];
+}   // O(m · n) time · O(m · n) space (two rows suffice)</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m · n) time · O(n) with two rows space.</p>
+  </section>
+  <section class="sub" id="edit-distance">
+    <h3><span class="pn">M12</span> Edit Distance <span class="pill">Medium</span> <span class="muted small">· two-string table with three moves</span></h3>
+    <p><b>Problem.</b> Return the minimum number of single-character insertions, deletions or replacements needed to turn one word into another.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  word1 = "horse", word2 = "ros"
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  word1 = "intention", word2 = "execution"
+Output: 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= lengths &lt;= 500; words contain lowercase English letters; all three operations cost 1.</p>
+    <p><b>Approach.</b> Same table as the longest common subsequence, but the transition has three named moves instead of two: deleting a character, inserting one, or replacing one. When the characters already match the diagonal carries over untouched.</p>
+    <pre><code>// Three moves per cell: delete, insert, replace
+int minDistance(String a, String b) {
+    int m = a.length(), n = b.length();
+    int[][] dp = new int[m + 1][n + 1];
+    for (int i = 0; i &lt;= m; i++) dp[i][0] = i;   // delete everything
+    for (int j = 0; j &lt;= n; j++) dp[0][j] = j;   // insert everything
+    for (int i = 1; i &lt;= m; i++)
+        for (int j = 1; j &lt;= n; j++)
+            dp[i][j] = a.charAt(i-1) == b.charAt(j-1)
+                     ? dp[i-1][j-1]                          // free: keep it
+                     : 1 + Math.min(dp[i-1][j],              // delete a[i-1]
+                           Math.min(dp[i][j-1],              // insert b[j-1]
+                                    dp[i-1][j-1]));          // replace
+    return dp[m][n];
+}   // O(m · n) time · O(m · n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m · n) time · O(m · n) space.</p>
+  </section>
+  <section class="sub" id="longest-increasing-path-in-a-matrix">
+    <h3><span class="pn">H1</span> Longest Increasing Path in a Matrix <span class="pill hot">Hard</span> <span class="muted small">· memoised DFS on a DAG</span></h3>
+    <p><b>Problem.</b> Return the length of the longest strictly increasing path in a matrix, moving in the four axis directions.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  matrix = [[9,9,4],[6,6,8],[2,1,1]]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  matrix = [[3,4,5],[3,2,6],[2,2,1]]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  matrix = [[1]]
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 200; 0 &lt;= matrix[i][j] &lt;= 2^31 - 1; the path may not revisit a cell.</p>
+    <p><b>Approach.</b> Strict increase means the moves form a directed acyclic graph, so the answer from any cell is 1 + the best answer among its larger neighbours. Memoising that value turns an exponential walk into one visit per cell; no visited set is needed because the values themselves prevent cycles.</p>
+    <pre><code>// Strict increase makes the grid a DAG, so memoise the DFS
+int longestIncreasingPath(int[][] m) {
+    int R = m.length, C = m[0].length;
+    int[][] memo = new int[R][C];
+    int best = 0;
+    for (int r = 0; r &lt; R; r++)
+        for (int c = 0; c &lt; C; c++) best = Math.max(best, dfs(m, memo, r, c));
+    return best;
+}
+int dfs(int[][] m, int[][] memo, int r, int c) {
+    if (memo[r][c] != 0) return memo[r][c];      // already solved
+    int R = m.length, C = m[0].length;
+    int[] dr = {1,-1,0,0}, dc = {0,0,1,-1};
+    int best = 1;
+    for (int d = 0; d &lt; 4; d++) {
+        int nr = r + dr[d], nc = c + dc[d];
+        if (nr &lt; 0 || nr &gt;= R || nc &lt; 0 || nc &gt;= C) continue;
+        if (m[nr][nc] &gt; m[r][c]) best = Math.max(best, 1 + dfs(m, memo, nr, nc));
+    }
+    return memo[r][c] = best;
+}   // O(rows · cols) time · O(rows · cols) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · cols) time · O(rows · cols) space.</p>
+  </section>
+  <section class="sub" id="number-of-longest-increasing-subsequence">
+    <h3><span class="pn">H2</span> Number of Longest Increasing Subsequences <span class="pill hot">Hard</span> <span class="muted small">· LIS with a parallel count array</span></h3>
+    <p><b>Problem.</b> Count how many longest strictly increasing subsequences the array has.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,3,5,4,7]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [2,2,2,2,2]
+Output: 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 2000; -10^6 &lt;= nums[i] &lt;= 10^6; the answer fits in a 32-bit integer.</p>
+    <p><b>Approach.</b> Every classic LIS table can carry a second array: how many best subsequences *end* at this position. When a longer chain is found the count is replaced; when an equally long chain is found the counts add. The answer is the total over all positions that achieve the maximum length.</p>
+    <pre><code>// dp[i] = longest chain ending at i, cnt[i] = how many such chains
+int findNumberOfLIS(int[] nums) {
+    int n = nums.length, bestLen = 0, total = 0;
+    int[] dp = new int[n], cnt = new int[n];
+    Arrays.fill(dp, 1);
+    Arrays.fill(cnt, 1);
+    for (int i = 0; i &lt; n; i++) {
+        for (int j = 0; j &lt; i; j++)
+            if (nums[j] &lt; nums[i]) {
+                if (dp[j] + 1 &gt; dp[i]) { dp[i] = dp[j] + 1; cnt[i] = cnt[j]; }
+                else if (dp[j] + 1 == dp[i]) cnt[i] += cnt[j];   // tie: add
+            }
+        bestLen = Math.max(bestLen, dp[i]);
+    }
+    for (int i = 0; i &lt; n; i++) if (dp[i] == bestLen) total += cnt[i];
+    return total;
+}   // O(n²) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="best-time-to-buy-and-sell-stock-iv">
+    <h3><span class="pn">H3</span> Best Time to Buy and Sell Stock IV <span class="pill hot">Hard</span> <span class="muted small">· state machine over k transactions</span></h3>
+    <p><b>Problem.</b> Given prices and a limit of k transactions (each a buy followed by a later sell), return the maximum profit. Only one share may be held at a time.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  k = 2, prices = [2,4,1]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  k = 2, prices = [3,2,6,5,0,3]
+Output: 7</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= k &lt;= 100; 0 &lt;= prices.length &lt;= 1000; 0 &lt;= prices[i] &lt;= 50.</p>
+    <p><b>Approach.</b> Two arrays per transaction count describe the best position after buying and after selling. Sweeping the transaction index downwards inside the price loop keeps the sell used as a starting point one step *older*, which is exactly the ordering that prevents buying and selling on the same update. When k is large the limit never binds and summing every upward move is optimal.</p>
+    <pre><code>// buy[t] / sell[t] = best cash with t transactions after buying / selling
+int maxProfit(int k, int[] prices) {
+    int n = prices.length;
+    if (n == 0 || k == 0) return 0;
+    if (k &gt;= n / 2) {                            // the limit never binds
+        int total = 0;
+        for (int i = 1; i &lt; n; i++) total += Math.max(0, prices[i] - prices[i-1]);
+        return total;
+    }
+    int[] buy = new int[k + 1], sell = new int[k + 1];
+    Arrays.fill(buy, Integer.MIN_VALUE);
+    for (int p : prices)
+        for (int t = k; t &gt;= 1; t--) {           // descending: states stay consistent
+            buy[t]  = Math.max(buy[t],  sell[t-1] - p);   // open transaction t
+            sell[t] = Math.max(sell[t], buy[t] + p);      // or close it today
+        }
+    return sell[k];
+}   // O(n · k) time · O(k) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n · k) time · O(k) space.</p>
+  </section>
+  <section class="sub" id="frog-jump">
+    <h3><span class="pn">H4</span> Frog Jump <span class="pill hot">Hard</span> <span class="muted small">· reachable-state sets (DP over positions and speeds)</span></h3>
+    <p><b>Problem.</b> The frog starts on stone 0 and must land on the last stone. From a jump of size k it may next jump k-1, k or k+1, and it may only land on a stone. Decide whether the crossing is possible.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  stones = [0,1,3,5,6,8,12,17]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  stones = [0,1,2,3,4,8,9,11]
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= stones.length &lt;= 2000; 0 &lt;= stones[i] &lt;= 2^31 - 1; the stones are strictly increasing.</p>
+    <p><b>Approach.</b> The state is not the stone alone — it is the pair (stone, jump length), because the same stone reached with different speeds allows different futures. Keeping a set of speeds per stone and pushing forward through the three possible next jumps visits each state once.</p>
+    <pre><code>// State = (stone, last jump); push the three next jumps forward
+boolean canCross(int[] stones) {
+    Map&lt;Integer, Set&lt;Integer&gt;&gt; reach = new HashMap&lt;&gt;();   // stone -&gt; jump sizes
+    for (int s : stones) reach.put(s, new HashSet&lt;&gt;());
+    reach.get(stones[0]).add(0);
+    for (int s : stones) {
+        for (int jump : reach.get(s)) {
+            for (int next : new int[]{jump - 1, jump, jump + 1}) {
+                if (next &lt;= 0) continue;                 // k-1 must stay positive
+                Set&lt;Integer&gt; target = reach.get(s + next);
+                if (target != null) target.add(next);    // only stones can be hit
+            }
+        }
+    }
+    return !reach.get(stones[stones.length - 1]).isEmpty();
+}   // O(n²) time · O(n²) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) time · O(n²) space.</p>
+  </section>
+  <section class="sub" id="distinct-subsequences">
+    <h3><span class="pn">H5</span> Distinct Subsequences <span class="pill hot">Hard</span> <span class="muted small">· two-string counting table</span></h3>
+    <p><b>Problem.</b> Count how many distinct subsequences of one string equal a second string, using any set of positions in the first.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "rabbbit", t = "rabbit"
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "babgbag", t = "bag"
+Output: 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= lengths &lt;= 1000; strings contain English letters; the answer fits in a 32-bit integer.</p>
+    <p><b>Approach.</b> dp[j] counts the ways to build the first j characters of the target from the prefix of the source read so far. Scanning j downwards means each source character contributes its match exactly once, so a character can never be used twice in the same subsequence.</p>
+    <pre><code>// dp[j] = ways to build the first j characters of t from s read so far
+int numDistinct(String s, String t) {
+    int n = t.length();
+    long[] dp = new long[n + 1];
+    dp[0] = 1;                                   // the empty target is one way
+    for (int i = 0; i &lt; s.length(); i++) {
+        char c = s.charAt(i);
+        for (int j = n; j &gt;= 1; j--)             // descending: each copy used once
+            if (c == t.charAt(j-1)) dp[j] += dp[j-1];
+    }
+    return (int) dp[n];
+}   // O(m · n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m · n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="regular-expression-matching">
+    <h3><span class="pn">H6</span> Regular Expression Matching <span class="pill hot">Hard</span> <span class="muted small">· two-string table with a star case</span></h3>
+    <p><b>Problem.</b> Match the whole string against a pattern where '.' matches any single character and '*' means zero or more of the preceding element.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "aa", p = "a"
+Output: false</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "aa", p = "a*"
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  s = "ab", p = ".*"
+Output: true</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= lengths &lt;= 20; s contains lowercase letters; p contains lowercase letters, '.' and '*', and '*' never leads.</p>
+    <p><b>Approach.</b> The star is the only hard case. "x*" either matches nothing — which drops the whole pair and looks two columns back — or it consumes one matching character and stays in the same column. Writing those two options as a disjunction, and the plain character case as a diagonal step, is the complete recurrence.</p>
+    <pre><code>// dp[i][j]: s[0..i) matches p[0..j)
+boolean isMatch(String s, String p) {
+    int m = s.length(), n = p.length();
+    boolean[][] dp = new boolean[m + 1][n + 1];
+    dp[0][0] = true;                             // empty matches empty
+    for (int j = 2; j &lt;= n; j++)
+        if (p.charAt(j-1) == '*') dp[0][j] = dp[0][j-2];   // "x*" may match nothing
+    for (int i = 1; i &lt;= m; i++)
+        for (int j = 1; j &lt;= n; j++) {
+            if (p.charAt(j-1) == '*') {
+                char prev = p.charAt(j-2);
+                dp[i][j] = dp[i][j-2]                         // zero copies
+                        || ((prev == '.' || prev == s.charAt(i-1)) &amp;&amp; dp[i-1][j]);
+            } else if (p.charAt(j-1) == '.' || p.charAt(j-1) == s.charAt(i-1)) {
+                dp[i][j] = dp[i-1][j-1];                      // consume one each
+            }
+        }
+    return dp[m][n];
+}   // O(m · n) time · O(m · n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m · n) time · O(m · n) space.</p>
+  </section>
+  <section class="sub" id="wildcard-matching">
+    <h3><span class="pn">H7</span> Wildcard Matching <span class="pill hot">Hard</span> <span class="muted small">· two-string table with '?' and '*'</span></h3>
+    <p><b>Problem.</b> Match the whole string against a pattern where '?' matches any single character and '*' matches any sequence, including an empty one.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "aa", p = "a"
+Output: false</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "aa", p = "*"
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  s = "cb", p = "?a"
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= lengths &lt;= 2000; s contains lowercase letters; p contains lowercase letters, '?' and '*', with '*' matching anything.</p>
+    <p><b>Approach.</b> The same frame as the regular-expression problem, but '*' stands alone instead of modifying the previous element, so there are just two options: let the star absorb the current character, or let it match nothing at all.</p>
+    <pre><code>// '*' absorbs one character (same column) or matches nothing (same row)
+boolean isMatch(String s, String p) {
+    int m = s.length(), n = p.length();
+    boolean[][] dp = new boolean[m + 1][n + 1];
+    dp[0][0] = true;
+    for (int j = 1; j &lt;= n; j++)
+        dp[0][j] = dp[0][j-1] &amp;&amp; p.charAt(j-1) == '*';   // leading stars match empty
+    for (int i = 1; i &lt;= m; i++)
+        for (int j = 1; j &lt;= n; j++) {
+            char pc = p.charAt(j-1);
+            if (pc == '*') dp[i][j] = dp[i-1][j] || dp[i][j-1];
+            else if (pc == '?' || pc == s.charAt(i-1)) dp[i][j] = dp[i-1][j-1];
+        }
+    return dp[m][n];
+}   // O(m · n) time · O(m · n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m · n) time · O(m · n) space.</p>
+  </section>
+  <section class="sub" id="palindrome-partitioning-ii">
+    <h3><span class="pn">H8</span> Palindrome Partitioning II <span class="pill hot">Hard</span> <span class="muted small">· cut DP over a precomputed palindrome table</span></h3>
+    <p><b>Problem.</b> Split the string into palindromic pieces using the fewest cuts. Return the number of cuts needed.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "aab"
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "a"
+Output: 0</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  s = "ab"
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 2000; s contains lowercase letters; "aab" cuts as "aa" + "b".</p>
+    <p><b>Approach.</b> Two tables, one inside the other: first decide for every substring whether it is a palindrome, then let dp[i] be the fewest cuts for the prefix of length i. Only palindrome suffixes matter, since the last piece must itself be a palindrome.</p>
+    <pre><code>// pal[l][r] first, then dp over prefixes
+int minCut(String s) {
+    int n = s.length();
+    boolean[][] pal = new boolean[n][n];
+    for (int l = n - 1; l &gt;= 0; l--)             // shorter substrings first
+        for (int r = l; r &lt; n; r++)
+            pal[l][r] = s.charAt(l) == s.charAt(r) &amp;&amp; (r - l &lt; 2 || pal[l+1][r-1]);
+    int[] dp = new int[n + 1];
+    for (int i = 1; i &lt;= n; i++) {
+        dp[i] = i - 1;                           // worst case: cut every character
+        for (int k = 0; k &lt; i; k++)
+            if (pal[k][i-1]) dp[i] = Math.min(dp[i], k == 0 ? 0 : dp[k] + 1);
+    }
+    return dp[n];
+}   // O(n²) time · O(n²) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) time · O(n²) space.</p>
+  </section>
+  <section class="sub" id="burst-balloons">
+    <h3><span class="pn">H9</span> Burst Balloons <span class="pill hot">Hard</span> <span class="muted small">· interval DP (choose what bursts last)</span></h3>
+    <p><b>Problem.</b> Bursting balloon i earns nums[i-1] * nums[i] * nums[i+1] using the current neighbours, and the balloon then disappears. Return the maximum coins obtainable.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [3,1,5,8]
+Output: 167</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,5]
+Output: 10</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 300; 0 &lt;= nums[i] &lt;= 100; out-of-range neighbours count as 1.</p>
+    <p><b>Approach.</b> Thinking about which balloon bursts *first* is hopeless, because it changes every later neighbourhood. Thinking about which bursts *last* inside a window splits the problem cleanly: the window's last balloon sees the window's two walls, and the two inner pieces are independent subproblems.</p>
+    <pre><code>// dp[l][r]: best coins from the window (l, r); k bursts last inside it
+int maxCoins(int[] nums) {
+    int n = nums.length;
+    int[] a = new int[n + 2];                    // pad both walls with 1
+    Arrays.fill(a, 1);
+    for (int i = 0; i &lt; n; i++) a[i+1] = nums[i];
+    int[][] dp = new int[n + 2][n + 2];
+    for (int len = 1; len &lt;= n; len++)           // window length
+        for (int l = 1; l + len - 1 &lt;= n; l++) {
+            int r = l + len - 1;
+            for (int k = l; k &lt;= r; k++)         // k is the last to burst
+                dp[l][r] = Math.max(dp[l][r],
+                        dp[l][k-1] + dp[k+1][r] + a[l-1] * a[k] * a[r+1]);
+        }
+    return dp[1][n];
+}   // O(n³) time · O(n²) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n³) time · O(n²) space.</p>
+  </section>
+  <section class="sub" id="minimum-cost-to-cut-a-stick">
+    <h3><span class="pn">H10</span> Minimum Cost to Cut a Stick <span class="pill hot">Hard</span> <span class="muted small">· interval DP over sorted cut positions</span></h3>
+    <p><b>Problem.</b> A stick of length n must be cut at every position in cuts. Each cut costs the length of the piece being cut at that moment. Return the minimum total cost.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 7, cuts = [1,3,4,5]
+Output: 16</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 9, cuts = [5,6,1,4,2]
+Output: 22</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= n &lt;= 10^6; 1 &lt;= cuts.length &lt;= min(n-1, 100); cut positions are distinct.</p>
+    <p><b>Approach.</b> The same interval idea as burst balloons: sorting the cut positions (with the two stick ends added) turns them into boundary points, and choosing which cut inside a window happens *first* splits the window into two independent sticks. The cost of a window is always its full length, whatever the chosen cut inside it was.</p>
+    <pre><code>// Interval DP over the sorted cut positions plus the two ends
+int minCost(int n, int[] cuts) {
+    int m = cuts.length + 2;
+    int[] c = new int[m];
+    c[0] = 0;
+    c[m - 1] = n;
+    for (int i = 0; i &lt; cuts.length; i++) c[i + 1] = cuts[i];
+    Arrays.sort(c);
+    int[][] dp = new int[m][m];
+    for (int len = 2; len &lt; m; len++)            // window size in cut positions
+        for (int i = 0; i + len &lt; m; i++) {
+            int j = i + len;
+            dp[i][j] = Integer.MAX_VALUE;
+            for (int k = i + 1; k &lt; j; k++)      // k is cut first inside the window
+                dp[i][j] = Math.min(dp[i][j], dp[i][k] + dp[k][j] + c[j] - c[i]);
+        }
+    return dp[0][m - 1];
+}   // O(k³) time · O(k²) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(k³) time · O(k²) space.</p>
+  </section>
+  <section class="sub" id="cherry-pickup">
+    <h3><span class="pn">H11</span> Cherry Pickup <span class="pill hot">Hard</span> <span class="muted small">· two travellers on the same diagonal</span></h3>
+    <p><b>Problem.</b> Two pickers start at the top-left and walk to the bottom-right, moving only right or down, collecting cherries from the cells they pass. A cell's cherries are collected once even if both pass through it. Return the maximum total, or 0 if the route is blocked.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  grid = [[0,1,-1],[1,0,-1],[1,1,1]]
+Output: 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  grid = [[1,1,-1],[1,-1,1],[-1,1,1]]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 50; grid[i][j] is -1, 0 or 1; both pickers move simultaneously and share the grid.</p>
+    <p><b>Approach.</b> Run both pickers together. After the same number of steps they sit on the same anti-diagonal, so the state is just their two row indices — the columns follow. When they land on one cell its cherries are counted once, which is exactly the rule the problem describes.</p>
+    <pre><code>// Both pickers advance together: state = (step, row1, row2)
+int cherryPickup(int[][] grid) {
+    int n = grid.length;
+    int[][] dp = new int[n][n];
+    for (int[] row : dp) Arrays.fill(row, -1);
+    dp[0][0] = grid[0][0];
+    for (int step = 1; step &lt;= 2 * n - 2; step++) {
+        int[][] nxt = new int[n][n];
+        for (int[] row : nxt) Arrays.fill(row, -1);
+        for (int r1 = 0; r1 &lt; n; r1++) {
+            int c1 = step - r1;                  // columns follow from the step
+            if (c1 &lt; 0 || c1 &gt;= n || grid[r1][c1] == -1) continue;
+            for (int r2 = 0; r2 &lt; n; r2++) {
+                int c2 = step - r2;
+                if (c2 &lt; 0 || c2 &gt;= n || grid[r2][c2] == -1) continue;
+                int gained = grid[r1][c1] + (r1 == r2 ? 0 : grid[r2][c2]);
+                int best = -1;
+                for (int p1 = r1 - 1; p1 &lt;= r1; p1++)      // from above or left
+                    for (int p2 = r2 - 1; p2 &lt;= r2; p2++)
+                        if (p1 &gt;= 0 &amp;&amp; p2 &gt;= 0) best = Math.max(best, dp[p1][p2]);
+                if (best &gt;= 0) nxt[r1][r2] = best + gained;
+            }
+        }
+        dp = nxt;
+    }
+    return Math.max(0, dp[n-1][n-1]);             // -1: the route is blocked
+}   // O(n³) time · O(n²) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n³) time · O(n²) space.</p>
+  </section>
+  <section class="sub" id="maximum-profit-in-job-scheduling">
+    <h3><span class="pn">H12</span> Maximum Profit in Job Scheduling <span class="pill hot">Hard</span> <span class="muted small">· sorted DP with binary search for the previous compatible job</span></h3>
+    <p><b>Problem.</b> Each job has a start time, an end time and a profit, and chosen jobs may not overlap. Return the maximum total profit.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  startTime = [1,2,3,3], endTime = [3,4,5,6], profit = [50,10,40,70]
+Output: 120</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  startTime = [1,2,3,4,6], endTime = [3,5,10,6,9], profit = [20,20,100,70,60]
+Output: 150</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  startTime = [1,1,1], endTime = [2,3,4], profit = [5,6,4]
+Output: 6</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of jobs &lt;= 5 · 10^4; startTime[i] &lt; endTime[i]; times and profits fit in 32-bit integers.</p>
+    <p><b>Approach.</b> Sort the jobs by end time and let dp[i] be the best profit using the first i jobs. Taking job i is only possible after the last job that finishes at or before its start, which binary search finds in the sorted end times. This is the weighted interval scheduling recurrence, and the binary search is what keeps it from becoming quadratic.</p>
+    <pre><code>// Weighted interval scheduling: sort by end time, binary search the gap
+int jobScheduling(int[] startTime, int[] endTime, int[] profit) {
+    int n = startTime.length;
+    int[][] jobs = new int[n][3];
+    for (int i = 0; i &lt; n; i++) jobs[i] = new int[]{endTime[i], startTime[i], profit[i]};
+    Arrays.sort(jobs, (a, b) -&gt; a[0] - b[0]);    // by end time
+    int[] ends = new int[n], dp = new int[n + 1];
+    for (int i = 0; i &lt; n; i++) ends[i] = jobs[i][0];
+    for (int i = 1; i &lt;= n; i++) {
+        int start = jobs[i-1][1], gain = jobs[i-1][2];
+        int j = upperBound(ends, i - 1, start);  // last job ending at or before start
+        dp[i] = Math.max(dp[i-1], dp[j] + gain); // skip this job, or take it
+    }
+    return dp[n];
+}
+int upperBound(int[] a, int hi, int key) {       // first index &gt;= key, within a[0..hi)
+    int lo = 0;
+    while (lo &lt; hi) {
+        int mid = (lo + hi) &gt;&gt;&gt; 1;
+        if (a[mid] &lt;= key) lo = mid + 1; else hi = mid;
+    }
+    return lo;
+}   // O(n log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(n) space.</p>
+  </section>
+</section>
 
   </main>
 </div>
 
 <footer>
-  <p><b>Java bank</b> — 240 problems across 8 topics, with complete solutions in
+  <p><b>Java bank</b> — 270 problems across 9 topics, with complete solutions in
   Java 21/25 solutions.</p>
   <p class="small">Same problems in every language:
     <a href="cpp-leetcode.html">C++</a> · <a href="java-leetcode.html">Java</a> · <a href="python-leetcode.html">Python</a>

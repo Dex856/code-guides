@@ -6546,12 +6546,698 @@ def largest_path_value(colors, edges):
     <p class="cx"><b>Complexity:</b> O(26 · (n + m)) time · O(26 · n) space.</p>
   </section>
 </section>
+<section class="chapter" id="t09">
+  <h2><span class="num">9</span> Dynamic Programming</h2>
+  <p class="tagline">Name the state, write the transition, set the base case — the rest is bookkeeping.</p>
+  <div class="card"><p><b>What this topic trains.</b> Every DP problem in this topic is one of six shapes: a one-variable recurrence over a sequence, an unbounded or 0/1 knapsack, a grid table, a two-string table, an interval table, or a state machine with a few named modes. The hard problems do not use a new shape — they add a second dimension (two travellers, k transactions, a memo over subsets) or a proof that the greedy order is safe.</p>
+<p class="small muted">Ordering: easy 1–6 are single-sequence recurrences plus one grid table and one win/lose table; medium 1–2 open with the two canonical linear state machines (best-sum-so-far and take-or-skip), 3–5 are knapsack and grid tables, 6–8 are string DP and the circular case, 9–10 are subset-sum counting and feasibility, 11–12 are the two-string tables; hard 1–4 are memoised searches and multi-state machines, 5–8 are two-string and partition tables, 9–10 are the interval family, 11–12 add a third dimension.</p></div>
+  <section class="sub" id="climbing-stairs">
+    <h3><span class="pn">E1</span> Climbing Stairs <span class="pill">Easy</span> <span class="muted small">· one-variable recurrence (Fibonacci shape)</span></h3>
+    <p><b>Problem.</b> You climb a staircase of n steps, taking one or two steps at a time. Return the number of distinct ways to reach the top.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 2
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 3
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 45; the answer fits in a 32-bit integer.</p>
+    <p><b>Approach.</b> The number of ways to stand on step i is the sum of the ways to stand on i-1 and i-2, because the last move was either a single step or a double one. Only the previous two values are ever needed, so the table collapses into two variables.</p>
+    <pre><code>def climb_stairs(n):
+    a, b = 1, 1              # ways to stand on step 0 and step 1
+    for _ in range(2, n + 1):
+        a, b = b, a + b      # dp[i] = dp[i-1] + dp[i-2]
+    return b</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="n-th-tribonacci-number">
+    <h3><span class="pn">E2</span> N-th Tribonacci Number <span class="pill">Easy</span> <span class="muted small">· recurrence with a three-value window</span></h3>
+    <p><b>Problem.</b> T0 = 0, T1 = 1, T2 = 1 and each later term is the sum of the previous three. Return Tn.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 4
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 25
+Output: 1389537</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= n &lt;= 37; the sequence is fixed by T0, T1, T2; the answer fits in a 32-bit integer.</p>
+    <p><b>Approach.</b> The same rolling-window idea as climbing stairs, one term wider. Only the last three values are ever needed, so three variables replace the whole table.</p>
+    <pre><code>def tribonacci(n):
+    if n &lt; 2:
+        return n             # T0 = 0, T1 = 1
+    a, b, c = 0, 1, 1        # T0, T1, T2
+    for _ in range(3, n + 1):
+        a, b, c = b, c, a + b + c    # slide the three-value window
+    return c</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="min-cost-climbing-stairs">
+    <h3><span class="pn">E3</span> Min Cost Climbing Stairs <span class="pill">Easy</span> <span class="muted small">· recurrence with a cost per step</span></h3>
+    <p><b>Problem.</b> Each step of the staircase has a cost. Once you pay it you may climb one or two steps further. Starting from step 0 or step 1, return the cheapest way to pass the top of the floor.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  cost = [10,15,20]
+Output: 15</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  cost = [1,100,1,1,1,100,1,1,100,1]
+Output: 6</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= cost.length &lt;= 1000; 0 &lt;= cost[i] &lt;= 999; may start at index 0 or index 1.</p>
+    <p><b>Approach.</b> Same shape as climbing stairs, with the cost folded in: the cheapest way to be *past* step i is the cost of the steps taken plus the cheaper of arriving from i-1 or i-2. Two rolling variables keep the answer in O(1) space.</p>
+    <pre><code>def min_cost_climbing_stairs(cost):
+    a = b = 0                # cheapest way past the two previous steps
+    for i in range(2, len(cost) + 1):
+        # arrive from two steps below (paying cost[i-2]) or one (paying cost[i-1])
+        a, b = b, min(a + cost[i - 2], b + cost[i - 1])
+    return b</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="best-time-to-buy-and-sell-stock">
+    <h3><span class="pn">E4</span> Best Time to Buy and Sell Stock <span class="pill">Easy</span> <span class="muted small">· running minimum (one-transaction state)</span></h3>
+    <p><b>Problem.</b> Given daily prices, choose one day to buy and a later day to sell. Return the maximum profit, or 0 if no profit is possible.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  prices = [7,1,5,3,6,4]
+Output: 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  prices = [7,6,4,3,1]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= prices.length &lt;= 10^5; 0 &lt;= prices[i] &lt;= 10^4; the selling day must come after the buying day.</p>
+    <p><b>Approach.</b> A single pass keeps the cheapest price seen so far; selling today is only worth considering against that minimum. This is the one-state version of the multi-state stock problems later in this topic.</p>
+    <pre><code>def max_stock_profit(prices):
+    best, lowest = 0, float('inf')
+    for p in prices:
+        lowest = min(lowest, p)      # cheapest day to have bought so far
+        best = max(best, p - lowest)  # profit if we sell today
+    return best</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="pascals-triangle">
+    <h3><span class="pn">E5</span> Pascal's Triangle <span class="pill">Easy</span> <span class="muted small">· grid DP with a boundary condition</span></h3>
+    <p><b>Problem.</b> Return the first numRows rows of Pascal's triangle, where every entry is the sum of the two above it.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  numRows = 5
+Output: [[1],[1,1],[1,2,1],[1,3,3,1],[1,4,6,4,1]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  numRows = 1
+Output: [[1]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= numRows &lt;= 30; each row starts and ends with 1.</p>
+    <p><b>Approach.</b> Row i is built from row i-1: the edges stay 1 and the middle entries add their two parents. It is the simplest possible two-dimensional table, and the shape returns in the grid problems of the medium section.</p>
+    <pre><code>def build_pascals(num_rows):
+    rows = []
+    for i in range(num_rows):
+        row = [1] * (i + 1)                    # edges are 1
+        for j in range(1, i):
+            row[j] = rows[i-1][j-1] + rows[i-1][j]
+        rows.append(row)
+    return rows</code></pre>
+    <p class="cx"><b>Complexity:</b> O(numRows²) time · O(numRows²) for the output space.</p>
+  </section>
+  <section class="sub" id="divisor-game">
+    <h3><span class="pn">E6</span> Divisor Game <span class="pill">Easy</span> <span class="muted small">· win/lose DP over positions</span></h3>
+    <p><b>Problem.</b> Starting from n, players alternately subtract a divisor of the current number (any divisor smaller than it) from that number. Whoever cannot move loses. Alice moves first — does she win with best play?</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 2
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 3
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 1000; a move must subtract a proper divisor; n = 1 means the player to move has already lost.</p>
+    <p><b>Approach.</b> The honest solution is a win/lose table: a position is winning when some legal move hands the opponent a losing position. The pattern that falls out — even wins, odd loses — is a bonus, but the table shows *why* without any leap of insight.</p>
+    <pre><code>def divisor_game(n):
+    win = [False] * (n + 1)          # x = 1 loses: there is no legal move
+    for x in range(2, n + 1):
+        for d in range(1, x):
+            if x % d == 0 and not win[x - d]:
+                win[x] = True        # hand the opponent a losing position
+                break
+    return win[n]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="maximum-subarray">
+    <h3><span class="pn">M1</span> Maximum Subarray <span class="pill">Medium</span> <span class="muted small">· Kadane (best ending here)</span></h3>
+    <p><b>Problem.</b> Return the largest sum of any non-empty contiguous subarray.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [-2,1,-3,4,-1,2,1,-5,4]
+Output: 6</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1]
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [5,4,-1,7,8]
+Output: 23</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 10^5; -10^4 &lt;= nums[i] &lt;= 10^4; the subarray must be non-empty.</p>
+    <p><b>Approach.</b> Track the best sum of a subarray *ending at the current index*: either extend the previous one or start fresh here. The running maximum of that quantity is the answer, and negatives are handled because restarting is always an option.</p>
+    <pre><code>def max_subarray(nums):
+    best = cur = nums[0]
+    for x in nums[1:]:
+        cur = max(x, cur + x)    # extend the run, or restart at x
+        best = max(best, cur)
+    return best</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="house-robber">
+    <h3><span class="pn">M2</span> House Robber <span class="pill">Medium</span> <span class="muted small">· take-or-skip on a line</span></h3>
+    <p><b>Problem.</b> Houses in a row hold the given amounts of money, but two adjacent houses cannot both be robbed. Return the maximum amount that can be taken.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,2,3,1]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [2,7,9,3,1]
+Output: 12</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 100; 0 &lt;= nums[i] &lt;= 400; no two adjacent houses may be robbed.</p>
+    <p><b>Approach.</b> At each house there are exactly two choices: rob it, which forbids the previous house, or skip it. Carrying the best answer for the previous two positions is enough, so the classic two-variable walk gives the answer in constant space.</p>
+    <pre><code>def rob_house(nums):
+    prev2 = prev1 = 0            # best totals up to the two previous houses
+    for x in nums:
+        take = prev2 + x         # rob this house, so skip the previous one
+        prev2, prev1 = prev1, max(prev1, take)
+    return prev1</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="coin-change">
+    <h3><span class="pn">M3</span> Coin Change <span class="pill">Medium</span> <span class="muted small">· unbounded knapsack (fewest coins)</span></h3>
+    <p><b>Problem.</b> Given coin denominations and a target amount, return the fewest coins that make the amount exactly, or -1 if it cannot be made. Coins may be reused.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  coins = [1,2,5], amount = 11
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  coins = [2], amount = 3
+Output: -1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  coins = [1], amount = 0
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= coins.length &lt;= 12; 1 &lt;= coins[i] &lt;= 2^31 - 1; 0 &lt;= amount &lt;= 10^4.</p>
+    <p><b>Approach.</b> Let dp[a] be the fewest coins summing to a. Trying each coin as the *last* one gives dp[a] = 1 + min over coins of dp[a - coin]. Iterating amounts outwards lets a coin be reused any number of times — that is what makes this knapsack unbounded.</p>
+    <pre><code>def coin_change(coins, amount):
+    INF = float('inf')
+    dp = [INF] * (amount + 1)
+    dp[0] = 0                        # zero coins make zero
+    for a in range(1, amount + 1):
+        for c in coins:
+            if c &lt;= a and dp[a - c] + 1 &lt; dp[a]:
+                dp[a] = dp[a - c] + 1    # use one more coin of value c
+    return -1 if dp[amount] == INF else dp[amount]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(amount · coins) time · O(amount) space.</p>
+  </section>
+  <section class="sub" id="coin-change-ii">
+    <h3><span class="pn">M4</span> Coin Change II <span class="pill">Medium</span> <span class="muted small">· unbounded knapsack (count the combinations)</span></h3>
+    <p><b>Problem.</b> Count the combinations of coins that make the amount exactly. Two combinations are the same if they use the same multiset of coins, whatever the order.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  amount = 5, coins = [1,2,5]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  amount = 3, coins = [2]
+Output: 0</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  amount = 10, coins = [10]
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= coins.length &lt;= 300; 1 &lt;= coins[i] &lt;= 5000; 0 &lt;= amount &lt;= 5000; the answer fits in a 32-bit signed integer.</p>
+    <p><b>Approach.</b> The order of the two loops is the whole trick here. Putting the *coins* in the outer loop means each coin is considered once and later coins can never be reordered, so 1+2 and 2+1 are counted once. Swapping the loops would count permutations instead.</p>
+    <pre><code>def change_ways(amount, coins):
+    dp = [0] * (amount + 1)
+    dp[0] = 1                        # one way to make nothing
+    for c in coins:                  # coins outside: combinations, not permutations
+        for a in range(c, amount + 1):
+            dp[a] += dp[a - c]
+    return dp[amount]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(amount · coins) time · O(amount) space.</p>
+  </section>
+  <section class="sub" id="unique-paths">
+    <h3><span class="pn">M5</span> Unique Paths <span class="pill">Medium</span> <span class="muted small">· grid table (count the routes)</span></h3>
+    <p><b>Problem.</b> A robot starts at the top-left of an m x n grid and may only move right or down. Count the distinct routes to the bottom-right corner.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  m = 3, n = 7
+Output: 28</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  m = 3, n = 2
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= m, n &lt;= 100; the answer fits in a 32-bit integer for these limits.</p>
+    <p><b>Approach.</b> The number of routes to a cell is the sum of the routes to the cell above and the cell to the left, because any route arrives from exactly one of them. One row of the table suffices: updating left to right reuses the value from above in place.</p>
+    <pre><code>def unique_paths(m, n):
+    dp = [1] * n                 # first row: exactly one route along the top
+    for _ in range(1, m):
+        for j in range(1, n):
+            dp[j] += dp[j - 1]   # from above (old dp[j]) + from the left
+    return dp[n - 1]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m · n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="decode-ways">
+    <h3><span class="pn">M6</span> Decode Ways <span class="pill">Medium</span> <span class="muted small">· string DP with two cases per position</span></h3>
+    <p><b>Problem.</b> Letters A-Z map to 1-26. Given a digit string, count the ways to decode it, treating 0 as un-decodable on its own.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "12"
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "226"
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  s = "06"
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 100; s contains digits only; "06" cannot be decoded as 6.</p>
+    <p><b>Approach.</b> Walk the string left to right and ask two questions at each position: is the last single digit a valid letter (1-9), and is the last pair a valid letter (10-26)? Each valid option inherits the count from one or two positions back. Zero digits are what make the bookkeeping interesting.</p>
+    <pre><code>def num_decodings(s):
+    n = len(s)
+    dp = [0] * (n + 1)
+    dp[0] = 1                      # the empty prefix: one way
+    dp[1] = 0 if s[0] == '0' else 1
+    for i in range(2, n + 1):
+        one = int(s[i-1])
+        two = int(s[i-2:i])
+        if one &gt;= 1:
+            dp[i] += dp[i-1]       # decode s[i-1] on its own
+        if 10 &lt;= two &lt;= 26:
+            dp[i] += dp[i-2]       # decode s[i-2:i] as one letter
+    return dp[n]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="word-break">
+    <h3><span class="pn">M7</span> Word Break <span class="pill">Medium</span> <span class="muted small">· string DP over dictionary splits</span></h3>
+    <p><b>Problem.</b> Decide whether the string can be split into a sequence of dictionary words, reusing words as often as needed.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "leetcode", wordDict = ["leet","code"]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "applepenapple", wordDict = ["apple","pen"]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  s = "catsandog", wordDict = ["cats","dog","sand","and","cat"]
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 300; 1 &lt;= words &lt;= 1000; 1 &lt;= word length &lt;= 20.</p>
+    <p><b>Approach.</b> dp[i] means the first i characters can be segmented. It is true when some earlier position j is reachable and the slice between j and i is a dictionary word, so the state is a boolean per prefix and the transition scans back over the string.</p>
+    <pre><code>def word_break(s, word_dict):
+    words = set(word_dict)
+    n = len(s)
+    dp = [False] * (n + 1)
+    dp[0] = True                   # the empty prefix is reachable
+    for i in range(1, n + 1):
+        for j in range(i):
+            if dp[j] and s[j:i] in words:
+                dp[i] = True       # a word ends exactly at i
+                break
+    return dp[n]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n² · L) with a set lookup time · O(n) space.</p>
+  </section>
+  <section class="sub" id="house-robber-ii">
+    <h3><span class="pn">M8</span> House Robber II <span class="pill">Medium</span> <span class="muted small">· two passes around a circle</span></h3>
+    <p><b>Problem.</b> The houses now form a circle, so the first and last cannot both be robbed. Return the maximum amount that can be taken.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [2,3,2]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,2,3,1]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [1,2,3]
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 100; 0 &lt;= nums[i] &lt;= 1000; the first and last houses are adjacent.</p>
+    <p><b>Approach.</b> A circle is just two overlapping lines. Either the last house is not robbed, which leaves the line 0..n-2, or the first is not robbed, which leaves 1..n-1. Solving the linear problem twice and taking the better of the two covers every arrangement.</p>
+    <pre><code>def rob_circle(nums):
+    def rob_line(lo, hi):
+        prev2 = prev1 = 0
+        for i in range(lo, hi + 1):
+            prev2, prev1 = prev1, max(prev1, prev2 + nums[i])
+        return prev1
+
+    if len(nums) == 1:
+        return nums[0]                # one house: nothing to wrap around
+    return max(rob_line(0, len(nums) - 2), rob_line(1, len(nums) - 1))</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="target-sum">
+    <h3><span class="pn">M9</span> Target Sum <span class="pill">Medium</span> <span class="muted small">· subset-sum counting after an algebraic rewrite</span></h3>
+    <p><b>Problem.</b> Assign + or - to every number and count the assignments whose total equals the target.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,1,1,1,1], target = 3
+Output: 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1], target = 1
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 20; 0 &lt;= nums[i] &lt;= 1000; 0 &lt;= sum(nums) &lt;= 1000; -1000 &lt;= target &lt;= 1000.</p>
+    <p><b>Approach.</b> Two exponential searches become one polynomial count: if P is the sum of the positive group and N the negative one, then P - N = target and P + N = total, so P = (total + target) / 2. Counting subsets that sum to that fixed value is the 0/1 knapsack counting pass.</p>
+    <pre><code>def find_target_sum_ways(nums, target):
+    total = sum(nums)
+    diff = total - target          # the minus group counted twice
+    if diff &lt; 0 or diff % 2:
+        return 0
+    P = diff // 2                  # every subset of this sum is one assignment
+    dp = [0] * (P + 1)
+    dp[0] = 1                      # the empty subset
+    for x in nums:
+        for s in range(P, x - 1, -1):     # backwards keeps it a 0/1 knapsack
+            dp[s] += dp[s - x]
+    return dp[P]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n · total) time · O(total) space.</p>
+  </section>
+  <section class="sub" id="partition-equal-subset-sum">
+    <h3><span class="pn">M10</span> Partition Equal Subset Sum <span class="pill">Medium</span> <span class="muted small">· subset-sum feasibility (0/1 knapsack)</span></h3>
+    <p><b>Problem.</b> Decide whether the array can be split into two parts with equal sums.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,5,11,5]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,2,3,5]
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 200; 1 &lt;= nums[i] &lt;= 100; each number is used at most once.</p>
+    <p><b>Approach.</b> Equal halves exist exactly when some subset sums to half the total, so this is feasibility rather than counting. Scanning each capacity downwards stops a number from being used twice in the same subset — the 0/1 rule.</p>
+    <pre><code>def can_partition(nums):
+    total = sum(nums)
+    if total % 2:
+        return False             # an odd total can never split evenly
+    half = total // 2
+    dp = [False] * (half + 1)
+    dp[0] = True                 # sum 0 is always reachable
+    for x in nums:
+        for s in range(half, x - 1, -1):   # downwards: each number used once
+            if dp[s - x]:
+                dp[s] = True
+    return dp[half]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n · total) time · O(total) space.</p>
+  </section>
+  <section class="sub" id="longest-common-subsequence">
+    <h3><span class="pn">M11</span> Longest Common Subsequence <span class="pill">Medium</span> <span class="muted small">· two-string table</span></h3>
+    <p><b>Problem.</b> Return the length of the longest subsequence appearing in both strings, where a subsequence keeps order but need not be contiguous.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  text1 = "abcde", text2 = "ace"
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  text1 = "abc", text2 = "abc"
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  text1 = "abc", text2 = "def"
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= lengths &lt;= 1000; strings contain lowercase English letters; subsequences may skip characters.</p>
+    <p><b>Approach.</b> dp[i][j] is the answer for the first i characters of one string and the first j of the other. If the current characters match, they extend the diagonal cell; otherwise the best is whichever prefix pair is already better. Two rows are enough to run it, which matters for the edit-distance family that follows.</p>
+    <pre><code>def lcs(text1, text2):
+    m, n = len(text1), len(text2)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if text1[i-1] == text2[j-1]:
+                dp[i][j] = dp[i-1][j-1] + 1        # extend the match
+            else:
+                dp[i][j] = max(dp[i-1][j], dp[i][j-1])   # drop one character
+    return dp[m][n]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m · n) time · O(n) with two rows space.</p>
+  </section>
+  <section class="sub" id="edit-distance">
+    <h3><span class="pn">M12</span> Edit Distance <span class="pill">Medium</span> <span class="muted small">· two-string table with three moves</span></h3>
+    <p><b>Problem.</b> Return the minimum number of single-character insertions, deletions or replacements needed to turn one word into another.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  word1 = "horse", word2 = "ros"
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  word1 = "intention", word2 = "execution"
+Output: 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= lengths &lt;= 500; words contain lowercase English letters; all three operations cost 1.</p>
+    <p><b>Approach.</b> Same table as the longest common subsequence, but the transition has three named moves instead of two: deleting a character, inserting one, or replacing one. When the characters already match the diagonal carries over untouched.</p>
+    <pre><code>def edit_distance(word1, word2):
+    m, n = len(word1), len(word2)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+    for i in range(m + 1):
+        dp[i][0] = i               # delete every character of word1
+    for j in range(n + 1):
+        dp[0][j] = j               # insert every character of word2
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if word1[i-1] == word2[j-1]:
+                dp[i][j] = dp[i-1][j-1]              # characters already match
+            else:
+                dp[i][j] = 1 + min(dp[i-1][j],       # delete from word1
+                                   dp[i][j-1],       # insert into word1
+                                   dp[i-1][j-1])     # replace one character
+    return dp[m][n]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m · n) time · O(m · n) space.</p>
+  </section>
+  <section class="sub" id="longest-increasing-path-in-a-matrix">
+    <h3><span class="pn">H1</span> Longest Increasing Path in a Matrix <span class="pill hot">Hard</span> <span class="muted small">· memoised DFS on a DAG</span></h3>
+    <p><b>Problem.</b> Return the length of the longest strictly increasing path in a matrix, moving in the four axis directions.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  matrix = [[9,9,4],[6,6,8],[2,1,1]]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  matrix = [[3,4,5],[3,2,6],[2,2,1]]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  matrix = [[1]]
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 200; 0 &lt;= matrix[i][j] &lt;= 2^31 - 1; the path may not revisit a cell.</p>
+    <p><b>Approach.</b> Strict increase means the moves form a directed acyclic graph, so the answer from any cell is 1 + the best answer among its larger neighbours. Memoising that value turns an exponential walk into one visit per cell; no visited set is needed because the values themselves prevent cycles.</p>
+    <pre><code>import sys
+
+def longest_increasing_path(matrix):
+    sys.setrecursionlimit(100000)
+    R, C = len(matrix), len(matrix[0])
+    memo = [[0] * C for _ in range(R)]
+
+    def dfs(r, c):
+        if memo[r][c]:
+            return memo[r][c]                    # already solved
+        length = 1
+        for nr, nc in ((r+1,c), (r-1,c), (r,c+1), (r,c-1)):
+            if 0 &lt;= nr &lt; R and 0 &lt;= nc &lt; C and matrix[nr][nc] &gt; matrix[r][c]:
+                length = max(length, 1 + dfs(nr, nc))
+        memo[r][c] = length
+        return length
+
+    return max(dfs(r, c) for r in range(R) for c in range(C))</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · cols) time · O(rows · cols) space.</p>
+  </section>
+  <section class="sub" id="number-of-longest-increasing-subsequence">
+    <h3><span class="pn">H2</span> Number of Longest Increasing Subsequences <span class="pill hot">Hard</span> <span class="muted small">· LIS with a parallel count array</span></h3>
+    <p><b>Problem.</b> Count how many longest strictly increasing subsequences the array has.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,3,5,4,7]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [2,2,2,2,2]
+Output: 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 2000; -10^6 &lt;= nums[i] &lt;= 10^6; the answer fits in a 32-bit integer.</p>
+    <p><b>Approach.</b> Every classic LIS table can carry a second array: how many best subsequences *end* at this position. When a longer chain is found the count is replaced; when an equally long chain is found the counts add. The answer is the total over all positions that achieve the maximum length.</p>
+    <pre><code>def find_number_of_lis(nums):
+    n = len(nums)
+    dp = [1] * n                 # longest chain ending at i
+    cnt = [1] * n                # how many chains of that length end at i
+    for i in range(n):
+        for j in range(i):
+            if nums[j] &lt; nums[i]:
+                if dp[j] + 1 &gt; dp[i]:
+                    dp[i] = dp[j] + 1
+                    cnt[i] = cnt[j]          # a strictly longer chain: replace
+                elif dp[j] + 1 == dp[i]:
+                    cnt[i] += cnt[j]         # same length: add the routes
+    best = max(dp)
+    return sum(c for length, c in zip(dp, cnt) if length == best)</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="best-time-to-buy-and-sell-stock-iv">
+    <h3><span class="pn">H3</span> Best Time to Buy and Sell Stock IV <span class="pill hot">Hard</span> <span class="muted small">· state machine over k transactions</span></h3>
+    <p><b>Problem.</b> Given prices and a limit of k transactions (each a buy followed by a later sell), return the maximum profit. Only one share may be held at a time.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  k = 2, prices = [2,4,1]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  k = 2, prices = [3,2,6,5,0,3]
+Output: 7</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= k &lt;= 100; 0 &lt;= prices.length &lt;= 1000; 0 &lt;= prices[i] &lt;= 50.</p>
+    <p><b>Approach.</b> Two arrays per transaction count describe the best position after buying and after selling. Sweeping the transaction index downwards inside the price loop keeps the sell used as a starting point one step *older*, which is exactly the ordering that prevents buying and selling on the same update. When k is large the limit never binds and summing every upward move is optimal.</p>
+    <pre><code>def max_profit_k(k, prices):
+    n = len(prices)
+    if n == 0 or k == 0:
+        return 0
+    if k &gt;= n // 2:                  # the limit never binds: take every rise
+        return sum(max(0, prices[i] - prices[i-1]) for i in range(1, n))
+    NEG = float('-inf')
+    buy = [NEG] * (k + 1)
+    sell = [0] * (k + 1)
+    for p in prices:
+        for t in range(k, 0, -1):    # descending keeps the states consistent
+            buy[t] = max(buy[t], sell[t-1] - p)    # open transaction t
+            sell[t] = max(sell[t], buy[t] + p)     # or close it today
+    return sell[k]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n · k) time · O(k) space.</p>
+  </section>
+  <section class="sub" id="frog-jump">
+    <h3><span class="pn">H4</span> Frog Jump <span class="pill hot">Hard</span> <span class="muted small">· reachable-state sets (DP over positions and speeds)</span></h3>
+    <p><b>Problem.</b> The frog starts on stone 0 and must land on the last stone. From a jump of size k it may next jump k-1, k or k+1, and it may only land on a stone. Decide whether the crossing is possible.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  stones = [0,1,3,5,6,8,12,17]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  stones = [0,1,2,3,4,8,9,11]
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= stones.length &lt;= 2000; 0 &lt;= stones[i] &lt;= 2^31 - 1; the stones are strictly increasing.</p>
+    <p><b>Approach.</b> The state is not the stone alone — it is the pair (stone, jump length), because the same stone reached with different speeds allows different futures. Keeping a set of speeds per stone and pushing forward through the three possible next jumps visits each state once.</p>
+    <pre><code>def can_cross(stones):
+    reach = {s: set() for s in stones}      # stone -&gt; jump sizes that reach it
+    reach[stones[0]].add(0)
+    for s in stones:
+        for jump in reach[s]:
+            for nxt in (jump - 1, jump, jump + 1):
+                if nxt &gt; 0 and s + nxt in reach:
+                    reach[s + nxt].add(nxt)  # only stones can be landed on
+    return bool(reach[stones[-1]])</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) time · O(n²) space.</p>
+  </section>
+  <section class="sub" id="distinct-subsequences">
+    <h3><span class="pn">H5</span> Distinct Subsequences <span class="pill hot">Hard</span> <span class="muted small">· two-string counting table</span></h3>
+    <p><b>Problem.</b> Count how many distinct subsequences of one string equal a second string, using any set of positions in the first.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "rabbbit", t = "rabbit"
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "babgbag", t = "bag"
+Output: 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= lengths &lt;= 1000; strings contain English letters; the answer fits in a 32-bit integer.</p>
+    <p><b>Approach.</b> dp[j] counts the ways to build the first j characters of the target from the prefix of the source read so far. Scanning j downwards means each source character contributes its match exactly once, so a character can never be used twice in the same subsequence.</p>
+    <pre><code>def num_distinct(s, t):
+    n = len(t)
+    dp = [0] * (n + 1)
+    dp[0] = 1                    # the empty target can be built one way
+    for c in s:
+        for j in range(n, 0, -1):        # descending: each character used once
+            if c == t[j-1]:
+                dp[j] += dp[j-1]
+    return dp[n]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m · n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="regular-expression-matching">
+    <h3><span class="pn">H6</span> Regular Expression Matching <span class="pill hot">Hard</span> <span class="muted small">· two-string table with a star case</span></h3>
+    <p><b>Problem.</b> Match the whole string against a pattern where '.' matches any single character and '*' means zero or more of the preceding element.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "aa", p = "a"
+Output: false</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "aa", p = "a*"
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  s = "ab", p = ".*"
+Output: true</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= lengths &lt;= 20; s contains lowercase letters; p contains lowercase letters, '.' and '*', and '*' never leads.</p>
+    <p><b>Approach.</b> The star is the only hard case. "x*" either matches nothing — which drops the whole pair and looks two columns back — or it consumes one matching character and stays in the same column. Writing those two options as a disjunction, and the plain character case as a diagonal step, is the complete recurrence.</p>
+    <pre><code>def regex_match(s, p):
+    m, n = len(s), len(p)
+    dp = [[False] * (n + 1) for _ in range(m + 1)]
+    dp[0][0] = True                      # empty matches empty
+    for j in range(2, n + 1):
+        if p[j-1] == '*':
+            dp[0][j] = dp[0][j-2]        # "x*" may match the empty string
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if p[j-1] == '*':
+                prev = p[j-2]
+                dp[i][j] = dp[i][j-2] or (              # zero copies of prev
+                    (prev == '.' or prev == s[i-1]) and dp[i-1][j])   # one more
+            elif p[j-1] == '.' or p[j-1] == s[i-1]:
+                dp[i][j] = dp[i-1][j-1]      # consume one character each
+    return dp[m][n]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m · n) time · O(m · n) space.</p>
+  </section>
+  <section class="sub" id="wildcard-matching">
+    <h3><span class="pn">H7</span> Wildcard Matching <span class="pill hot">Hard</span> <span class="muted small">· two-string table with '?' and '*'</span></h3>
+    <p><b>Problem.</b> Match the whole string against a pattern where '?' matches any single character and '*' matches any sequence, including an empty one.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "aa", p = "a"
+Output: false</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "aa", p = "*"
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  s = "cb", p = "?a"
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= lengths &lt;= 2000; s contains lowercase letters; p contains lowercase letters, '?' and '*', with '*' matching anything.</p>
+    <p><b>Approach.</b> The same frame as the regular-expression problem, but '*' stands alone instead of modifying the previous element, so there are just two options: let the star absorb the current character, or let it match nothing at all.</p>
+    <pre><code>def wildcard_match(s, p):
+    m, n = len(s), len(p)
+    dp = [[False] * (n + 1) for _ in range(m + 1)]
+    dp[0][0] = True
+    for j in range(1, n + 1):
+        dp[0][j] = dp[0][j-1] and p[j-1] == '*'    # leading stars match empty
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            pc = p[j-1]
+            if pc == '*':
+                dp[i][j] = dp[i-1][j] or dp[i][j-1]   # absorb one, or none
+            elif pc == '?' or pc == s[i-1]:
+                dp[i][j] = dp[i-1][j-1]               # exactly one character
+    return dp[m][n]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m · n) time · O(m · n) space.</p>
+  </section>
+  <section class="sub" id="palindrome-partitioning-ii">
+    <h3><span class="pn">H8</span> Palindrome Partitioning II <span class="pill hot">Hard</span> <span class="muted small">· cut DP over a precomputed palindrome table</span></h3>
+    <p><b>Problem.</b> Split the string into palindromic pieces using the fewest cuts. Return the number of cuts needed.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "aab"
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "a"
+Output: 0</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  s = "ab"
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 2000; s contains lowercase letters; "aab" cuts as "aa" + "b".</p>
+    <p><b>Approach.</b> Two tables, one inside the other: first decide for every substring whether it is a palindrome, then let dp[i] be the fewest cuts for the prefix of length i. Only palindrome suffixes matter, since the last piece must itself be a palindrome.</p>
+    <pre><code>def min_cuts(s):
+    n = len(s)
+    pal = [[False] * n for _ in range(n)]
+    for l in range(n - 1, -1, -1):        # shorter substrings are solved first
+        for r in range(l, n):
+            pal[l][r] = s[l] == s[r] and (r - l &lt; 2 or pal[l+1][r-1])
+    dp = [0] * (n + 1)                   # dp[i]: cuts for the prefix of length i
+    for i in range(1, n + 1):
+        dp[i] = i - 1                    # worst case: cut every character
+        for k in range(i):
+            if pal[k][i-1]:
+                dp[i] = min(dp[i], 0 if k == 0 else dp[k] + 1)
+    return dp[n]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) time · O(n²) space.</p>
+  </section>
+  <section class="sub" id="burst-balloons">
+    <h3><span class="pn">H9</span> Burst Balloons <span class="pill hot">Hard</span> <span class="muted small">· interval DP (choose what bursts last)</span></h3>
+    <p><b>Problem.</b> Bursting balloon i earns nums[i-1] * nums[i] * nums[i+1] using the current neighbours, and the balloon then disappears. Return the maximum coins obtainable.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [3,1,5,8]
+Output: 167</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,5]
+Output: 10</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 300; 0 &lt;= nums[i] &lt;= 100; out-of-range neighbours count as 1.</p>
+    <p><b>Approach.</b> Thinking about which balloon bursts *first* is hopeless, because it changes every later neighbourhood. Thinking about which bursts *last* inside a window splits the problem cleanly: the window's last balloon sees the window's two walls, and the two inner pieces are independent subproblems.</p>
+    <pre><code>def max_coins(nums):
+    a = [1] + nums + [1]             # pad both walls with 1
+    n = len(nums)
+    dp = [[0] * (n + 2) for _ in range(n + 2)]
+    for length in range(1, n + 1):           # window of that many balloons
+        for l in range(1, n - length + 2):
+            r = l + length - 1
+            for k in range(l, r + 1):        # k is the last balloon to burst
+                coins = dp[l][k-1] + dp[k+1][r] + a[l-1] * a[k] * a[r+1]
+                if coins &gt; dp[l][r]:
+                    dp[l][r] = coins
+    return dp[1][n]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n³) time · O(n²) space.</p>
+  </section>
+  <section class="sub" id="minimum-cost-to-cut-a-stick">
+    <h3><span class="pn">H10</span> Minimum Cost to Cut a Stick <span class="pill hot">Hard</span> <span class="muted small">· interval DP over sorted cut positions</span></h3>
+    <p><b>Problem.</b> A stick of length n must be cut at every position in cuts. Each cut costs the length of the piece being cut at that moment. Return the minimum total cost.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 7, cuts = [1,3,4,5]
+Output: 16</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 9, cuts = [5,6,1,4,2]
+Output: 22</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= n &lt;= 10^6; 1 &lt;= cuts.length &lt;= min(n-1, 100); cut positions are distinct.</p>
+    <p><b>Approach.</b> The same interval idea as burst balloons: sorting the cut positions (with the two stick ends added) turns them into boundary points, and choosing which cut inside a window happens *first* splits the window into two independent sticks. The cost of a window is always its full length, whatever the chosen cut inside it was.</p>
+    <pre><code>def min_cut_cost(n, cuts):
+    c = sorted([0] + cuts + [n])     # the two stick ends join the cut positions
+    m = len(c)
+    dp = [[0] * m for _ in range(m)]
+    for length in range(2, m):               # window of that many boundary points
+        for i in range(m - length):
+            j = i + length
+            best = float('inf')
+            for k in range(i + 1, j):        # k is the first cut inside the window
+                best = min(best, dp[i][k] + dp[k][j] + c[j] - c[i])
+            dp[i][j] = best
+    return dp[0][m - 1]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(k³) time · O(k²) space.</p>
+  </section>
+  <section class="sub" id="cherry-pickup">
+    <h3><span class="pn">H11</span> Cherry Pickup <span class="pill hot">Hard</span> <span class="muted small">· two travellers on the same diagonal</span></h3>
+    <p><b>Problem.</b> Two pickers start at the top-left and walk to the bottom-right, moving only right or down, collecting cherries from the cells they pass. A cell's cherries are collected once even if both pass through it. Return the maximum total, or 0 if the route is blocked.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  grid = [[0,1,-1],[1,0,-1],[1,1,1]]
+Output: 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  grid = [[1,1,-1],[1,-1,1],[-1,1,1]]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 50; grid[i][j] is -1, 0 or 1; both pickers move simultaneously and share the grid.</p>
+    <p><b>Approach.</b> Run both pickers together. After the same number of steps they sit on the same anti-diagonal, so the state is just their two row indices — the columns follow. When they land on one cell its cherries are counted once, which is exactly the rule the problem describes.</p>
+    <pre><code>def cherry_pickup(grid):
+    n = len(grid)
+    dp = [[-1] * n for _ in range(n)]
+    dp[0][0] = grid[0][0]
+    for step in range(1, 2 * n - 1):
+        nxt = [[-1] * n for _ in range(n)]
+        for r1 in range(n):
+            c1 = step - r1                   # columns follow from the step count
+            if not (0 &lt;= c1 &lt; n) or grid[r1][c1] == -1:
+                continue
+            for r2 in range(n):
+                c2 = step - r2
+                if not (0 &lt;= c2 &lt; n) or grid[r2][c2] == -1:
+                    continue
+                gained = grid[r1][c1] + (0 if r1 == r2 else grid[r2][c2])
+                best = -1
+                for p1 in (r1 - 1, r1):      # each picker came from above or left
+                    for p2 in (r2 - 1, r2):
+                        if p1 &gt;= 0 and p2 &gt;= 0 and dp[p1][p2] &gt; best:
+                            best = dp[p1][p2]
+                if best &gt;= 0:
+                    nxt[r1][r2] = best + gained
+        dp = nxt
+    return max(0, dp[n-1][n-1])              # -1 would mean the route is blocked</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n³) time · O(n²) space.</p>
+  </section>
+  <section class="sub" id="maximum-profit-in-job-scheduling">
+    <h3><span class="pn">H12</span> Maximum Profit in Job Scheduling <span class="pill hot">Hard</span> <span class="muted small">· sorted DP with binary search for the previous compatible job</span></h3>
+    <p><b>Problem.</b> Each job has a start time, an end time and a profit, and chosen jobs may not overlap. Return the maximum total profit.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  startTime = [1,2,3,3], endTime = [3,4,5,6], profit = [50,10,40,70]
+Output: 120</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  startTime = [1,2,3,4,6], endTime = [3,5,10,6,9], profit = [20,20,100,70,60]
+Output: 150</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  startTime = [1,1,1], endTime = [2,3,4], profit = [5,6,4]
+Output: 6</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of jobs &lt;= 5 · 10^4; startTime[i] &lt; endTime[i]; times and profits fit in 32-bit integers.</p>
+    <p><b>Approach.</b> Sort the jobs by end time and let dp[i] be the best profit using the first i jobs. Taking job i is only possible after the last job that finishes at or before its start, which binary search finds in the sorted end times. This is the weighted interval scheduling recurrence, and the binary search is what keeps it from becoming quadratic.</p>
+    <pre><code>from bisect import bisect_right
+
+def job_scheduling(start_time, end_time, profit):
+    jobs = sorted(zip(end_time, start_time, profit))   # by end time
+    ends = [j[0] for j in jobs]
+    n = len(jobs)
+    dp = [0] * (n + 1)
+    for i in range(1, n + 1):
+        end, start, gain = jobs[i-1]
+        # last earlier job that ends at or before this job's start
+        j = bisect_right(ends, start, 0, i - 1)
+        dp[i] = max(dp[i-1], dp[j] + gain)     # skip this job, or take it
+    return dp[n]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(n) space.</p>
+  </section>
+</section>
 
   </main>
 </div>
 
 <footer>
-  <p><b>Python bank</b> — 240 problems across 8 topics, with complete solutions in
+  <p><b>Python bank</b> — 270 problems across 9 topics, with complete solutions in
   Python 3.12+ solutions.</p>
   <p class="small">Same problems in every language:
     <a href="cpp-leetcode.html">C++</a> · <a href="java-leetcode.html">Java</a> · <a href="python-leetcode.html">Python</a>
