@@ -9105,12 +9105,991 @@ int maximumRobots(int[] chargeTimes, int[] runningCosts, long budget) {
     <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
   </section>
 </section>
+<section class="chapter" id="t12">
+  <h2><span class="num">12</span> Tries &amp; String Algorithms</h2>
+  <p class="tagline">A trie turns a dictionary into a walk — one edge per character, and every prefix is a place you can stand.</p>
+  <div class="card"><p><b>What this topic trains.</b> Three ideas carry this topic. The trie stores a set of words so that prefixes, wildcards and prefix sums are a walk rather than a scan through every word. String matching algorithms (the KMP prefix function, rolling hashes, two-pointer chunking) compare two strings in linear time where the naive version would be quadratic. And the counting problems turn "how many substrings" into a contribution argument: for every position, count the substrings for which that position is the answer, instead of enumerating substrings.</p>
+<p class="small muted">Ordering: easy 1–4 are single-pass scans and word accounting, 5–6 add a small trick (counting arrays, doubled-string containment); medium 1–6 build tries (plain, prefix-sum, root replacement, buildable words, suggestions, wildcard search), 7–9 are string parsing and windowing, 10–12 are the hashing/index structures that lead into the hard tier; hard 1–5 push tries into streams, filtered suffix queries and board search, 6–9 are the classic linear-time matching tools (KMP, contribution counting, rolling hash), 10–12 are the largest DP-and-string combinations.</p></div>
+  <section class="sub" id="length-of-last-word">
+    <h3><span class="pn">E1</span> Length of Last Word <span class="pill">Easy</span> <span class="muted small">· scan from the end</span></h3>
+    <p><b>Problem.</b> Given a string s made of words and spaces, return the length of the last word.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "Hello World"
+Output: 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = " fly me to the moon "
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  s = "luffy is still joyboy"
+Output: 6</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 10^4; s contains only letters and spaces; there is at least one word.</p>
+    <p><b>Approach.</b> Walk backwards: skip the trailing spaces first, then count characters until the next space. Scanning from the end means the rest of the string is never touched, which is what makes this a one-pass, constant-space answer.</p>
+    <pre><code>// Walk from the end: skip trailing spaces, then count the word
+int lengthOfLastWord(String s) {
+    int i = s.length() - 1, len = 0;
+    while (i &gt;= 0 &amp;&amp; s.charAt(i) == ' ') i--;    // skip the trailing spaces
+    while (i &gt;= 0 &amp;&amp; s.charAt(i) != ' ') { len++; i--; }  // count the word
+    return len;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="reverse-words-in-a-string-iii">
+    <h3><span class="pn">E2</span> Reverse Words in a String III <span class="pill">Easy</span> <span class="muted small">· word splitting plus per-word reversal</span></h3>
+    <p><b>Problem.</b> Reverse the characters of every word in s while keeping the words themselves in their original order and the spaces in place.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "Let's take LeetCode contest"
+Output: "s'teL ekat edoCteeL tsetnoc"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "Mr Ding"
+Output: "rM gniD"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 5 · 10^4; s contains printable ASCII characters; words are separated by single spaces.</p>
+    <p><b>Approach.</b> Find each word's boundary and reverse only that range. The spaces never move, so the word order is preserved automatically and the whole job is one pass over the characters.</p>
+    <pre><code>// Reverse each word in place; the spaces never move
+String reverseWords(String s) {
+    char[] a = s.toCharArray();
+    int n = a.length, i = 0;
+    while (i &lt; n) {
+        int j = i;
+        while (j &lt; n &amp;&amp; a[j] != ' ') j++;        // the current word is [i, j)
+        for (int l = i, r = j - 1; l &lt; r; l++, r--) { char t = a[l]; a[l] = a[r]; a[r] = t; }
+        i = j + 1;                               // skip the space
+    }
+    return new String(a);
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(n) for the mutable copy space.</p>
+  </section>
+  <section class="sub" id="sorting-the-sentence">
+    <h3><span class="pn">E3</span> Sorting the Sentence <span class="pill">Easy</span> <span class="muted small">· parse a trailing index</span></h3>
+    <p><b>Problem.</b> A sentence contains words that each end in the digit giving their position (1-based). Return the sentence with the words in order and the digits removed.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "is2 sentence4 This1 a3"
+Output: "This is a sentence"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "Myself2 Me1 I4 and3"
+Output: "Me Myself and I"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= s.length &lt;= 200; words are separated by single spaces and each ends in one digit; the digits are a permutation of 1..n.</p>
+    <p><b>Approach.</b> Split on spaces, then place each word at the index its own last character names. Writing straight into a correctly sized array makes the sort unnecessary — the digits *are* the final positions.</p>
+    <pre><code>// Each word's last character is its final position
+String sortSentence(String s) {
+    String[] words = s.split(" ");
+    String[] out = new String[words.length];
+    for (String w : words) {
+        int pos = w.charAt(w.length() - 1) - '1';    // 0-based position
+        out[pos] = w.substring(0, w.length() - 1);   // drop the digit
+    }
+    return String.join(" ", out);
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="uncommon-words-from-two-sentences">
+    <h3><span class="pn">E4</span> Uncommon Words from Two Sentences <span class="pill">Easy</span> <span class="muted small">· word frequency across two strings</span></h3>
+    <p><b>Problem.</b> Return the words that appear exactly once across both sentences put together (order does not matter).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s1 = "this apple is sweet", s2 = "this apple is sour"
+Output: ["sweet","sour"]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s1 = "apple apple", s2 = "banana"
+Output: ["banana"]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s1.length, s2.length &lt;= 200; sentences contain lowercase letters and single spaces.</p>
+    <p><b>Approach.</b> Count every word of both sentences in one table, then keep the entries whose count is exactly one. A word appearing twice inside a single sentence is common just like one appearing in both, so the two sentences must be counted together rather than separately.</p>
+    <pre><code>// One table for both sentences; keep the words seen exactly once
+List&lt;String&gt; uncommonFromSentences(String s1, String s2) {
+    Map&lt;String, Integer&gt; count = new HashMap&lt;&gt;();
+    for (String w : (s1 + " " + s2).split(" "))
+        count.merge(w, 1, Integer::sum);
+    List&lt;String&gt; out = new ArrayList&lt;&gt;();
+    for (Map.Entry&lt;String, Integer&gt; e : count.entrySet())
+        if (e.getValue() == 1) out.add(e.getKey());
+    return out;
+}   // O(n + m) time · O(n + m) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n + m) time time · O(n + m) space.</p>
+  </section>
+  <section class="sub" id="find-words-that-can-be-formed-by-characters">
+    <h3><span class="pn">E5</span> Find Words That Can Be Formed by Characters <span class="pill">Easy</span> <span class="muted small">· per-character counting</span></h3>
+    <p><b>Problem.</b> Every word may use characters of <code>chars</code>, each character at most as many times as it appears there. Return the total length of all words that can be formed.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  words = ["cat","bt","hat","tree"], chars = "atach"
+Output: 6</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  words = ["hello","world","leetcode"], chars = "welldonehoneyr"
+Output: 10</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= words.length &lt;= 1000; 1 &lt;= words[i].length, chars.length &lt;= 100; words and chars contain lowercase letters.</p>
+    <p><b>Approach.</b> Turn the available characters into 26 counts once, then test each word against a copy of those counts. A word survives exactly when no letter needs more copies than the pool has.</p>
+    <pre><code>// 26 counts for the pool; a word survives if it never overdraws
+int countCharacters(String[] words, String chars) {
+    int[] pool = new int[26];
+    for (char c : chars.toCharArray()) pool[c - 'a']++;
+    int total = 0;
+    for (String w : words) {
+        int[] need = new int[26];
+        boolean ok = true;
+        for (char c : w.toCharArray())
+            if (++need[c - 'a'] &gt; pool[c - 'a']) { ok = false; break; }
+        if (ok) total += w.length();
+    }
+    return total;
+}   // O(total characters) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(total characters) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="rotate-string">
+    <h3><span class="pn">E6</span> Rotate String <span class="pill">Easy</span> <span class="muted small">· doubled string containment</span></h3>
+    <p><b>Problem.</b> A rotation moves the first character of s to the end any number of times. Return true if goal can be produced this way.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "abcde", goal = "cdeab"
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "abcde", goal = "abced"
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length, goal.length &lt;= 100; s and goal contain lowercase letters.</p>
+    <p><b>Approach.</b> Every rotation of s appears inside s + s, and every substring of s + s with the length of s is a rotation. So one containment test answers the question — after checking the lengths, since containment alone would also accept longer strings.</p>
+    <pre><code>// Every rotation of s is a length-n window of s + s
+boolean rotateString(String s, String goal) {
+    if (s.length() != goal.length()) return false;
+    return (s + s).contains(goal);
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time (library search) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="implement-trie-prefix-tree">
+    <h3><span class="pn">M1</span> Implement Trie (Prefix Tree) <span class="pill">Medium</span> <span class="muted small">· build the trie</span></h3>
+    <p><b>Problem.</b> Implement a trie with insert(word), search(word) and startsWith(prefix).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  ["Trie","insert","search","search","startsWith","insert","search"] [[],["apple"],["apple"],["app"],["app"],["app"],["app"]]
+Output: [null, null, true, false, true, null, true]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= word.length, prefix.length &lt;= 2000; words and prefixes consist of lowercase English letters; at most 3 · 10^4 calls.</p>
+    <p><b>Approach.</b> Give every node 26 child slots and one flag meaning "a word ends here". insert walks the word, creating nodes as needed, and search continues past the last character only to read that flag, while startsWith simply stops walking — that one flag is the whole difference between the two queries.</p>
+    <pre><code>// 26 child slots per node plus one "a word ends here" flag
+class Trie {
+    class Node {
+        Node[] kids = new Node[26];
+        boolean ends;
+    }
+    private final Node root = new Node();
+    public void insert(String word) {
+        Node cur = root;
+        for (char c : word.toCharArray()) {
+            int i = c - 'a';
+            if (cur.kids[i] == null) cur.kids[i] = new Node();
+            cur = cur.kids[i];
+        }
+        cur.ends = true;                         // a word stops here
+    }
+    public boolean search(String word) {
+        Node cur = walk(word);
+        return cur != null &amp;&amp; cur.ends;          // ... and only here
+    }
+    public boolean startsWith(String prefix) {
+        return walk(prefix) != null;             // any node on the path will do
+    }
+    private Node walk(String s) {
+        Node cur = root;
+        for (char c : s.toCharArray()) {
+            cur = cur.kids[c - 'a'];
+            if (cur == null) return null;
+        }
+        return cur;
+    }
+}   // O(L) per operation · O(total characters) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(L) per operation time · O(total characters inserted) space.</p>
+  </section>
+  <section class="sub" id="map-sum-pairs">
+    <h3><span class="pn">M2</span> Map Sum Pairs <span class="pill">Medium</span> <span class="muted small">· trie with prefix sums</span></h3>
+    <p><b>Problem.</b> Implement insert(key, val), which overwrites any earlier value for that key, and sum(prefix), which returns the total value of all keys that start with prefix.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  ["MapSum","insert","sum","insert","sum"] [[],["apple",3],["ap"],["app",2],["ap"]]
+Output: [null, null, 3, null, 5]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= key.length, prefix.length &lt;= 50; keys and prefixes are lowercase letters; at most 50 calls of each operation.</p>
+    <p><b>Approach.</b> Store the total of the subtree at every node, and keep the current value of each key. Overwriting a key then means walking once more and adding only the *difference* to the nodes on the path, which keeps insert O(L) instead of rebuilding anything.</p>
+    <pre><code>// Every node knows the total of the keys passing through it
+class MapSum {
+    class Node {
+        Map&lt;Character, Node&gt; kids = new HashMap&lt;&gt;();
+        int total;
+    }
+    private final Node root = new Node();
+    private final Map&lt;String, Integer&gt; value = new HashMap&lt;&gt;();
+    public void insert(String key, int val) {
+        int delta = val - value.getOrDefault(key, 0);   // only the change
+        value.put(key, val);
+        Node cur = root;
+        for (char c : key.toCharArray()) {
+            cur = cur.kids.computeIfAbsent(c, k -&gt; new Node());
+            cur.total += delta;
+        }
+    }
+    public int sum(String prefix) {
+        Node cur = root;
+        for (char c : prefix.toCharArray()) {
+            cur = cur.kids.get(c);
+            if (cur == null) return 0;           // no key has this prefix
+        }
+        return cur.total;                        // the whole subtree
+    }
+}   // O(L) per operation · O(total characters) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(L) per operation time · O(total characters) space.</p>
+  </section>
+  <section class="sub" id="replace-words">
+    <h3><span class="pn">M3</span> Replace Words <span class="pill">Medium</span> <span class="muted small">· trie for shortest-prefix lookup</span></h3>
+    <p><b>Problem.</b> Given a dictionary of roots and a sentence, replace every word by the shortest root that is one of its prefixes; a word with no such root stays as it is.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  dictionary = ["cat","bat","rat"], sentence = "the cattle was rattled by the battery"
+Output: "the cat was rat by the bat"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  dictionary = ["a","b","c"], sentence = "aadsfasf absbs bbab cadsfafs"
+Output: "a a b c"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= dictionary.length &lt;= 1000; 1 &lt;= sentence.length &lt;= 10^6; dictionary words and sentence words are lowercase.</p>
+    <p><b>Approach.</b> Put the roots in a trie and walk each word character by character. The first node marked as a word end gives the shortest root, so the walk can stop there even though longer roots also lie down the same path.</p>
+    <pre><code>// Walk each word through the root trie and stop at the first root end
+String replaceWords(List&lt;String&gt; dictionary, String sentence) {
+    Node root = new Node();
+    for (String r : dictionary) {                // build the root trie
+        Node cur = root;
+        for (char c : r.toCharArray()) {
+            int i = c - 'a';
+            if (cur.kids[i] == null) cur.kids[i] = new Node();
+            cur = cur.kids[i];
+        }
+        cur.ends = true;                         // a root stops here
+    }
+    String[] words = sentence.split(" ");
+    for (int w = 0; w &lt; words.length; w++) {
+        Node cur = root;
+        for (int i = 0; i &lt; words[w].length(); i++) {
+            cur = cur.kids[words[w].charAt(i) - 'a'];
+            if (cur == null) break;
+            if (cur.ends) { words[w] = words[w].substring(0, i + 1); break; }
+        }
+    }
+    return String.join(" ", words);
+}
+static class Node { Node[] kids = new Node[26]; boolean ends; }   // O(total chars) time</code></pre>
+    <p class="cx"><b>Complexity:</b> O(total characters) time time · O(total root characters) space.</p>
+  </section>
+  <section class="sub" id="longest-word-in-dictionary">
+    <h3><span class="pn">M4</span> Longest Word in Dictionary <span class="pill">Medium</span> <span class="muted small">· buildable prefixes</span></h3>
+    <p><b>Problem.</b> Return the longest word that can be built one character at a time using only words of the list; when several words tie, return the lexicographically smallest.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  words = ["w","wo","wor","worl","world"]
+Output: "world"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  words = ["a","banana","app","appl","ap","apply","apple"]
+Output: "apple"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= words.length &lt;= 1000; 1 &lt;= words[i].length &lt;= 30; words contain lowercase letters.</p>
+    <p><b>Approach.</b> Sort the words, then sweep once keeping a set of the words already proven buildable. A word is buildable exactly when its prefix without the last character is buildable (or it has length one), and sorting makes "first longest" also "lexicographically smallest".</p>
+    <pre><code>// Sort, then keep the set of words that can be built up to
+String longestWord(String[] words) {
+    Arrays.sort(words);
+    Set&lt;String&gt; buildable = new HashSet&lt;&gt;();
+    String best = "";
+    for (String w : words) {
+        if (w.length() == 1 || buildable.contains(w.substring(0, w.length() - 1))) {
+            buildable.add(w);
+            if (w.length() &gt; best.length()) best = w;   // sorted order breaks ties
+        }
+    }
+    return best;
+}   // O(n log n + total characters) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n + total characters) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="search-suggestions-system">
+    <h3><span class="pn">M5</span> Search Suggestions System <span class="pill">Medium</span> <span class="muted small">· sorted list plus prefix lookup</span></h3>
+    <p><b>Problem.</b> Type the characters of searchWord one at a time and after each keystroke return up to three products having the typed text as a prefix, in lexicographic order.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  products = ["mobile","mouse","moneypot","monitor","mousepad"], searchWord = "mouse"
+Output: [["mobile","moneypot","monitor"],["mobile","moneypot","monitor"],["mouse","mousepad"],["mouse","mousepad"],["mouse","mousepad"]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  products = ["havana"], searchWord = "havana"
+Output: [["havana"],["havana"],["havana"],["havana"],["havana"],["havana"]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= products.length &lt;= 1000; 1 &lt;= products[i].length &lt;= 3000; 1 &lt;= searchWord.length &lt;= 1000; all products are distinct.</p>
+    <p><b>Approach.</b> Sort the products once. For each prefix, the matching products form one contiguous block starting at the first product that is not smaller than the prefix — a binary search finds that start, and the next three entries are the suggestion.</p>
+    <pre><code>// Sort once; each prefix is a contiguous block after a lower bound
+List&lt;List&lt;String&gt;&gt; suggestedProducts(String[] products, String searchWord) {
+    Arrays.sort(products);
+    List&lt;List&lt;String&gt;&gt; out = new ArrayList&lt;&gt;();
+    StringBuilder prefix = new StringBuilder();
+    for (char c : searchWord.toCharArray()) {
+        prefix.append(c);
+        String p = prefix.toString();
+        int lo = 0, hi = products.length;            // first index with products[i] &gt;= p
+        while (lo &lt; hi) {
+            int mid = (lo + hi) / 2;
+            if (products[mid].compareTo(p) &lt; 0) lo = mid + 1; else hi = mid;
+        }
+        List&lt;String&gt; picks = new ArrayList&lt;&gt;();
+        for (int i = lo; i &lt; products.length &amp;&amp; picks.size() &lt; 3; i++) {
+            if (!products[i].startsWith(p)) break;  // the block ended
+            picks.add(products[i]);
+        }
+        out.add(picks);
+    }
+    return out;
+}   // O(n log n + |searchWord| log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n + |searchWord| · (log n + 3)) time · O(n) for the sorted copy space.</p>
+  </section>
+  <section class="sub" id="design-add-and-search-words-data-structure">
+    <h3><span class="pn">M6</span> Design Add and Search Words Data Structure <span class="pill">Medium</span> <span class="muted small">· trie with wildcard search</span></h3>
+    <p><b>Problem.</b> Implement WordDictionary with addWord(word) and search(word), where a '.' in the query matches any single letter.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  ["WordDictionary","addWord","addWord","addWord","search","search","search","search"] [[],["bad"],["dad"],["mad"],["pad"],["bad"],[".ad"],["b.."]]
+Output: [null,null,null,null,false,true,true,true]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= word.length &lt;= 25; word and queries contain lowercase letters and '.'; at most 10^4 calls.</p>
+    <p><b>Approach.</b> Keep the usual trie, but make the query a depth-first walk: a normal character follows one edge, while a '.' tries every child of the current node at that depth. The search only branches when a wildcard appears, so ordinary lookups stay linear.</p>
+    <pre><code>// Trie lookups, but a '.' branches into every child at that depth
+class WordDictionary {
+    class Node {
+        Node[] kids = new Node[26];
+        boolean ends;
+    }
+    private final Node root = new Node();
+    public void addWord(String word) {
+        Node cur = root;
+        for (char c : word.toCharArray()) {
+            int i = c - 'a';
+            if (cur.kids[i] == null) cur.kids[i] = new Node();
+            cur = cur.kids[i];
+        }
+        cur.ends = true;
+    }
+    public boolean search(String word) { return dfs(word, 0, root); }
+    private boolean dfs(String w, int pos, Node cur) {
+        if (cur == null) return false;
+        if (pos == w.length()) return cur.ends;
+        if (w.charAt(pos) == '.') {
+            for (int i = 0; i &lt; 26; i++)              // try every child
+                if (dfs(w, pos + 1, cur.kids[i])) return true;
+            return false;
+        }
+        return dfs(w, pos + 1, cur.kids[w.charAt(pos) - 'a']);
+    }
+}   // O(L) plain · O(26^dots) worst case · O(total characters) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(L) for a plain word, O(26^dots · L) worst case time · O(total characters) space.</p>
+  </section>
+  <section class="sub" id="subdomain-visit-count">
+    <h3><span class="pn">M7</span> Subdomain Visit Count <span class="pill">Medium</span> <span class="muted small">· string parsing into a suffix table</span></h3>
+    <p><b>Problem.</b> Each entry is "count domain". A visit to a domain also counts as a visit to every parent domain, so return every domain with its total count (the order of the answer is not important).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  cpdomains = ["9001 discuss.leetcode.com"]
+Output: ["9001 leetcode.com","9001 discuss.leetcode.com","9001 com"]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  cpdomains = ["900 google.mail.com", "50 yahoo.com", "1 intel.mail.com", "5 wiki.org"]
+Output: ["901 mail.com","50 yahoo.com","900 google.mail.com","5 wiki.org","5 org","1 intel.mail.com","951 com"]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= cpdomain.length &lt;= 100; 1 &lt;= count &lt;= 10^4; domains have 1 to 3 labels of lowercase letters.</p>
+    <p><b>Approach.</b> Split the entry into count and domain, then add that count to every suffix of the label list — the full domain, each parent and the top-level label. A hash table keyed by the joined suffix keeps the whole pass linear in the number of labels.</p>
+    <pre><code>// Add each visit to the domain and to every parent domain
+List&lt;String&gt; subdomainVisits(String[] cpdomains) {
+    Map&lt;String, Integer&gt; total = new HashMap&lt;&gt;();
+    for (String entry : cpdomains) {
+        String[] parts = entry.split(" ");
+        int count = Integer.parseInt(parts[0]);
+        String domain = parts[1];
+        for (int i = 0; i &lt; domain.length(); i++) {
+            if (i == 0 || domain.charAt(i - 1) == '.')      // every suffix start
+                total.merge(domain.substring(i), count, Integer::sum);
+        }
+    }
+    List&lt;String&gt; out = new ArrayList&lt;&gt;();
+    for (Map.Entry&lt;String, Integer&gt; e : total.entrySet())
+        out.add(e.getValue() + " " + e.getKey());
+    return out;
+}   // O(total labels) time · O(distinct domains) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(total labels) time time · O(number of distinct domains) space.</p>
+  </section>
+  <section class="sub" id="string-to-integer-atoi">
+    <h3><span class="pn">M8</span> String to Integer (atoi) <span class="pill">Medium</span> <span class="muted small">· parsing state machine with clamping</span></h3>
+    <p><b>Problem.</b> Convert s to a 32-bit signed integer the way the C library does: skip leading spaces, read one optional sign, take the following digits, stop at the first non-digit, and clamp to [-2^31, 2^31 - 1] when the value overflows.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "42"
+Output: 42</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = " -042"
+Output: -42</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  s = "1337c0d3"
+Output: 1337</code></pre></div>
+    <div class="ex"><div class="exh">Example 4</div><pre><code class="nohl">Input:  s = "0-1"
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= s.length &lt;= 200; s contains letters, digits, spaces, '+', '-' and '.'.</p>
+    <p><b>Approach.</b> Three phases in one pass: skip spaces, consume at most one sign, then read digits into a running value while clamping as soon as it passes the 32-bit range. Clamping during the loop (not after) is what keeps a 200-digit input from overflowing the accumulator.</p>
+    <pre><code>// Skip spaces, read one sign, read digits, clamp as soon as possible
+int myAtoi(String s) {
+    int i = 0, n = s.length();
+    while (i &lt; n &amp;&amp; s.charAt(i) == ' ') i++;
+    int sign = 1;
+    if (i &lt; n &amp;&amp; (s.charAt(i) == '+' || s.charAt(i) == '-')) {
+        if (s.charAt(i) == '-') sign = -1;
+        i++;
+    }
+    long value = 0;
+    while (i &lt; n &amp;&amp; Character.isDigit(s.charAt(i))) {
+        value = value * 10 + (s.charAt(i) - '0');
+        i++;
+        if (value &gt; (long) Integer.MAX_VALUE + 1) break;   // no need to read on
+    }
+    value *= sign;
+    if (value &gt; Integer.MAX_VALUE) return Integer.MAX_VALUE;
+    if (value &lt; Integer.MIN_VALUE) return Integer.MIN_VALUE;
+    return (int) value;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="find-all-anagrams-in-a-string">
+    <h3><span class="pn">M9</span> Find All Anagrams in a String <span class="pill">Medium</span> <span class="muted small">· fixed-size window with counting</span></h3>
+    <p><b>Problem.</b> Return the starting indices of every substring of s that is an anagram of p.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "cbaebabacd", p = "abc"
+Output: [0,6]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "abab", p = "ab"
+Output: [0,1,2]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length, p.length &lt;= 3 · 10^4; s and p consist of lowercase letters.</p>
+    <p><b>Approach.</b> Every anagram has the same length, so the window is fixed at len(p). Slide it one step at a time, adding the entering character and removing the leaving one, and compare 26 counters — equal counters mean an anagram.</p>
+    <pre><code>// Fixed-size window; equal 26-counter tables mean an anagram
+List&lt;Integer&gt; findAnagrams(String s, String p) {
+    List&lt;Integer&gt; out = new ArrayList&lt;&gt;();
+    int n = s.length(), m = p.length();
+    if (m &gt; n) return out;
+    int[] need = new int[26], window = new int[26];
+    for (char c : p.toCharArray()) need[c - 'a']++;
+    for (int i = 0; i &lt; m; i++) window[s.charAt(i) - 'a']++;
+    if (Arrays.equals(window, need)) out.add(0);
+    for (int i = m; i &lt; n; i++) {
+        window[s.charAt(i) - 'a']++;              // the character entering
+        window[s.charAt(i - m) - 'a']--;          // the character leaving
+        if (Arrays.equals(window, need)) out.add(i - m + 1);
+    }
+    return out;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time (O(26) per comparison is constant) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="making-file-names-unique">
+    <h3><span class="pn">M10</span> Making File Names Unique <span class="pill">Medium</span> <span class="muted small">· name reservation with a next-suffix table</span></h3>
+    <p><b>Problem.</b> Assign folder names in order: if a requested name is free it is used as it is, otherwise the smallest k &gt;= 1 with name(k) unused is taken. Return the assigned names.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  names = ["pes","fifa","gta","pes(2019)"]
+Output: ["pes","fifa","gta","pes(2019)"]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  names = ["gta","gta(1)","gta","avalon"]
+Output: ["gta","gta(1)","gta(2)","avalon"]</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  names = ["onepiece","onepiece(1)","onepiece(2)","onepiece(3)","onepiece"]
+Output: ["onepiece","onepiece(1)","onepiece(2)","onepiece(3)","onepiece(4)"]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= names.length &lt;= 5 · 10^4; 1 &lt;= names[i].length &lt;= 30; names consist of lowercase letters, digits and parentheses.</p>
+    <p><b>Approach.</b> Keep the set of names already taken, plus a per-name counter remembering the next k worth trying. When a name collides, start from that counter and step forward — the counter never rewinds, so repeated collisions cost constant time on average instead of restarting at 1 every time.</p>
+    <pre><code>// A taken-set plus a per-name counter: never restart the search at 1
+String[] getFolderNames(String[] names) {
+    Set&lt;String&gt; taken = new HashSet&lt;&gt;();
+    Map&lt;String, Integer&gt; nextK = new HashMap&lt;&gt;();     // base name -&gt; next k
+    String[] out = new String[names.length];
+    for (int i = 0; i &lt; names.length; i++) {
+        String name = names[i];
+        if (!taken.contains(name)) {
+            out[i] = name;
+            taken.add(name);
+            continue;
+        }
+        int k = nextK.getOrDefault(name, 1);
+        String candidate;
+        do {
+            candidate = name + "(" + k + ")";
+            k++;
+        } while (taken.contains(candidate));
+        nextK.put(name, k);                          // remember where to resume
+        taken.add(candidate);
+        out[i] = candidate;
+    }
+    return out;
+}   // O(total characters) expected · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(total characters) expected time · O(n) space.</p>
+  </section>
+  <section class="sub" id="lexicographical-numbers">
+    <h3><span class="pn">M11</span> Lexicographical Numbers <span class="pill">Medium</span> <span class="muted small">· pre-order walk of a digit tree</span></h3>
+    <p><b>Problem.</b> Return the numbers from 1 to n in lexicographical order, in O(n) time.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 13
+Output: [1,10,11,12,13,2,3,4,5,6,7,8,9]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 2
+Output: [1,2]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 5 · 10^4; the answer must be produced in O(n) time and O(1) extra space beyond the output.</p>
+    <p><b>Approach.</b> Think of the numbers as a tree where 1..9 are the roots and a node x has children 10x .. 10x+9. Lexicographic order is exactly a pre-order walk of that tree, so descend while a child is &lt;= n and jump to the next sibling otherwise — no sorting at all.</p>
+    <pre><code>// Pre-order walk of the tree 1..9 with children 10x .. 10x+9
+List&lt;Integer&gt; lexicalOrder(int n) {
+    List&lt;Integer&gt; out = new ArrayList&lt;&gt;(n);
+    int cur = 1;
+    for (int i = 0; i &lt; n; i++) {
+        out.add(cur);
+        if (cur * 10 &lt;= n) cur *= 10;            // descend to the first child
+        else {
+            while (cur % 10 == 9 || cur + 1 &gt; n) cur /= 10;   // climb back
+            cur++;
+        }
+    }
+    return out;
+}   // O(n) time · O(1) space beyond the output</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(1) beyond the output space.</p>
+  </section>
+  <section class="sub" id="number-of-matching-subsequences">
+    <h3><span class="pn">M12</span> Number of Matching Subsequences <span class="pill">Medium</span> <span class="muted small">· next-occurrence lists with binary search</span></h3>
+    <p><b>Problem.</b> Given s and a list of words, count how many of the words are subsequences of s.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "abcde", words = ["a","bb","acd","ace"]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "dsahjpjauf", words = ["ahjpjau","ja","ahbwzgqnuk","tnmlanowax"]
+Output: 2</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 5 · 10^4; 1 &lt;= words.length &lt;= 5000; 1 &lt;= words[i].length &lt;= 50; s and words contain lowercase letters.</p>
+    <p><b>Approach.</b> Precompute the sorted positions of each letter in s. Matching a word is then a chain of binary searches: from the current position, ask where the needed letter appears next. Each word costs its own length in logarithms instead of a fresh scan of s.</p>
+    <pre><code>// Sorted positions per letter; each word is a chain of binary searches
+int numMatchingSubseq(String s, String[] words) {
+    List&lt;List&lt;Integer&gt;&gt; pos = new ArrayList&lt;&gt;();
+    for (int c = 0; c &lt; 26; c++) pos.add(new ArrayList&lt;&gt;());
+    for (int i = 0; i &lt; s.length(); i++) pos.get(s.charAt(i) - 'a').add(i);
+    int count = 0;
+    for (String w : words) {
+        int at = -1;
+        boolean ok = true;
+        for (char c : w.toCharArray()) {
+            List&lt;Integer&gt; list = pos.get(c - 'a');
+            int lo = 0, hi = list.size();                  // first index above at
+            while (lo &lt; hi) {
+                int mid = (lo + hi) / 2;
+                if (list.get(mid) &lt;= at) lo = mid + 1; else hi = mid;
+            }
+            if (lo == list.size()) { ok = false; break; }
+            at = list.get(lo);
+        }
+        if (ok) count++;
+    }
+    return count;
+}   // O(|s| + total word length · log |s|) time · O(|s|) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(|s| + total word length · log |s|) time · O(|s|) space.</p>
+  </section>
+  <section class="sub" id="stream-of-characters">
+    <h3><span class="pn">H1</span> Stream of Characters <span class="pill hot">Hard</span> <span class="muted small">· trie of reversed words over a sliding buffer</span></h3>
+    <p><b>Problem.</b> Words are given up front, then characters arrive one at a time. After each character, report whether any word is a suffix of the characters seen so far.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  ["StreamChecker","query","query","query","query","query","query","query","query","query","query","query","query"] [[["cd","f","kl"]],["a"],["b"],["c"],["d"],["e"],["f"],["g"],["h"],["i"],["j"],["k"],["l"]]
+Output: [null, false, false, false, true, false, true, false, false, false, false, false, true]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= words.length &lt;= 2000; 1 &lt;= words[i].length &lt;= 2000; 1 &lt;= query letters &lt;= 4 · 10^4; words and queries are lowercase letters.</p>
+    <p><b>Approach.</b> A suffix question is a prefix question read backwards, so store every word reversed in a trie. Keep a buffer of the last longest-word characters and, after each new letter, walk the buffer backwards through the trie: reaching a word end means some word ends exactly here. The buffer cap is what keeps the per-query walk bounded.</p>
+    <pre><code>// Words stored backwards; each query walks the recent buffer backwards
+class StreamChecker {
+    class Node {
+        Map&lt;Character, Node&gt; kids = new HashMap&lt;&gt;();
+        boolean ends;
+    }
+    private final Node root = new Node();
+    private final Deque&lt;Character&gt; buffer = new ArrayDeque&lt;&gt;();
+    private int longest = 0;
+    public StreamChecker(String[] words) {
+        for (String w : words) {
+            longest = Math.max(longest, w.length());
+            Node cur = root;
+            for (int i = w.length() - 1; i &gt;= 0; i--) {     // store reversed
+                cur = cur.kids.computeIfAbsent(w.charAt(i), k -&gt; new Node());
+            }
+            cur.ends = true;
+        }
+    }
+    public boolean query(char letter) {
+        buffer.addLast(letter);
+        if (buffer.size() &gt; longest) buffer.removeFirst();   // keep it short
+        Node cur = root;
+        Iterator&lt;Character&gt; it = buffer.descendingIterator();
+        while (it.hasNext()) {
+            cur = cur.kids.get(it.next());
+            if (cur == null) return false;
+            if (cur.ends) return true;                  // a word ends exactly here
+        }
+        return false;
+    }
+}   // O(longest word) per query · O(total word characters) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(longest word) per query time · O(total word characters + longest word) space.</p>
+  </section>
+  <section class="sub" id="prefix-and-suffix-search">
+    <h3><span class="pn">H2</span> Prefix and Suffix Search <span class="pill hot">Hard</span> <span class="muted small">· trie over (suffix, separator, word) keys</span></h3>
+    <p><b>Problem.</b> Build a filter over a list of words whose f(prefix, suffix) returns the largest index of a word starting with prefix and ending with suffix, or -1.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  ["WordFilter","f"] [[["apple"]],["a","e"]]
+Output: [null, 0]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= words.length &lt;= 1.5 · 10^4; 1 &lt;= words[i].length &lt;= 10; 1 &lt;= prefix.length, suffix.length &lt;= 10; at most 1.5 · 10^4 queries.</p>
+    <p><b>Approach.</b> One query mixes a prefix and a suffix, so glue them into a single key. For every word, insert <code>word[j:] + '{' + word</code> for all j: a query <code>suffix + '{' + prefix</code> then finds a key only when the suffix really is one of the word's suffixes and the prefix really starts the word. A trie of those keys, each node remembering the largest index below it, answers in one walk.</p>
+    <pre><code>// Keys word[j:] + '{' + word; query suffix + '{' + prefix, keep max index
+class WordFilter {
+    class Node {
+        Map&lt;Character, Node&gt; kids = new HashMap&lt;&gt;();
+        int best = -1;                            // largest index in this subtree
+    }
+    private final Node root = new Node();
+    private void add(String key, int idx) {
+        Node cur = root;
+        cur.best = Math.max(cur.best, idx);
+        for (char c : key.toCharArray()) {
+            cur = cur.kids.computeIfAbsent(c, k -&gt; new Node());
+            cur.best = Math.max(cur.best, idx);
+        }
+    }
+    public WordFilter(String[] words) {
+        for (int i = 0; i &lt; words.length; i++)
+            for (int j = 0; j &lt;= words[i].length(); j++)     // every suffix
+                add(words[i].substring(j) + "{" + words[i], i);
+    }
+    public int f(String prefix, String suffix) {
+        Node cur = root;
+        for (char c : (suffix + "{" + prefix).toCharArray()) {   // one walk
+            cur = cur.kids.get(c);
+            if (cur == null) return -1;
+        }
+        return cur.best;
+    }
+}   // O(total |word|^2) build · O(|prefix| + |suffix|) per query</code></pre>
+    <p class="cx"><b>Complexity:</b> O(total |word|²) build, O(|prefix| + |suffix|) per query time · O(total |word|²) space.</p>
+  </section>
+  <section class="sub" id="word-search-ii">
+    <h3><span class="pn">H3</span> Word Search II <span class="pill hot">Hard</span> <span class="muted small">· trie plus board DFS</span></h3>
+    <p><b>Problem.</b> Given a board of letters and a list of words, return all words that can be traced through horizontally or vertically adjacent cells, using each cell at most once per word (the order of the answer does not matter).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  board = [["o","a","a","n"],["e","t","a","e"],["i","h","k","r"],["i","f","l","v"]], words = ["oath","pea","eat","rain"]
+Output: ["eat","oath"]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  board = [["a","b"],["c","d"]], words = ["abcb"]
+Output: []</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 12; 1 &lt;= words.length &lt;= 3 · 10^4; 1 &lt;= word length &lt;= 10; words are lowercase letters and distinct.</p>
+    <p><b>Approach.</b> Put the words in a trie and start a depth-first walk from every cell. The trie prunes as soon as the current path stops being a prefix of some word, so the board is never rescanned per word. Clearing a word's end marker when it is found keeps the duplicate work away, and temporarily blanking visited cells is the visited set.</p>
+    <pre><code>// Trie of the words; DFS from every cell, pruned by the trie
+List&lt;String&gt; findWords(char[][] board, String[] words) {
+    List&lt;Map&lt;Character, Integer&gt;&gt; kids = new ArrayList&lt;&gt;();
+    List&lt;String&gt; ends = new ArrayList&lt;&gt;();
+    kids.add(new HashMap&lt;&gt;());
+    ends.add(null);
+    for (String w : words) {                       // build the trie
+        int cur = 0;
+        for (char c : w.toCharArray()) {
+            Integer nxt = kids.get(cur).get(c);
+            if (nxt == null) {
+                kids.add(new HashMap&lt;&gt;());
+                ends.add(null);
+                nxt = kids.size() - 1;
+                kids.get(cur).put(c, nxt);
+            }
+            cur = nxt;
+        }
+        ends.set(cur, w);
+    }
+    List&lt;String&gt; found = new ArrayList&lt;&gt;();
+    for (int r = 0; r &lt; board.length; r++)
+        for (int c = 0; c &lt; board[0].length; c++)
+            dfs(board, r, c, 0, kids, ends, found);
+    return found;
+}
+void dfs(char[][] board, int r, int c, int node,
+         List&lt;Map&lt;Character, Integer&gt;&gt; kids, List&lt;String&gt; ends, List&lt;String&gt; found) {
+    Integer nxt = kids.get(node).get(board[r][c]);
+    if (nxt == null) return;                       // not a prefix of any word
+    if (ends.get(nxt) != null) {
+        found.add(ends.get(nxt));
+        ends.set(nxt, null);                       // report it once
+    }
+    char saved = board[r][c];
+    board[r][c] = '#';
+    int[] dr = {1,-1,0,0}, dc = {0,0,1,-1};
+    for (int d = 0; d &lt; 4; d++) {
+        int nr = r + dr[d], nc = c + dc[d];
+        if (nr &gt;= 0 &amp;&amp; nr &lt; board.length &amp;&amp; nc &gt;= 0 &amp;&amp; nc &lt; board[0].length &amp;&amp; board[nr][nc] != '#')
+            dfs(board, nr, nc, nxt, kids, ends, found);
+    }
+    board[r][c] = saved;                           // restore for other paths
+}   // O(R·C·4^L) time · O(total word characters) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · cols · 4^maxWordLength) time · O(total word characters) space.</p>
+  </section>
+  <section class="sub" id="concatenated-words">
+    <h3><span class="pn">H4</span> Concatenated Words <span class="pill hot">Hard</span> <span class="muted small">· per-word segment DP</span></h3>
+    <p><b>Problem.</b> Return every word of the list that can be written as the concatenation of at least two *other* words of the list.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  words = ["cat","cats","catsdogcats","dog","dogcatsdog","hippopotamuses","rat","ratcatdogcat"]
+Output: ["catsdogcats","dogcatsdog","ratcatdogcat"]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  words = ["cat","dog","catdog"]
+Output: ["catdog"]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= words.length &lt;= 10^4; 1 &lt;= words[i].length &lt;= 30; words contain lowercase letters; words are distinct.</p>
+    <p><b>Approach.</b> For each word, run the word-break DP over the set of all words: dp[i] is true when the first i characters can be covered by dictionary words. The extra condition — the whole word may not be one single piece — is exactly what forces at least two parts.</p>
+    <pre><code>// Word-break DP per word, with the single-piece split forbidden
+List&lt;String&gt; findAllConcatenatedWordsInADict(String[] words) {
+    Set&lt;String&gt; dict = new HashSet&lt;&gt;(Arrays.asList(words));
+    List&lt;String&gt; out = new ArrayList&lt;&gt;();
+    for (String w : words) {
+        int n = w.length();
+        boolean[] dp = new boolean[n + 1];
+        dp[0] = true;
+        for (int i = 1; i &lt;= n; i++) {
+            for (int j = 0; j &lt; i; j++) {
+                if (!dp[j]) continue;
+                if (j == 0 &amp;&amp; i == n) continue;          // the whole word alone
+                if (dict.contains(w.substring(j, i))) { dp[i] = true; break; }
+            }
+        }
+        if (dp[n]) out.add(w);
+    }
+    return out;
+}   // O(n · L^2) time · O(n · L) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n · L²) with L &lt;= 30 time · O(n · L) plus the word set space.</p>
+  </section>
+  <section class="sub" id="longest-chunked-palindrome-decomposition">
+    <h3><span class="pn">H5</span> Longest Chunked Palindrome Decomposition <span class="pill hot">Hard</span> <span class="muted small">· two-pointer chunk matching</span></h3>
+    <p><b>Problem.</b> Split text into the largest possible number of parts such that the first part equals the last, the second equals the second last, and so on. Return that number of parts.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  text = "ghiabcdefhelloadamhelloabcdefghi"
+Output: 7</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  text = "merchant"
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  text = "antaprezatepzapreanta"
+Output: 11</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= text.length &lt;= 1000; text contains lowercase letters.</p>
+    <p><b>Approach.</b> Greedily match the shortest possible pieces at both ends: try size 1, then 2, and so on, and take the first size where the left and right chunks are equal. Shortest-first is optimal because any coarser split can be refined into it — matching as early as possible can never cost a part.</p>
+    <pre><code>// Match the shortest equal chunk at both ends, greedily
+int longestDecomposition(String text) {
+    int left = 0, right = text.length(), parts = 0;
+    while (left &lt; right) {
+        int size = 1;
+        boolean matched = false;
+        while (left + size &lt;= right - size) {
+            String a = text.substring(left, left + size);
+            String b = text.substring(right - size, right);
+            if (a.equals(b)) {
+                left += size;
+                right -= size;
+                parts += 2;                      // one part at each end
+                matched = true;
+                break;
+            }
+            size++;
+        }
+        if (!matched) {                          // the middle piece stays whole
+            parts += 1;
+            break;
+        }
+    }
+    return parts;
+}   // O(n^2) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) time (O(n) chunk comparisons of total length n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="longest-happy-prefix">
+    <h3><span class="pn">H6</span> Longest Happy Prefix <span class="pill hot">Hard</span> <span class="muted small">· KMP prefix function</span></h3>
+    <p><b>Problem.</b> Return the longest proper prefix of s that is also a suffix of s, or the empty string if there is none.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "level"
+Output: "l"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "ababab"
+Output: "abab"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 10^5; s contains lowercase letters.</p>
+    <p><b>Approach.</b> This is exactly what the KMP prefix function computes: pi[i] is the length of the longest proper prefix of s[:i+1] that is also a suffix. Carrying the previous value forward and falling back along the border chain gives the answer in one linear pass.</p>
+    <pre><code>// The KMP prefix function's last value is the answer
+String longestPrefix(String s) {
+    int n = s.length();
+    int[] pi = new int[n];
+    for (int i = 1; i &lt; n; i++) {
+        int j = pi[i-1];
+        while (j &gt; 0 &amp;&amp; s.charAt(i) != s.charAt(j)) j = pi[j-1];   // fall back
+        if (s.charAt(i) == s.charAt(j)) j++;
+        pi[i] = j;
+    }
+    return s.substring(0, pi[n-1]);
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="shortest-palindrome">
+    <h3><span class="pn">H7</span> Shortest Palindrome <span class="pill hot">Hard</span> <span class="muted small">· KMP over s + '#' + reverse(s)</span></h3>
+    <p><b>Problem.</b> Add characters in front of s to make it a palindrome and return the shortest such palindrome.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "aacecaaa"
+Output: "aaacecaaa"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "abcd"
+Output: "dcbabcd"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= s.length &lt;= 5 · 10^4; s contains lowercase letters.</p>
+    <p><b>Approach.</b> The characters to prepend are the reverse of the tail that lies *after* the longest palindromic prefix. Finding that prefix is a border question on <code>s + '#' + reverse(s)</code>: the prefix function's final value is the length of the longest palindromic prefix, and everything after it must be mirrored.</p>
+    <pre><code>// Longest palindromic prefix via KMP on s + '#' + reverse(s)
+String shortestPalindrome(String s) {
+    if (s.isEmpty()) return "";
+    String rev = new StringBuilder(s).reverse().toString();
+    String comb = s + "#" + rev;
+    int n = comb.length();
+    int[] pi = new int[n];
+    for (int i = 1; i &lt; n; i++) {
+        int j = pi[i-1];
+        while (j &gt; 0 &amp;&amp; comb.charAt(i) != comb.charAt(j)) j = pi[j-1];
+        if (comb.charAt(i) == comb.charAt(j)) j++;
+        pi[i] = j;
+    }
+    int palindromePrefix = pi[n-1];              // the palindromic prefix length
+    return rev.substring(0, s.length() - palindromePrefix) + s;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="count-unique-characters-of-all-substrings-of-a-given-string">
+    <h3><span class="pn">H8</span> Count Unique Characters of All Substrings of a Given String <span class="pill hot">Hard</span> <span class="muted small">· contribution of each character</span></h3>
+    <p><b>Problem.</b> For every substring, count the characters that appear exactly once in it. Return the sum of those counts over all substrings, modulo 10^9 + 7.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "ABC"
+Output: 10</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "ABA"
+Output: 8</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  s = "LEETCODE"
+Output: 92</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 10^5; s contains uppercase English letters.</p>
+    <p><b>Approach.</b> Stop enumerating substrings and let each character count where it is unique. A character at position i is unique exactly for the substrings that start after the previous equal character and end before the next equal one, so it contributes (i - prev) · (next - i) directly — one linear pass after computing the next occurrences.</p>
+    <pre><code>// Each character contributes (i - prev) * (next - i) substrings
+int uniqueLetterString(String s) {
+    final int MOD = 1_000_000_007;
+    int n = s.length();
+    int[] nxt = new int[n], lastPos = new int[26];
+    Arrays.fill(lastPos, n);
+    for (int i = n - 1; i &gt;= 0; i--) {
+        nxt[i] = lastPos[s.charAt(i) - 'A'];      // next occurrence of the letter
+        lastPos[s.charAt(i) - 'A'] = i;
+    }
+    int[] prevPos = new int[26];
+    Arrays.fill(prevPos, -1);
+    long total = 0;
+    for (int i = 0; i &lt; n; i++) {
+        int prev = prevPos[s.charAt(i) - 'A'];
+        prevPos[s.charAt(i) - 'A'] = i;
+        total = (total + (long)(i - prev) * (nxt[i] - i)) % MOD;
+    }
+    return (int) total;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="distinct-echo-substrings">
+    <h3><span class="pn">H9</span> Distinct Echo Substrings <span class="pill hot">Hard</span> <span class="muted small">· rolling hash over (a, a)</span></h3>
+    <p><b>Problem.</b> An echo substring is a substring of the form a + a. Count how many *distinct* echo substrings text contains.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  text = "abcabcabc"
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  text = "leetcodeleetcode"
+Output: 2</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= text.length &lt;= 2000; text contains lowercase letters.</p>
+    <p><b>Approach.</b> Every echo is fixed by its start and its half-length, so scan the possible middles and compare the two halves with a rolling hash. Storing <code>(half-length, hash)</code> in a set counts each distinct echo once even when it occurs many times — hashing the content is what turns "distinct" from a string comparison into a lookup.</p>
+    <pre><code>// Compare the two halves with rolling hashes; a set of hashes counts distinct
+int distinctEchoSubstrings(String text) {
+    final long M1 = 1000000007L, M2 = 1000000009L, B1 = 131, B2 = 137;
+    int n = text.length();
+    long[] h1 = new long[n+1], h2 = new long[n+1], p1 = new long[n+1], p2 = new long[n+1];
+    p1[0] = p2[0] = 1;
+    for (int i = 0; i &lt; n; i++) {
+        long v = text.charAt(i);
+        h1[i+1] = (h1[i] * B1 + v) % M1;
+        h2[i+1] = (h2[i] * B2 + v) % M2;
+        p1[i+1] = p1[i] * B1 % M1;
+        p2[i+1] = p2[i] * B2 % M2;
+    }
+    Set&lt;Long&gt; seen = new HashSet&lt;&gt;();
+    for (int i = 0; i &lt; n; i++) {
+        for (int j = i + 1; j + (j - i) &lt;= n; j++) {
+            int k = j + (j - i);                 // the end of the second half
+            long a1 = ((h1[j] - h1[i] * p1[j-i]) % M1 + M1) % M1;
+            long b1 = ((h2[j] - h2[i] * p2[j-i]) % M2 + M2) % M2;
+            long a2 = ((h1[k] - h1[j] * p1[k-j]) % M1 + M1) % M1;
+            long b2 = ((h2[k] - h2[j] * p2[k-j]) % M2 + M2) % M2;
+            if (a1 == a2 &amp;&amp; b1 == b2)            // the two halves are equal
+                seen.add((a1 * M2 + b1) * 2001 + (j - i));
+        }
+    }
+    return seen.size();
+}   // O(n^2) time · O(distinct echoes) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) time time · O(n²) worst case for the distinct set space.</p>
+  </section>
+  <section class="sub" id="word-break-ii">
+    <h3><span class="pn">H10</span> Word Break II <span class="pill hot">Hard</span> <span class="muted small">· memoised segmentation</span></h3>
+    <p><b>Problem.</b> Given s and a dictionary, return all sentences formed by the dictionary words that together spell s (the order of the answer does not matter).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "catsanddog", wordDict = ["cat","cats","and","sand","dog"]
+Output: ["cats and dog","cat sand dog"]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "pineapplepenapple", wordDict = ["apple","pen","applepen","pine","pineapple"]
+Output: ["pine apple pen apple","pineapple pen apple","pine applepen apple"]</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  s = "catsandog", wordDict = ["cats","dog","sand","and","cat"]
+Output: []</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 20; 1 &lt;= wordDict.length &lt;= 1000; 1 &lt;= wordDict[i].length &lt;= 10; all dictionary words are distinct.</p>
+    <p><b>Approach.</b> Recursive segmentation with a memo: solve(i) returns every sentence that spells s[i:], built by taking a dictionary word at i and gluing it to each sentence of solve(i + len(word)). The memo turns the exponential repeat work of a naive recursion into a single computation per starting index.</p>
+    <pre><code>// Memoised segmentation: sentences for s[i:] are computed once
+List&lt;String&gt; wordBreak(String s, List&lt;String&gt; wordDict) {
+    Set&lt;String&gt; dict = new HashSet&lt;&gt;(wordDict);
+    int n = s.length();
+    Map&lt;Integer, List&lt;String&gt;&gt; memo = new HashMap&lt;&gt;();
+    return solve(s, 0, n, dict, memo);
+}
+List&lt;String&gt; solve(String s, int i, int n, Set&lt;String&gt; dict, Map&lt;Integer, List&lt;String&gt;&gt; memo) {
+    if (memo.containsKey(i)) return memo.get(i);          // computed already
+    List&lt;String&gt; out = new ArrayList&lt;&gt;();
+    if (i == n) { out.add(""); memo.put(i, out); return out; }
+    for (int j = i + 1; j &lt;= n; j++) {
+        String piece = s.substring(i, j);
+        if (!dict.contains(piece)) continue;
+        for (String rest : solve(s, j, n, dict, memo)) {
+            out.add(rest.isEmpty() ? piece : piece + " " + rest);
+        }
+    }
+    memo.put(i, out);
+    return out;
+}   // O(n·2^n) time · O(n·2^n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n · 2^n) worst case (the output itself can be that large) time · O(n · 2^n) space.</p>
+  </section>
+  <section class="sub" id="count-different-palindromic-subsequences">
+    <h3><span class="pn">H11</span> Count Different Palindromic Subsequences <span class="pill hot">Hard</span> <span class="muted small">· interval DP over palindromic subsequences</span></h3>
+    <p><b>Problem.</b> Count the different non-empty palindromic subsequences of s, modulo 10^9 + 7.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "bccb"
+Output: 6</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 1000; s consists of 'a', 'b', 'c' and 'd'.</p>
+    <p><b>Approach.</b> Let dp[i][j] count distinct palindromic subsequences inside s[i..j]. When the ends differ, inclusion–exclusion on the two smaller intervals is enough; when they are equal, each palindrome inside can be wrapped by both ends, and only the palindromes that already start and end with that character (found by scanning inward) must be subtracted so nothing is counted twice.</p>
+    <pre><code>// dp[i][j]: distinct palindromic subsequences inside s[i..j]
+int countPalindromicSubsequences(String s) {
+    final long MOD = 1_000_000_007L;
+    int n = s.length();
+    long[][] dp = new long[n][n];
+    for (int i = 0; i &lt; n; i++) dp[i][i] = 1;
+    for (int len = 2; len &lt;= n; len++) {
+        for (int i = 0; i + len - 1 &lt; n; i++) {
+            int j = i + len - 1;
+            if (s.charAt(i) != s.charAt(j)) {
+                dp[i][j] = (dp[i+1][j] + dp[i][j-1] - dp[i+1][j-1] + MOD) % MOD;
+            } else {
+                int lo = i + 1, hi = j - 1;
+                while (lo &lt;= hi &amp;&amp; s.charAt(lo) != s.charAt(i)) lo++;   // first inside
+                while (lo &lt;= hi &amp;&amp; s.charAt(hi) != s.charAt(i)) hi--;   // last inside
+                if (lo &gt; hi) dp[i][j] = (dp[i+1][j-1] * 2 + 2) % MOD;
+                else if (lo == hi) dp[i][j] = (dp[i+1][j-1] * 2 + 1) % MOD;
+                else dp[i][j] = (dp[i+1][j-1] * 2 - dp[lo+1][hi-1] + MOD) % MOD;
+            }
+        }
+    }
+    return (int) dp[0][n-1];
+}   // O(n^2) time · O(n^2) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) time time · O(n²) space.</p>
+  </section>
+  <section class="sub" id="find-all-good-strings">
+    <h3><span class="pn">H12</span> Find All Good Strings <span class="pill hot">Hard</span> <span class="muted small">· KMP automaton inside a digit DP</span></h3>
+    <p><b>Problem.</b> Count the strings of length n that are lexicographically between s1 and s2 inclusive and contain no occurrence of evil, modulo 10^9 + 7.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 2, s1 = "aa", s2 = "da", evil = "b"
+Output: 51</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 8, s1 = "leetcode", s2 = "leetgoes", evil = "leet"
+Output: 0</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  n = 2, s1 = "gx", s2 = "gz", evil = "x"
+Output: 2</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 500; 1 &lt;= evil.length &lt;= 50; s1.length == s2.length == n; all strings are lowercase letters.</p>
+    <p><b>Approach.</b> Two ideas stacked. A KMP automaton tracks how much of <code>evil</code> is currently matched, so "no occurrence" becomes "never reach the final state". Then a digit DP counts the strings of length n that stay at or below a bound while never hitting that state, with one flag remembering whether the prefix is still tight. The answer is below(s2) - below(s1), plus s1 itself if it is good.</p>
+    <pre><code>// KMP automaton for evil, then a digit DP bounded above by s2 and s1
+int findGoodStrings(int n, String s1, String s2, String evil) {
+    final long MOD = 1_000_000_007L;
+    int m = evil.length();
+    int[] fail = new int[m];
+    for (int i = 1; i &lt; m; i++) {
+        int j = fail[i-1];
+        while (j &gt; 0 &amp;&amp; evil.charAt(i) != evil.charAt(j)) j = fail[j-1];
+        if (evil.charAt(i) == evil.charAt(j)) j++;
+        fail[i] = j;
+    }
+    int[][] go = new int[m][26];                  // KMP automaton transitions
+    for (int st = 0; st &lt; m; st++) {
+        for (int c = 0; c &lt; 26; c++) {
+            char ch = (char) ('a' + c);
+            int j = st;
+            while (j &gt; 0 &amp;&amp; ch != evil.charAt(j)) j = fail[j-1];
+            if (ch == evil.charAt(j)) j++;
+            go[st][c] = j;                        // m means evil just appeared
+        }
+    }
+    long answer = (countUpTo(n, s2, m, go, MOD) - countUpTo(n, s1, m, go, MOD) + MOD) % MOD;
+    int state = 0;
+    boolean good = true;
+    for (int i = 0; i &lt; n; i++) {
+        state = go[state][s1.charAt(i) - 'a'];
+        if (state == m) { good = false; break; }  // s1 itself contains evil
+    }
+    if (good) answer = (answer + 1) % MOD;        // s1 counts when it is good
+    return (int) answer;
+}
+long countUpTo(int n, String bound, int m, int[][] go, long MOD) {
+    long[][] dp = new long[m][2];
+    dp[0][1] = 1;                                 // (kmp state, still tight)
+    for (int i = 0; i &lt; n; i++) {
+        long[][] ndp = new long[m][2];
+        for (int st = 0; st &lt; m; st++)
+            for (int tight = 0; tight &lt; 2; tight++) {
+                long ways = dp[st][tight];
+                if (ways == 0) continue;
+                int limit = tight == 1 ? bound.charAt(i) - 'a' : 25;
+                for (int c = 0; c &lt;= limit; c++) {
+                    int ns = go[st][c];
+                    if (ns == m) continue;        // evil appeared: forbidden
+                    int nt = (tight == 1 &amp;&amp; c == limit) ? 1 : 0;
+                    ndp[ns][nt] = (ndp[ns][nt] + ways) % MOD;
+                }
+            }
+        dp = ndp;
+    }
+    long total = 0;
+    for (int st = 0; st &lt; m; st++) total = (total + dp[st][0] + dp[st][1]) % MOD;
+    return total;
+}   // O(n · |evil| · 26) time · O(|evil| · 26) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n · |evil| · 26) time · O(|evil| · 26) space.</p>
+  </section>
+</section>
 
   </main>
 </div>
 
 <footer>
-  <p><b>Java bank</b> — 330 problems across 11 topics, with complete solutions in
+  <p><b>Java bank</b> — 360 problems across 12 topics, with complete solutions in
   Java 21/25 solutions.</p>
   <p class="small">Same problems in every language:
     <a href="cpp-leetcode.html">C++</a> · <a href="java-leetcode.html">Java</a> · <a href="python-leetcode.html">Python</a>
