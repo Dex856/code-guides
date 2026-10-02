@@ -39,6 +39,19 @@ Each topic is a single file `site/leetcode/bank_NN_<slug>.py` holding `TOPIC` (m
 Adding a file and running `python3 site/leetcode/build.py` is all that is needed — the pages, the table
 of contents and the search index update automatically.
 
+## Authoring workflow (per topic — keep identical)
+
+1. Write `site/leetcode/bank_NN_<topic>.py`: `TOPIC` metadata + exactly 6 Easy / 12 Medium / 12 Hard, in a constant slope.
+2. Compile sweep: C++ `g++ -std=c++20 -fsyntax-only` (wrapped in `namespace snip`), Java `javac` (wrapped in `class Snip`, never `public`),
+   Python `compile()`. Judge-provided APIs (`isBadVersion`, `MountainArray`, …) must be declared inside the snippet so it stands alone.
+3. Behavioural check: run every documented example against the Python solution, then brute-force the tricky problems on hundreds of random
+   small inputs. When a check fails, decide which side is wrong before "fixing" anything — several apparent failures were bad expectations.
+4. Example values taken from memory are the riskiest part: cross-check them against LeetCode's own statement before finishing a topic.
+   `POST https://leetcode.com/graphql` with `{"query":"query($t:String!){question(titleSlug:$t){content difficulty}}","variables":{"t":"<title-slug>"}}`
+   returns the official examples (no auth needed) — two inputs in topic 5 were mis-remembered and this is how they were caught.
+5. Unique Python function names inside one topic (several LeetCode problems are all called `search` or `findKthNumber`).
+6. `bash site/build-all.sh` (rebuilds pages, mirrors `docs/`, link check) → commit → push.
+
 ## GitHub deployment
 
 The repository content is ready; publishing needs a credential the sandbox does not have. Two options:
