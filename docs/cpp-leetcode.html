@@ -10927,12 +10927,845 @@ void solveSudoku(vector&lt;vector&lt;char&gt;&gt;&amp; board) {
     <p class="cx"><b>Complexity:</b> O(9^(empties)) worst case, far less with propagation time · O(1) for the board space.</p>
   </section>
 </section>
+<section class="chapter" id="t14">
+  <h2><span class="num">14</span> Bit Manipulation</h2>
+  <p class="tagline">Bits are the cheapest state you can carry: 32 facts for the price of one integer.</p>
+  <div class="card"><p><b>What this topic trains.</b> Four moves cover this topic. XOR reveals what is odd: equal values cancel, so one stray value, one differing bit or one unbalanced prefix all fall out of a running XOR. Counting per bit turns "how many" questions into independent columns — and multiplying the ones by the zeros turns them into pair counts. Masks compress sets: a word becomes one integer, and subset enumeration becomes a loop over submasks. Finally, tries and digit DP over bit prefixes answer XOR-extremum questions the way ordered structures answer sum questions.</p>
+<p class="small muted">Ordering: easy 1–3 are XOR and popcount basics, 4–6 build or read whole 32-bit patterns; medium 1–2 are the "every value appears k times" XOR family, 3–5 are arithmetic done with bits instead of +, − and /, 6–8 count per bit column, 9–12 are masking tricks over strings and windows; hard 1–5 search state spaces of bits (flip windows, matrix states, Gray code, puzzle masks), 6–9 count XOR pairs with tries and combinatorics, 10–12 combine bit masks with meet-in-the-middle and digit DP.</p></div>
+  <section class="sub" id="single-number">
+    <h3><span class="pn">E1</span> Single Number <span class="pill">Easy</span> <span class="muted small">· XOR cancels equal values</span></h3>
+    <p><b>Problem.</b> Every value in nums appears twice except one, which appears once. Return that value, in linear time and constant space.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [2,2,1]
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [4,1,2,1,2]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [1]
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 3 · 10^4; -3 · 10^4 &lt;= nums[i] &lt;= 3 · 10^4; every value appears twice except one.</p>
+    <p><b>Approach.</b> XOR of a value with itself is zero, and XOR with zero changes nothing, so the pairs cancel in any order and the single value is what remains. Nothing is stored, and one pass suffices — the whole point of the trick is that it needs no bookkeeping.</p>
+    <pre><code>// Pairs cancel under XOR; the leftover is the answer
+int singleNumber(vector&lt;int&gt;&amp; nums) {
+    int acc = 0;
+    for (int x : nums) acc ^= x;             // a ^ a == 0, a ^ 0 == a
+    return acc;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="number-of-1-bits">
+    <h3><span class="pn">E2</span> Number of 1 Bits <span class="pill">Easy</span> <span class="muted small">· clear the lowest set bit</span></h3>
+    <p><b>Problem.</b> Return the number of set bits (the Hamming weight) of a positive integer n.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 11
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 128
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  n = 2147483645
+Output: 30</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 2^31 - 1; the answer is the count of 1 bits.</p>
+    <p><b>Approach.</b> Two standard loops. Either test each of the 32 positions, or use the identity n &amp; (n - 1), which deletes the lowest set bit: the number of deletions until zero is exactly the number of ones, so the loop runs popcount times instead of 32 times.</p>
+    <pre><code>// n &amp; (n - 1) deletes the lowest set bit: count the deletions
+int hammingWeight(uint32_t n) {
+    int count = 0;
+    while (n) {
+        n &amp;= n - 1;                          // clear the lowest set bit
+        count++;
+    }
+    return count;
+}   // O(popcount) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(number of 1 bits) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="hamming-distance">
+    <h3><span class="pn">E3</span> Hamming Distance <span class="pill">Easy</span> <span class="muted small">· popcount of the XOR</span></h3>
+    <p><b>Problem.</b> Return the number of positions at which the bits of x and y differ.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  x = 1, y = 4
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  x = 3, y = 1
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= x, y &lt; 2^31.</p>
+    <p><b>Approach.</b> A bit differs exactly where the XOR is 1, so the answer is the Hamming weight of x ^ y. That composition — reduce the comparison to a value, then ask the previous problem's question — is how most bit-manipulation solutions are assembled.</p>
+    <pre><code>// Differing bits are exactly the set bits of x ^ y
+int hammingDistance(int x, int y) {
+    int diff = x ^ y, count = 0;
+    while (diff) { diff &amp;= diff - 1; count++; }   // popcount of the XOR
+    return count;
+}   // O(1) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(1) (at most 32 positions) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="reverse-bits">
+    <h3><span class="pn">E4</span> Reverse Bits <span class="pill">Easy</span> <span class="muted small">· collect bits into a new word</span></h3>
+    <p><b>Problem.</b> Reverse the 32 bits of n and return the resulting unsigned integer.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 43261596
+Output: 964176192</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 2147483644
+Output: 1073741822</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= n &lt;= 2^31 - 2; the result is taken as an unsigned 32-bit value.</p>
+    <p><b>Approach.</b> Walk the 32 positions of the input and push each bit onto the low end of a result, shifting that result left each time. Reading the bits from least significant to most significant while writing them the same way reverses the whole word in one pass.</p>
+    <pre><code>// Read the bits low to high, write them into a shifting result
+uint32_t reverseBits(uint32_t n) {
+    uint32_t result = 0;
+    for (int i = 0; i &lt; 32; i++) {
+        result = (result &lt;&lt; 1) | (n &amp; 1);    // move the bit into place, then flip
+        n &gt;&gt;= 1;
+    }
+    return result;
+}   // O(32) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(32) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="counting-bits">
+    <h3><span class="pn">E5</span> Counting Bits <span class="pill">Easy</span> <span class="muted small">· reuse the answer for i &gt;&gt; 1</span></h3>
+    <p><b>Problem.</b> Return an array where ans[i] is the number of set bits of i, for every i from 0 to n.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 2
+Output: [0,1,1]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 5
+Output: [0,1,1,2,1,2]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= n &lt;= 10^5; the whole array must be produced in O(n) time.</p>
+    <p><b>Approach.</b> Shifting i right deletes its lowest bit, so i and i &gt;&gt; 1 have the same number of set bits except for that one: ans[i] = ans[i &gt;&gt; 1] + (i &amp; 1). Building the table in increasing order means each entry is already known — the same "previous answers are ingredients" idea as any other DP.</p>
+    <pre><code>// ans[i] = ans[i &gt;&gt; 1] + (i &amp; 1): the low bit is the only difference
+vector&lt;int&gt; countBits(int n) {
+    vector&lt;int&gt; ans(n + 1, 0);
+    for (int i = 1; i &lt;= n; i++)
+        ans[i] = ans[i &gt;&gt; 1] + (i &amp; 1);      // drop the lowest bit, add it back
+    return ans;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="power-of-four">
+    <h3><span class="pn">E6</span> Power of Four <span class="pill">Easy</span> <span class="muted small">· one bit in an even position</span></h3>
+    <p><b>Problem.</b> Return true if n is a power of four, false otherwise.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 16
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 5
+Output: false</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  n = 1
+Output: true</code></pre></div>
+    <p class="cons"><b>Constraints:</b> -2^31 &lt;= n &lt;= 2^31 - 1.</p>
+    <p><b>Approach.</b> A power of four is a power of two whose single set bit sits in an even position. Two tests capture that: n &amp; (n - 1) must be zero (exactly one bit), and that bit must be inside the alternating pattern 0x55555555. Both are constant-time, and no loop or division is needed.</p>
+    <pre><code>// Exactly one bit, and it must sit at an even position
+bool isPowerOfFour(int n) {
+    return n &gt; 0
+        &amp;&amp; (n &amp; (n - 1)) == 0            // a single set bit → a power of two
+        &amp;&amp; (n &amp; 0x55555555) != 0;        // ... at an even position → a power of four
+}   // O(1) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(1) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="single-number-ii">
+    <h3><span class="pn">M1</span> Single Number II <span class="pill">Medium</span> <span class="muted small">· count each bit modulo three</span></h3>
+    <p><b>Problem.</b> Every value appears three times except one, which appears once. Return that value in linear time and constant space.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [2,2,3,2]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [0,1,0,1,0,1,99]
+Output: 99</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 3 · 10^4; -2^31 &lt;= nums[i] &lt;= 2^31 - 1; every value appears three times except one.</p>
+    <p><b>Approach.</b> Plain XOR no longer cancels triples, so count the bits: for each of the 32 positions, the number of ones across all values is a multiple of three unless the single value has that bit. Counting column by column with a modulo-three accumulator rebuilds the answer bit by bit, and the same idea generalises to any odd repeat count.</p>
+    <pre><code>// Each bit position is counted modulo three
+int singleNumber(vector&lt;int&gt;&amp; nums) {
+    int result = 0;
+    for (int i = 0; i &lt; 32; i++) {
+        int ones = 0;
+        for (int x : nums) ones += (x &gt;&gt; i) &amp; 1;   // how many numbers have bit i
+        if (ones % 3) result |= 1 &lt;&lt; i;            // only the single value does
+    }
+    return result;
+}   // O(32 · n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(32 · n) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="single-number-iii">
+    <h3><span class="pn">M2</span> Single Number III <span class="pill">Medium</span> <span class="muted small">· XOR then split by a differing bit</span></h3>
+    <p><b>Problem.</b> Two values appear exactly once and all others appear twice. Return the two single values (in any order).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,2,1,3,2,5]
+Output: [3,5]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [-1,0]
+Output: [-1,0]</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [0,1]
+Output: [1,0]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= nums.length &lt;= 3 · 10^4; -2^31 &lt;= nums[i] &lt;= 2^31 - 1; exactly two values appear once.</p>
+    <p><b>Approach.</b> XOR of everything leaves the two singles XORed together, and any set bit of that residue is a bit where they differ. Partitioning the whole array by that one bit puts the two singles in different groups, and each group is then the easy single-number problem.</p>
+    <pre><code>// XOR everything, then split the array by one differing bit
+vector&lt;int&gt; singleNumber(vector&lt;int&gt;&amp; nums) {
+    int diff = 0;
+    for (int x : nums) diff ^= x;                 // = a ^ b
+    int bit = diff &amp; (-diff);                     // a bit where a and b differ
+    int a = 0;
+    for (int x : nums)
+        if (x &amp; bit) a ^= x;                      // one group cancels down to a
+    return {a, diff ^ a};                         // the other group is diff ^ a
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="bitwise-and-of-numbers-range">
+    <h3><span class="pn">M3</span> Bitwise AND of Numbers Range <span class="pill">Medium</span> <span class="muted small">· common binary prefix</span></h3>
+    <p><b>Problem.</b> Return the bitwise AND of every integer in [left, right].</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  left = 5, right = 7
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  left = 0, right = 0
+Output: 0</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  left = 1, right = 2147483647
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= left &lt;= right &lt;= 2^31 - 1.</p>
+    <p><b>Approach.</b> A bit survives the AND only if it is 1 in every number of the range. The interval is too long to walk, but that condition is exactly "the bits above the highest differing bit, which are shared by left and right" — so shifting both down until they meet keeps only the common prefix.</p>
+    <pre><code>// Shift both ends until they agree: what is left is the common prefix
+int rangeBitwiseAnd(int left, int right) {
+    int shift = 0;
+    while (left &lt; right) {
+        left &gt;&gt;= 1;
+        right &gt;&gt;= 1;
+        shift++;                             // one more bit is known to differ
+    }
+    return left &lt;&lt; shift;                    // the shared high bits
+}   // O(32) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(32) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="sum-of-two-integers">
+    <h3><span class="pn">M4</span> Sum of Two Integers <span class="pill">Medium</span> <span class="muted small">· adder from XOR and carry</span></h3>
+    <p><b>Problem.</b> Return the sum of a and b without using the + or - operators.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  a = 1, b = 2
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  a = 2, b = 3
+Output: 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> -1000 &lt;= a, b &lt;= 1000.</p>
+    <p><b>Approach.</b> Add without carrying using XOR, then carry with AND shifted left, and repeat with those two values until the carry is empty — that is the adder circuit, expressed as a loop. Masking to 32 bits keeps Python's unbounded integers behaving like fixed-width ones, and the final step converts a negative two's-complement pattern back to a signed value.</p>
+    <pre><code>// XOR adds without carrying; AND shifted left is the carry
+int getSum(int a, int b) {
+    while (b != 0) {
+        int carry = (unsigned int)(a &amp; b) &lt;&lt; 1;   // carry into the next column
+        a = a ^ b;                                // sum bits without the carry
+        b = carry;                                // repeat with the carry
+    }
+    return a;
+}   // O(32) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(1) (at most 32 iterations) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="total-hamming-distance">
+    <h3><span class="pn">M5</span> Total Hamming Distance <span class="pill">Medium</span> <span class="muted small">· ones x zeros per bit</span></h3>
+    <p><b>Problem.</b> Return the sum of the Hamming distances over every unordered pair of values in nums.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [4,14,2]
+Output: 6</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [4,14,4]
+Output: 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 10^4; 0 &lt;= nums[i] &lt;= 10^9.</p>
+    <p><b>Approach.</b> Instead of comparing pairs, count per column: if a bit is set in c values and clear in the other n - c, that column contributes c · (n - c) to the total, because every mixed pair differs there. Summing 30 such columns replaces the quadratic pair loop with a linear pass.</p>
+    <pre><code>// Each column contributes ones x zeros to the total
+int totalHammingDistance(vector&lt;int&gt;&amp; nums) {
+    int total = 0, n = nums.size();
+    for (int i = 0; i &lt; 32; i++) {
+        int ones = 0;
+        for (int x : nums) ones += (x &gt;&gt; i) &amp; 1;
+        total += ones * (n - ones);          // mixed pairs differ at this bit
+    }
+    return total;
+}   // O(32 · n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(32 · n) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="divide-two-integers">
+    <h3><span class="pn">M6</span> Divide Two Integers <span class="pill">Medium</span> <span class="muted small">· shift-and-subtract division</span></h3>
+    <p><b>Problem.</b> Divide two integers without using multiplication, division or modulo, truncating toward zero and clamping to the 32-bit signed range.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  dividend = 10, divisor = 3
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  dividend = 7, divisor = -3
+Output: -2</code></pre></div>
+    <p class="cons"><b>Constraints:</b> -2^31 &lt;= dividend, divisor &lt;= 2^31 - 1; divisor != 0; the result is clamped to 2^31 - 1.</p>
+    <p><b>Approach.</b> Long division in base two: repeatedly find the largest shifted divisor that still fits into what remains, subtract it, and set the bit that shift represents in the quotient. Working with negative magnitudes keeps the 32-bit boundary representable, and the sign is applied at the very end.</p>
+    <pre><code>// Long division in base two: subtract shifted divisors bit by bit
+int divide(int dividend, int divisor) {
+    if (dividend == INT_MIN &amp;&amp; divisor == -1) return INT_MAX;   // clamp
+    bool negative = (dividend &lt; 0) != (divisor &lt; 0);
+    long long a = llabs((long long)dividend), b = llabs((long long)divisor);
+    long long quotient = 0;
+    for (int shift = 31; shift &gt;= 0; shift--) {
+        if ((b &lt;&lt; shift) &lt;= a) {              // the shifted divisor still fits
+            a -= b &lt;&lt; shift;
+            quotient |= 1LL &lt;&lt; shift;         // this bit of the quotient is 1
+        }
+    }
+    quotient = negative ? -quotient : quotient;
+    if (quotient &gt; INT_MAX) return INT_MAX;
+    if (quotient &lt; INT_MIN) return INT_MIN;
+    return (int) quotient;
+}   // O(32^2) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(32²) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="score-after-flipping-matrix">
+    <h3><span class="pn">M7</span> Score After Flipping Matrix <span class="pill">Medium</span> <span class="muted small">· integer rows + column majorities</span></h3>
+    <p><b>Problem.</b> You may flip any rows and then any columns of a 0/1 matrix. Each row is read as a binary number; return the largest sum of those numbers that is reachable.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  grid = [[0,0,1,1],[1,0,1,0],[1,1,0,0]]
+Output: 39</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  grid = [[0]]
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= grid.length, grid[i].length &lt;= 20; grid[i][j] is 0 or 1.</p>
+    <p><b>Approach.</b> The first column dominates everything to its right, so flip any row whose leading bit is 0. Column flips cannot disturb that choice independently, so afterwards each remaining column can be flipped wholesale: take whichever of the column or its complement has more ones. Reading each row as an integer makes the first step a single comparison.</p>
+    <pre><code>// Force the leading bit to 1, then take each column's majority
+int matrixScore(vector&lt;vector&lt;int&gt;&gt;&amp; grid) {
+    int m = grid.size(), n = grid[0].size(), total = 0;
+    vector&lt;int&gt; rows(m, 0);
+    for (int r = 0; r &lt; m; r++) {
+        for (int c = 0; c &lt; n; c++) rows[r] = rows[r] &lt;&lt; 1 | grid[r][c];
+        if ((rows[r] &gt;&gt; (n - 1) &amp; 1) == 0)        // leading bit is 0: flip the row
+            rows[r] ^= (1 &lt;&lt; n) - 1;              // complement all n bits
+    }
+    for (int c = 0; c &lt; n; c++) {
+        int ones = 0;
+        for (int r = 0; r &lt; m; r++) ones += (rows[r] &gt;&gt; c) &amp; 1;
+        total += max(ones, m - ones) &lt;&lt; c;        // the better side of this column
+    }
+    return total;
+}   // O(m·n) time · O(m) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · cols) time time · O(rows) space.</p>
+  </section>
+  <section class="sub" id="minimum-flips-to-make-a-or-b-equal-to-c">
+    <h3><span class="pn">M8</span> Minimum Flips to Make a OR b Equal to c <span class="pill">Medium</span> <span class="muted small">· one decision per bit position</span></h3>
+    <p><b>Problem.</b> Return the minimum number of bit flips needed to make a OR b equal to c. A flip changes one bit of either a or b.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  a = 2, b = 6, c = 5
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  a = 4, b = 2, c = 7
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  a = 1, b = 2, c = 3
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= a, b, c &lt;= 10^9.</p>
+    <p><b>Approach.</b> The columns never interact, so decide each of them alone. Where c has a 0 both a and b must have 0, costing one flip per set bit they currently carry. Where c has a 1 at least one of them must keep a 1, so an empty column costs exactly one flip. Summing the per-column costs gives the optimum.</p>
+    <pre><code>// Columns are independent: cost each one, then add up
+int minFlips(int a, int b, int c) {
+    int flips = 0;
+    for (int i = 0; i &lt; 32; i++) {
+        int x = (a &gt;&gt; i) &amp; 1, y = (b &gt;&gt; i) &amp; 1, z = (c &gt;&gt; i) &amp; 1;
+        if (z == 0) flips += x + y;          // both must be cleared
+        else if (x + y == 0) flips += 1;     // at least one must be set
+    }
+    return flips;
+}   // O(32) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(32) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="maximum-xor-of-two-numbers-in-an-array">
+    <h3><span class="pn">M9</span> Maximum XOR of Two Numbers in an Array <span class="pill">Medium</span> <span class="muted small">· greedy prefixes in a hash set</span></h3>
+    <p><b>Problem.</b> Return the maximum value of nums[i] XOR nums[j] over all pairs, in time better than quadratic.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [3,10,5,25,2,8]
+Output: 28</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [14,70,53,83,49,91,36,80,92,51,66,70]
+Output: 127</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 2 · 10^5; 0 &lt;= nums[i] &lt; 2^31.</p>
+    <p><b>Approach.</b> Build the answer one bit at a time from the top. Suppose the best prefix so far is best; ask whether some pair of numbers has the candidate prefix best | (1 &lt;&lt; i). That is possible exactly when two stored prefixes differ in the candidate — and a prefix set answers the question in one pass. Greedy works here because higher bits outweigh all lower ones combined.</p>
+    <pre><code>// Grow the answer one bit at a time; a prefix set tests each candidate
+int findMaximumXOR(vector&lt;int&gt;&amp; nums) {
+    int best = 0, mask = 0;
+    for (int i = 31; i &gt;= 0; i--) {
+        mask |= 1 &lt;&lt; i;
+        unordered_set&lt;int&gt; prefixes;
+        for (int x : nums) prefixes.insert(x &amp; mask);
+        int candidate = best | (1 &lt;&lt; i);
+        for (int p : prefixes)
+            if (prefixes.count(p ^ candidate)) { best = candidate; break; }
+    }
+    return best;
+}   // O(31 · n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(31 · n) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="find-kth-bit-in-nth-binary-string">
+    <h3><span class="pn">M10</span> Find Kth Bit in Nth Binary String <span class="pill">Medium</span> <span class="muted small">· halve the index recursively</span></h3>
+    <p><b>Problem.</b> S1 is "0" and Sn is Sn-1 + "1" + reverse(invert(Sn-1)). Return the k-th bit of Sn, where k is 1-indexed.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 3, k = 1
+Output: "0"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 4, k = 11
+Output: "1"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 20; 1 &lt;= k &lt;= 2^n - 1.</p>
+    <p><b>Approach.</b> Sn is built from Sn-1 symmetrically around its middle 1, so its length is 2^n - 1 and the middle position is a 1. Everything to the right of that middle is a mirrored, inverted copy: convert such an index into the mirrored one and flip the bit you find. Each step halves n, so the walk is logarithmic.</p>
+    <pre><code>// The middle is '1'; the right half mirrors the left half inverted
+char findKthBit(int n, int k) {
+    if (n == 1) return '0';
+    int mid = (1 &lt;&lt; (n - 1));                // middle index of S_n
+    if (k == mid) return '1';
+    if (k &lt; mid) return findKthBit(n - 1, k);
+    return findKthBit(n - 1, 2 * mid - k) == '1' ? '0' : '1';   // mirror + invert
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="maximum-product-of-word-lengths">
+    <h3><span class="pn">M11</span> Maximum Product of Word Lengths <span class="pill">Medium</span> <span class="muted small">· letter masks + pair scan</span></h3>
+    <p><b>Problem.</b> Return the largest product of the lengths of two words that share no common letter, or 0 if no such pair exists.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  words = ["abcw","baz","foo","bar","xtfn","abcdef"]
+Output: 16</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  words = ["a","ab","abc","d","cd","bcd","abcd"]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  words = ["a","aa","aaa","aaaa"]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= words.length &lt;= 1000; 1 &lt;= words[i].length &lt;= 1000; words[i] contains only lowercase English letters.</p>
+    <p><b>Approach.</b> A word's letter set fits in 26 bits, so "do these two share a letter?" becomes a single AND. Build the mask of each word once, then test every pair: disjoint masks means the pair is legal, and you keep the largest length product. Longer words can also be pruned by length, but the pair scan is already fast enough.</p>
+    <pre><code>// Each word becomes a 26-bit letter mask; disjoint masks = a valid pair
+int maxProduct(vector&lt;string&gt;&amp; words) {
+    int n = words.size();
+    vector&lt;int&gt; mask(n, 0), len(n, 0);
+    for (int i = 0; i &lt; n; i++) {
+        len[i] = words[i].size();
+        for (char ch : words[i]) mask[i] |= 1 &lt;&lt; (ch - 'a');
+    }
+    int best = 0;
+    for (int i = 0; i &lt; n; i++)
+        for (int j = i + 1; j &lt; n; j++)
+            if ((mask[i] &amp; mask[j]) == 0) best = max(best, len[i] * len[j]);
+    return best;
+}   // O(n^2) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) mask pairs time · O(n) space.</p>
+  </section>
+  <section class="sub" id="check-if-a-string-contains-all-binary-codes-of-size-k">
+    <h3><span class="pn">M12</span> Check If a String Contains All Binary Codes of Size K <span class="pill">Medium</span> <span class="muted small">· rolling window of k bits</span></h3>
+    <p><b>Problem.</b> Return true if every binary string of length k appears as a substring of the binary string s.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "00110110", k = 2
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "0110", k = 1
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  s = "0110", k = 2
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 5 · 10^5; s[i] is '0' or '1'; 1 &lt;= k &lt;= 20.</p>
+    <p><b>Approach.</b> The windows are exactly the integers from 0 to 2^k - 1, so the question becomes "has every integer been seen?". Slide a window that keeps the last k bits as an integer, store each value that appears, and stop as soon as the count reaches 2^k. A k larger than the string answers false immediately, since the windows run out before the codes do.</p>
+    <pre><code>// Slide a k-bit window and count how many distinct codes appear
+bool hasAllCodes(string s, int k) {
+    if ((int) s.size() &lt; k) return false;
+    int need = 1 &lt;&lt; k, mask = need - 1;      // 2^k codes, k bits wide
+    unordered_set&lt;int&gt; seen;
+    int value = 0;
+    for (int i = 0; i &lt; (int) s.size(); i++) {
+        value = ((value &lt;&lt; 1) | (s[i] - '0')) &amp; mask;   // keep the last k bits
+        if (i &gt;= k - 1) seen.insert(value);
+    }
+    return (int) seen.size() == need;
+}   // O(n) time · O(2^k) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(2^k) space.</p>
+  </section>
+  <section class="sub" id="minimum-number-of-k-consecutive-bit-flips">
+    <h3><span class="pn">H1</span> Minimum Number of K Consecutive Bit Flips <span class="pill hot">Hard</span> <span class="muted small">· greedy sweep with a flip window</span></h3>
+    <p><b>Problem.</b> A flip of a length-k window turns every 0 in it into 1 and every 1 into 0. Return the minimum number of flips that turn nums into all ones, or -1 if that is impossible.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [0,1,0], k = 1
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,1,0], k = 2
+Output: -1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [0,0,0,1,0,1,1,0], k = 3
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 10^5; 1 &lt;= k &lt;= nums.length; nums[i] is 0 or 1.</p>
+    <p><b>Approach.</b> Scan left to right. The leftmost bit has no choice: if it is still 0, some window must start here, so flip and account for it. What makes the sweep cheap is that a window is described by where it ends, so a difference array tracks how many flips are still active at each position. Reaching a 0 within the last k - 1 positions means no window can cover it, which is the only failure case.</p>
+    <pre><code>// The leftmost 0 must start a flip; a difference array tracks live flips
+int minKBitFlips(vector&lt;int&gt;&amp; nums, int k) {
+    int n = nums.size(), flips = 0, flipsUsed = 0;
+    vector&lt;int&gt; ends(n + 1, 0);               // flips that stop at position i
+    for (int i = 0; i &lt; n; i++) {
+        flips += ends[i];                     // how many windows cover i
+        if ((nums[i] + flips) % 2 == 0) {      // still 0 → a window must start here
+            if (i + k &gt; n) return -1;         // no room left to cover it
+            flipsUsed++;
+            flips++;
+            ends[i + k]--;                    // this flip expires after i + k - 1
+        }
+    }
+    return flipsUsed;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="minimum-number-of-flips-to-convert-binary-matrix-to-zero-matrix">
+    <h3><span class="pn">H2</span> Minimum Number of Flips to Convert Binary Matrix to Zero Matrix <span class="pill hot">Hard</span> <span class="muted small">· BFS over bitmask states</span></h3>
+    <p><b>Problem.</b> A move picks a cell and flips it together with its four edge neighbours. Return the minimum number of moves that turn the whole matrix into zeros, or -1 if it is impossible.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  mat = [[0,0],[0,1]]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  mat = [[0]]
+Output: 0</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  mat = [[1,0,0],[1,0,0]]
+Output: -1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= mat.length, mat[i].length &lt;= 3; mat[i][j] is 0 or 1.</p>
+    <p><b>Approach.</b> The visible state is what matters, not the order of the moves, so pack the matrix into a bitmask and run a shortest-path search over masks. Precompute the mask that each cell toggles, then every edge of the search is one XOR. The state space is at most 512, so plain BFS is comfortably fast and -1 simply means the search never reached the zero mask.</p>
+    <pre><code>// Pack the board into a bitmask and run BFS over states
+int minFlips(vector&lt;vector&lt;int&gt;&gt;&amp; mat) {
+    int rows = mat.size(), cols = mat[0].size(), cells = rows * cols;
+    vector&lt;int&gt; toggles(cells, 0);
+    int dr[5] = {0, -1, 1, 0, 0}, dc[5] = {0, 0, 0, -1, 1};
+    for (int r = 0; r &lt; rows; r++)
+        for (int c = 0; c &lt; cols; c++)
+            for (int d = 0; d &lt; 5; d++) {
+                int nr = r + dr[d], nc = c + dc[d];
+                if (nr &gt;= 0 &amp;&amp; nr &lt; rows &amp;&amp; nc &gt;= 0 &amp;&amp; nc &lt; cols)
+                    toggles[r * cols + c] |= 1 &lt;&lt; (nr * cols + nc);
+            }
+    int start = 0;
+    for (int r = 0; r &lt; rows; r++)
+        for (int c = 0; c &lt; cols; c++)
+            if (mat[r][c]) start |= 1 &lt;&lt; (r * cols + c);
+    vector&lt;int&gt; dist(1 &lt;&lt; cells, -1);
+    queue&lt;int&gt; q;
+    dist[start] = 0;
+    q.push(start);
+    while (!q.empty()) {
+        int cur = q.front(); q.pop();
+        if (cur == 0) return dist[cur];       // the all-zero board
+        for (int i = 0; i &lt; cells; i++) {
+            int nxt = cur ^ toggles[i];       // one move
+            if (dist[nxt] == -1) { dist[nxt] = dist[cur] + 1; q.push(nxt); }
+        }
+    }
+    return -1;
+}   // O(2^cells · cells) time · O(2^cells) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(2^(r·c) · r · c) time time · O(2^(r·c)) space.</p>
+  </section>
+  <section class="sub" id="number-of-valid-words-for-each-puzzle">
+    <h3><span class="pn">H3</span> Number of Valid Words for Each Puzzle <span class="pill hot">Hard</span> <span class="muted small">· letter masks + submask enumeration</span></h3>
+    <p><b>Problem.</b> A word is valid for a puzzle when it contains the puzzle's first letter and every letter of the word appears in the puzzle. Return the number of valid words for each puzzle.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  words = ["aaaa","asas","able","ability","actt","actor","access"], puzzles = ["aboveyz","abrodyz","abslute","absoryz","actresz","gaswxyz"]
+Output: [1,1,3,2,4,0]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  words = ["apple","pleas","please"], puzzles = ["aelwxyz","aelpxyz","aelpsxy","saelpxy","xaelpsy"]
+Output: [0,1,3,2,0]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= words.length &lt;= 10^5; 4 &lt;= words[i].length &lt;= 50; 1 &lt;= puzzles.length &lt;= 10^4; puzzles[i].length == 7; all puzzles have distinct letters.</p>
+    <p><b>Approach.</b> Turn every word into a 26-bit letter mask; words with more than seven distinct letters can never fit a puzzle and are kept out of a frequency table keyed by mask. A puzzle has seven letters, so it has only 64 subsets that contain its first letter — enumerate those submasks and add the stored frequencies. Big inputs are handled by looking up masks rather than scanning the word list.</p>
+    <pre><code>// Word -&gt; letter mask table, then 64 submask look-ups per puzzle
+vector&lt;int&gt; findNumOfValidWords(vector&lt;string&gt;&amp; words, vector&lt;string&gt;&amp; puzzles) {
+    unordered_map&lt;int, int&gt; freq;                 // letter mask -&gt; how many words
+    for (const string&amp; w : words) {
+        int mask = 0;
+        for (char ch : w) mask |= 1 &lt;&lt; (ch - 'a');
+        if (__builtin_popcount(mask) &lt;= 7) freq[mask]++;   // wider than a puzzle
+    }
+    vector&lt;int&gt; answer;
+    for (const string&amp; p : puzzles) {
+        int first = 1 &lt;&lt; (p[0] - 'a'), mask = 0;
+        for (char ch : p) mask |= 1 &lt;&lt; (ch - 'a');
+        int rest = mask ^ first, total = 0;
+        for (int sub = rest; ; sub = (sub - 1) &amp; rest) {    // the 64 submasks
+            auto it = freq.find(sub | first);               // must contain p[0]
+            if (it != freq.end()) total += it-&gt;second;
+            if (sub == 0) break;
+        }
+        answer.push_back(total);
+    }
+    return answer;
+}   // O(words + 64 · puzzles) time · O(distinct masks) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(total word length + 64 · puzzles) time time · O(distinct masks) space.</p>
+  </section>
+  <section class="sub" id="minimum-one-bit-operations-to-make-integers-zero">
+    <h3><span class="pn">H4</span> Minimum One Bit Operations to Make Integers Zero <span class="pill hot">Hard</span> <span class="muted small">· Gray-code distance recursion</span></h3>
+    <p><b>Problem.</b> An operation either changes bit 0 of n, or changes bit i when bit i - 1 is 1 and bits i - 2 down to 0 are all 0. Return the minimum number of operations that turn n into 0.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 3
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 6
+Output: 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= n &lt;= 10^9.</p>
+    <p><b>Approach.</b> Each operation is a step between consecutive Gray codes, so the answer is n's position in Gray-code order — the inverse Gray value of n. A step at the highest set bit costs 2^(k+1) - 1 operations and lands on n with that bit cleared, and what is left is the same question on a smaller number: a recursion that shortens the binary length each time.</p>
+    <pre><code>// Gray-code distance: clear the top bit, then recurse on the rest
+int minimumOneBitOperations(int n) {
+    if (n &lt;= 1) return n;
+    int k = 31 - __builtin_clz(n);            // index of the highest set bit
+    return (1 &lt;&lt; (k + 1)) - 1 - minimumOneBitOperations(n ^ (1 &lt;&lt; k));
+}   // O(log n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="find-xor-sum-of-all-pairs-bitwise-and">
+    <h3><span class="pn">H5</span> Find XOR Sum of All Pairs Bitwise AND <span class="pill hot">Hard</span> <span class="muted small">· per-bit counting of AND results</span></h3>
+    <p><b>Problem.</b> Return the XOR of (arr1[i] AND arr2[j]) over every ordered pair (i, j).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  arr1 = [1,2,3], arr2 = [6,5]
+Output: 0</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  arr1 = [12], arr2 = [4]
+Output: 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= arr1.length, arr2.length &lt;= 5 · 10^4; 1 &lt;= arr1[i], arr2[i] &lt;= 10^9.</p>
+    <p><b>Approach.</b> The XOR of the pair values depends on each bit separately, because XOR keeps the columns independent. A bit of the AND is 1 exactly for the pairs where both operands have it, so its contribution appears ones1 · ones2 times; the bit survives the XOR only when that count is odd. Each column can therefore be decided with two counters instead of a double loop.</p>
+    <pre><code>// A bit survives the XOR when ones1 · ones2 is odd
+int getXORSum(vector&lt;int&gt;&amp; arr1, vector&lt;int&gt;&amp; arr2) {
+    int result = 0;
+    for (int b = 0; b &lt; 32; b++) {
+        long long ones1 = 0, ones2 = 0;
+        for (int x : arr1) ones1 += (x &gt;&gt; b) &amp; 1;
+        for (int y : arr2) ones2 += (y &gt;&gt; b) &amp; 1;
+        if ((ones1 * ones2) % 2 == 1) result |= 1 &lt;&lt; b;   // odd → XOR bit is 1
+    }
+    return result;
+}   // O(32 · (n + m)) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(32 · (n + m)) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="number-of-excellent-pairs">
+    <h3><span class="pn">H6</span> Number of Excellent Pairs <span class="pill hot">Hard</span> <span class="muted small">· popcount pairs counted by group</span></h3>
+    <p><b>Problem.</b> The pair (a, b) of values from nums is excellent when the total number of set bits of (a AND b) plus (a OR b) is at least k. Return the number of excellent ordered pairs, counting duplicates only once.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,2,3,1], k = 3
+Output: 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [5,1,1], k = 10
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 10^5; 1 &lt;= nums[i] &lt;= 10^9; 1 &lt;= k &lt;= 60.</p>
+    <p><b>Approach.</b> The identity popcount(a AND b) + popcount(a OR b) = popcount(a) + popcount(b) removes the pair itself from the measurement: a pair is excellent exactly when the two popcounts sum to at least k. So bucket the distinct values by popcount and count pairs of buckets with a small double loop — duplicates collapse because they contribute the same popcount.</p>
+    <pre><code>// popcount(a AND b) + popcount(a OR b) = popcount(a) + popcount(b)
+long long countExcellentPairs(vector&lt;int&gt;&amp; nums, int k) {
+    unordered_set&lt;int&gt; distinct(nums.begin(), nums.end());   // duplicates collapse
+    long long byCount[32] = {0};
+    for (int x : distinct) byCount[__builtin_popcount((unsigned) x)]++;
+    long long total = 0;
+    for (int p = 0; p &lt; 32; p++)
+        for (int q = 0; q &lt; 32; q++)
+            if (p + q &gt;= k) total += byCount[p] * byCount[q];
+    return total;
+}   // O(n + 32^2) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n + 32²) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="kth-smallest-instructions">
+    <h3><span class="pn">H7</span> Kth Smallest Instructions <span class="pill hot">Hard</span> <span class="muted small">· count paths, then take a step</span></h3>
+    <p><b>Problem.</b> You start at (0, 0) and want to reach destination = [row, column], writing "H" for a step right and "V" for a step down. Return the k-th smallest instruction string in lexicographic order.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  destination = [2,3], k = 1
+Output: "HHHVV"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  destination = [2,3], k = 2
+Output: "HHVHV"</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  destination = [2,3], k = 3
+Output: "HHVVH"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= row, column &lt;= 15; 1 &lt;= k &lt;= number of ways to reach the destination.</p>
+    <p><b>Approach.</b> Lexicographic order means every string that starts with H comes before every string that starts with V, so the paths starting with H form a prefix block whose size is a binomial coefficient. Compare k with that block: if it fits, the answer starts with H; otherwise skip the whole block (subtract it) and start with V. Repeating this consumes one letter at a time.</p>
+    <pre><code>// Every H-first path precedes every V-first path: count, then commit
+long long choose(int n, int r) {
+    long long result = 1;
+    for (int i = 1; i &lt;= r; i++) result = result * (n - r + i) / i;
+    return result;
+}
+string kthSmallestPath(vector&lt;int&gt;&amp; destination, int k) {
+    int down = destination[0], right = destination[1];   // V steps, H steps
+    string result;
+    while (down + right &gt; 0) {
+        if (right &gt; 0) {
+            long long withH = choose(down + right - 1, right - 1);   // H-first block
+            if (k &lt;= withH) { result += 'H'; right--; continue; }
+            k -= withH;                                  // skip the whole block
+        }
+        result += 'V';                                   // only V-first paths remain
+        down--;
+    }
+    return result;
+}   // O((row+column)^2) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O((row + column)²) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="maximum-xor-with-an-element-from-array">
+    <h3><span class="pn">H8</span> Maximum XOR With an Element From Array <span class="pill hot">Hard</span> <span class="muted small">· offline sort + binary trie</span></h3>
+    <p><b>Problem.</b> For each query [xi, mi], return the maximum xi XOR nums[j] over values not exceeding mi, or -1 when no value qualifies.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [0,1,2,3,4], queries = [[3,1],[1,3],[5,6]]
+Output: [3,3,7]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [5,2,4,6,6,3], queries = [[12,4],[8,1],[6,3]]
+Output: [15,-1,5]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length, queries.length &lt;= 5 · 10^4; 1 &lt;= nums[i], xi, mi &lt;= 10^9.</p>
+    <p><b>Approach.</b> The limit is the only thing that makes a query hard, so answer the queries in increasing order of limit and grow one structure as you go. Sorting both, inserting every value that now qualifies into a bit trie, and answering each query greedily bit by bit keeps the whole thing near-linear; queries whose limit admits nothing yet return -1.</p>
+    <pre><code>// Sort queries by limit, feed values into a binary trie, answer greedily
+vector&lt;int&gt; maximizeXor(vector&lt;int&gt;&amp; nums, vector&lt;vector&lt;int&gt;&gt;&amp; queries) {
+    sort(nums.begin(), nums.end());
+    int q = queries.size();
+    vector&lt;int&gt; order(q), answer(q);
+    iota(order.begin(), order.end(), 0);
+    sort(order.begin(), order.end(),
+         [&amp;](int a, int b) { return queries[a][1] &lt; queries[b][1]; });
+    vector&lt;array&lt;int, 2&gt;&gt; child(1, {-1, -1});        // binary trie of live values
+    int next = 0;                                    // how many values are inserted
+    for (int qi : order) {
+        int x = queries[qi][0], limit = queries[qi][1];
+        while (next &lt; (int) nums.size() &amp;&amp; nums[next] &lt;= limit) {
+            int node = 0;
+            for (int b = 30; b &gt;= 0; b--) {
+                int bit = (nums[next] &gt;&gt; b) &amp; 1;
+                if (child[node][bit] == -1) { child[node][bit] = child.size(); child.push_back({-1, -1}); }
+                node = child[node][bit];
+            }
+            next++;
+        }
+        if (next == 0) { answer[qi] = -1; continue; }    // nothing is small enough
+        int node = 0, best = 0;
+        for (int b = 30; b &gt;= 0; b--) {
+            int bit = (x &gt;&gt; b) &amp; 1;
+            if (child[node][bit ^ 1] != -1) {            // prefer the opposite bit
+                best |= 1 &lt;&lt; b;
+                node = child[node][bit ^ 1];
+            } else {
+                node = child[node][bit];
+            }
+        }
+        answer[qi] = best;
+    }
+    return answer;
+}   // O((n + q) · 31) time · O(n · 31) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O((n + q) · 31) time time · O(n · 31) space.</p>
+  </section>
+  <section class="sub" id="count-pairs-with-xor-in-a-range">
+    <h3><span class="pn">H9</span> Count Pairs With XOR in a Range <span class="pill hot">Hard</span> <span class="muted small">· trie counting of xors below a bound</span></h3>
+    <p><b>Problem.</b> Count the pairs (i, j) with i &lt; j whose nums[i] XOR nums[j] lies between low and high.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,4,2,7], low = 2, high = 6
+Output: 6</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [9,8,4,2,1], low = 5, high = 14
+Output: 8</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 5 · 10^4; 1 &lt;= nums[i] &lt;= 2 · 10^4; 0 &lt;= low &lt;= high &lt;= 2 · 10^4.</p>
+    <p><b>Approach.</b> Counting below high and below low - 1 and subtracting turns a range into two half-open questions. For a bound, walk a binary trie of the numbers seen so far: where the bound's bit is 1, every value matching the current bit already makes the XOR smaller — add that whole subtree — and otherwise the only way forward is the matching branch. Each pair is counted once by inserting values as you scan.</p>
+    <pre><code>// below(high) - below(low): walk a trie, adding whole subtrees on 1-bits
+long long countBelow(const vector&lt;int&gt;&amp; nums, int limit) {
+    vector&lt;array&lt;int, 2&gt;&gt; child(1, {-1, -1});
+    vector&lt;int&gt; count(1, 0);                 // how many values pass through a node
+    long long total = 0;
+    for (int value : nums) {
+        int node = 0;
+        long long below = 0;
+        for (int b = 16; b &gt;= 0 &amp;&amp; node != -1; b--) {
+            int vb = (value &gt;&gt; b) &amp; 1, lb = (limit &gt;&gt; b) &amp; 1;
+            if (lb) {                        // xor bit 0 already beats this bound bit
+                int same = child[node][vb];
+                if (same != -1) below += count[same];
+                node = child[node][vb ^ 1];  // keep the xor bit equal to the bound
+            } else {
+                node = child[node][vb];      // must match the bound bit exactly
+            }
+        }
+        total += below;                      // pairs (value, earlier value)
+        node = 0;
+        count[0]++;
+        for (int b = 16; b &gt;= 0; b--) {
+            int bit = (value &gt;&gt; b) &amp; 1;
+            if (child[node][bit] == -1) {
+                child[node][bit] = child.size();
+                child.push_back({-1, -1});
+                count.push_back(0);
+            }
+            node = child[node][bit];
+            count[node]++;
+        }
+    }
+    return total;
+}
+long long countPairs(vector&lt;int&gt;&amp; nums, int low, int high) {
+    return countBelow(nums, high + 1) - countBelow(nums, low);
+}   // O(17 · n) time · O(17 · n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(17 · n) time time · O(17 · n) space.</p>
+  </section>
+  <section class="sub" id="maximum-strong-pair-xor-ii">
+    <h3><span class="pn">H10</span> Maximum Strong Pair XOR II <span class="pill hot">Hard</span> <span class="muted small">· sliding window + trie with deletion</span></h3>
+    <p><b>Problem.</b> A pair (x, y) is strong when |x - y| &lt;= min(x, y). Return the maximum y XOR x over strong pairs of nums.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,2,3,4,5]
+Output: 7</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [10,100]
+Output: 0</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [500,520,2500,3000]
+Output: 1020</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 5 · 10^4; 1 &lt;= nums[i] &lt;= 10^5.</p>
+    <p><b>Approach.</b> After sorting, |x - y| &lt;= min(x, y) is the same as max &lt;= 2 · min, so for a right end the legal partners form a window whose left edge only moves forward. Keep a binary trie of the window's values with per-node counts, query the best XOR partner for each new element, and delete values as the window slides — a dynamic structure, because the window changes at both ends.</p>
+    <pre><code>// Sorted window (max &lt;= 2 · min) + a trie that supports deletion
+void insertValue(vector&lt;array&lt;int, 2&gt;&gt;&amp; child, vector&lt;int&gt;&amp; count, int value) {
+    int node = 0;
+    count[0]++;
+    for (int b = 16; b &gt;= 0; b--) {
+        int bit = (value &gt;&gt; b) &amp; 1;
+        if (child[node][bit] == -1) { child[node][bit] = child.size(); child.push_back({-1, -1}); count.push_back(0); }
+        node = child[node][bit];
+        count[node]++;
+    }
+}
+void eraseValue(vector&lt;array&lt;int, 2&gt;&gt;&amp; child, vector&lt;int&gt;&amp; count, int value) {
+    int node = 0;
+    count[0]--;
+    for (int b = 16; b &gt;= 0; b--) {
+        node = child[node][(value &gt;&gt; b) &amp; 1];
+        count[node]--;
+    }
+}
+int bestXor(const vector&lt;array&lt;int, 2&gt;&gt;&amp; child, const vector&lt;int&gt;&amp; count, int value) {
+    int node = 0, best = 0;
+    for (int b = 16; b &gt;= 0; b--) {
+        int bit = (value &gt;&gt; b) &amp; 1;
+        int opposite = child[node][bit ^ 1];
+        if (opposite != -1 &amp;&amp; count[opposite] &gt; 0) {      // a live value differs here
+            best |= 1 &lt;&lt; b;
+            node = opposite;
+        } else {
+            node = child[node][bit];
+        }
+    }
+    return best;
+}
+int maximumStrongPairXor(vector&lt;int&gt;&amp; nums) {
+    sort(nums.begin(), nums.end());
+    vector&lt;array&lt;int, 2&gt;&gt; child(1, {-1, -1});
+    vector&lt;int&gt; count(1, 0);
+    int left = 0, best = 0;
+    for (int value : nums) {
+        while (nums[left] * 2 &lt; value) eraseValue(child, count, nums[left++]);
+        best = max(best, bestXor(child, count, value));   // against the live window
+        insertValue(child, count, value);
+    }
+    return best;
+}   // O(n · 17) time · O(n · 17) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n · 17) time time · O(n · 17) space.</p>
+  </section>
+  <section class="sub" id="smallest-good-base">
+    <h3><span class="pn">H11</span> Smallest Good Base <span class="pill hot">Hard</span> <span class="muted small">· binary search on the base</span></h3>
+    <p><b>Problem.</b> n is given as a string. Return, as a string, the smallest base b &gt;= 2 in which n is written with only 1 digits.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = "13"
+Output: "3"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = "4681"
+Output: "8"</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  n = "1000000000000000000"
+Output: "999999999999999999"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 3 &lt;= n &lt;= 10^18; n has no leading zeros; the answer is returned as a string.</p>
+    <p><b>Approach.</b> Fix the number of digits d first: then n = 1 + b + … + b^(d-1) increases with b, so a binary search finds the only possible base, and the sum is capped early to avoid overflow. Base n - 1 always works because n writes as "11" there, and trying every d up to 62 covers all remaining cases — the answer is the smallest base found.</p>
+    <pre><code>// For each digit count the base is unique: binary search it, keep the smallest
+long long allOnes(long long base, int digits, long long cap) {
+    long long value = 1, term = 1;
+    for (int i = 1; i &lt; digits; i++) {
+        if (term &gt; cap / base) return cap + 1;          // already too large
+        term *= base;
+        value += term;
+        if (value &gt; cap) return cap + 1;
+    }
+    return value;
+}
+string smallestGoodBase(string n) {
+    long long target = stoll(n);
+    long long best = target - 1;                        // "11" in base n - 1
+    for (int digits = 3; digits &lt;= 62; digits++) {
+        long long lo = 2, hi = target - 1;
+        while (lo &lt;= hi) {
+            long long mid = lo + (hi - lo) / 2;
+            long long value = allOnes(mid, digits, target);
+            if (value == target) { best = min(best, mid); break; }
+            if (value &gt; target) hi = mid - 1;
+            else lo = mid + 1;
+        }
+    }
+    return to_string(best);
+}   // O(62 · 62 · log n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(62 · 62 · log n) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="partition-array-into-two-arrays-to-minimize-sum-difference">
+    <h3><span class="pn">H12</span> Partition Array Into Two Arrays to Minimize Sum Difference <span class="pill hot">Hard</span> <span class="muted small">· meet in the middle over subsets</span></h3>
+    <p><b>Problem.</b> Split nums, which has 2n elements, into two arrays of n elements each so that the absolute difference of their sums is as small as possible. Return that minimum difference.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [3,9,7,3]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [-36,36]
+Output: 72</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [2,-1,0,4,-2,-9]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 30; nums.length is even; -10^7 &lt;= nums[i] &lt;= 10^7.</p>
+    <p><b>Approach.</b> Enumerating all assignments is 2^30, so split the array in half: 2^15 subsets per half, each recorded as (count, sum) and grouped by count. A choice must take exactly n elements overall, so a left group of size k pairs only with the right group of size n - k. Sorting each right group and binary searching for the complement of the target sum makes the join fast.</p>
+    <pre><code>// Enumerate subsets of each half, then match counts and nearest sums
+int minimumDifference(vector&lt;int&gt;&amp; nums) {
+    int n = nums.size() / 2;                  // each side of the split takes n
+    long long total = 0;
+    for (int x : nums) total += x;
+    vector&lt;vector&lt;long long&gt;&gt; left(n + 1), right(n + 1);
+    for (int mask = 0; mask &lt; (1 &lt;&lt; n); mask++) {          // first n elements
+        long long sum = 0;
+        for (int i = 0; i &lt; n; i++) if ((mask &gt;&gt; i) &amp; 1) sum += nums[i];
+        left[__builtin_popcount(mask)].push_back(sum);
+    }
+    for (int mask = 0; mask &lt; (1 &lt;&lt; n); mask++) {          // last n elements
+        long long sum = 0;
+        for (int i = 0; i &lt; n; i++) if ((mask &gt;&gt; i) &amp; 1) sum += nums[n + i];
+        right[__builtin_popcount(mask)].push_back(sum);
+    }
+    for (auto&amp; group : right) sort(group.begin(), group.end());
+    long long best = LLONG_MAX;
+    for (int k = 0; k &lt;= n; k++) {
+        const vector&lt;long long&gt;&amp; pool = right[n - k];      // counts must add to n
+        for (long long s : left[k]) {
+            auto it = lower_bound(pool.begin(), pool.end(), total / 2 - s);
+            if (it != pool.end()) best = min(best, llabs(total - 2 * (s + *it)));
+            if (it != pool.begin()) best = min(best, llabs(total - 2 * (s + *(it - 1))));
+        }
+    }
+    return (int) best;
+}   // O(2^(n/2) · n) time · O(2^(n/2)) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(2^(n/2) · n) time time · O(2^(n/2)) space.</p>
+  </section>
+</section>
 
   </main>
 </div>
 
 <footer>
-  <p><b>C++ bank</b> — 390 problems across 13 topics, with complete solutions in
+  <p><b>C++ bank</b> — 420 problems across 14 topics, with complete solutions in
   C++17/20/23 solutions.</p>
   <p class="small">Same problems in every language:
     <a href="cpp-leetcode.html">C++</a> · <a href="java-leetcode.html">Java</a> · <a href="python-leetcode.html">Python</a>

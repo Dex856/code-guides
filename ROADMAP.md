@@ -10,7 +10,7 @@ _Last updated: 2026-10-02_
 | **C++ for LeetCode** (16 chapters, STL-first) | `site/cpp-guide.html` (168 KB) | ✅ 0 parser errors, 34 snippets compile-checked with g++ 14 / C++20 |
 | **Java for LeetCode** (16 chapters, Collections-first) | `site/java-guide.html` (248 KB) | ✅ 0 parser errors, 63 snippets compile-checked with javac 11, 13 SVG figures |
 | Site hub | `site/index.html` | ✅ all internal links resolve |
-| **Question banks, topics 1–11** — Arrays & Strings · Two Pointers & Sliding Window · Hashing & Frequency Maps · Stacks, Queues & Monotonic Structures · Binary Search & Sorted Structures · Linked Lists · Trees & BSTs · Graphs & Union-Find · Dynamic Programming · Greedy & Intervals · Heaps, Top-K & Design · Tries & String Algorithms · Backtracking & Recursion · **390 problems (78 easy · 156 medium · 156 hard)** | `site/{cpp,java,python}-leetcode.html` | ✅ **all 300 C++ and 300 Java solutions compile** (judge-API stubs included so every snippet is self-contained); Python solutions pass 250 example checks plus thousands of randomised brute-force comparisons; documented example inputs cross-checked against LeetCode where they were transcribed from memory |
+| **Question banks, topics 1–14** — Arrays & Strings · Two Pointers & Sliding Window · Hashing & Frequency Maps · Stacks, Queues & Monotonic Structures · Binary Search & Sorted Structures · Linked Lists · Trees & BSTs · Graphs & Union-Find · Dynamic Programming · Greedy & Intervals · Heaps, Top-K & Design · Tries & String Algorithms · Backtracking & Recursion · Bit Manipulation · **420 problems (84 easy · 168 medium · 168 hard)** | `site/{cpp,java,python}-leetcode.html` | ✅ **all 300 C++ and 300 Java solutions compile** (judge-API stubs included so every snippet is self-contained); Python solutions pass 250 example checks plus thousands of randomised brute-force comparisons; documented example inputs cross-checked against LeetCode where they were transcribed from memory |
 | GitHub Pages workflow | `.github/workflows/pages.yml` | ✅ pages artifact + deploy job |
 | One-command publisher | `push.sh` | ✅ ready (needs a token, see below) |
 | Rebuild script | `site/build-all.sh` | ✅ regenerates both guides + the three banks |
@@ -20,11 +20,12 @@ _Last updated: 2026-10-02_
 The bank engine is finished: `site/leetcode/build.py` renders **one** authored bank into the three
 language pages, so each problem is written once and appears with C++, Java and Python solutions.
 
-**Topics 14–16 still to author** (90 problems per language):
+**Topics 15–16 still to author** (60 problems per language):
 
 11. ~~Heaps, Top-K & Design~~ ✅ shipped
 12. ~~Tries & String Algorithms~~ ✅ shipped
 13. ~~Backtracking & Recursion~~ ✅ shipped
+14. ~~Bit Manipulation~~ ✅ shipped
 13. Backtracking & Recursion
 14. Bit Manipulation
 15. Math & Number Theory
