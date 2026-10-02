@@ -1,3 +1,14 @@
+# Deploy the static site to GitHub Pages.
+#
+# ONE-TIME PREREQUISITE (repository owner, ~10 seconds, cannot be automated):
+#   repo → Settings → Pages → Build and deployment → Source: "GitHub Actions"
+#   Creating a Pages site requires administration:write, which the Actions
+#   GITHUB_TOKEN can never be granted (github/actions/configure-pages#40), so
+#   `enablement: true` can only ever fail with "Resource not accessible by
+#   integration". After that one click, every push to main deploys automatically.
+#
+# Alternative without this workflow: set Source to "Deploy from a branch",
+# branch main, folder /docs — the repository keeps a ready-made mirror there.
 name: Deploy static guides to GitHub Pages
 
 on:
@@ -28,10 +39,8 @@ jobs:
           cp -r site/. _site/
           test -f _site/index.html
 
-      - name: Configure Pages (enables Pages on first run if needed)
+      - name: Configure Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
