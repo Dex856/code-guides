@@ -1,5 +1,21 @@
 # Publishing the Code Guides site to GitHub Pages
 
+> **Status (2026-10-02):** the token you supplied authenticates as **Dex856** and can see
+> `Dex856/code-guides`, but it has **no write permissions** — every write probe returned
+> `403 Resource not accessible by personal access token`:
+> `git push`, creating a file via the REST API, enabling Pages, and creating the workflow file.
+>
+> **Fix — edit the existing token, no new token needed:**
+> <https://github.com/settings/personal-access-tokens> → click the token → *Repository permissions* →
+> set **Contents: Read and write**, **Workflows: Read and write**, **Pages: Read and write** → **Save**.
+> The token value stays valid, so nothing has to be pasted again.
+>
+> Minimal alternative if you prefer fewer permissions: give **Contents: Read and write** only. I will
+> push (the site also exists pre-mirrored in `docs/`), and you click once:
+> repo → **Settings → Pages → Source: Deploy from a branch → main → /docs**.
+>
+> The repository is committed locally and ready: 4 commits, 53 files, working tree clean.
+
 Two paths. **Path A** is if you want me to do the push; **Path B** is if you want to keep the credential
 entirely on your side.
 
