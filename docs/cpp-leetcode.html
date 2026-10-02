@@ -7345,12 +7345,789 @@ int jobScheduling(vector&lt;int&gt;&amp; startTime, vector&lt;int&gt;&amp; endTi
     <p class="cx"><b>Complexity:</b> O(n log n) time · O(n) space.</p>
   </section>
 </section>
+<section class="chapter" id="t10">
+  <h2><span class="num">10</span> Greedy &amp; Intervals</h2>
+  <p class="tagline">Sort first, then prove one pass is enough — greedy without a proof is just a guess.</p>
+  <div class="card"><p><b>What this topic trains.</b> Almost every greedy problem here starts with a sort, and the sort key *is* the insight: by end time for interval scheduling, by ratio for fractional resources, by deadline for course scheduling. Intervals are their own family (merge, insert, cover, shoot, count overlaps). The hard tier adds a second structure on top of the greedy sweep — a heap that can undo a choice, or a binary search that turns a feasibility check into an answer.</p>
+<p class="small muted">Ordering: easy 1–6 are single sorts with one pass; medium 1–2 are the jump-game reach family, 3–5 are interval merging and insertion, 6–7 are circular sweeps and last-occurrence cuts, 8–10 are schedules and exchange arguments, 11–12 are coverage counting; hard 1–3 are two-pass and deadline arguments, 4–6 are heaps that undo earlier choices, 7–9 combine greedy with binary search or sorting proofs, 10–12 are the hardest assignment and window problems.</p></div>
+  <section class="sub" id="assign-cookies">
+    <h3><span class="pn">E1</span> Assign Cookies <span class="pill">Easy</span> <span class="muted small">· sort both sides, match the smallest that fits</span></h3>
+    <p><b>Problem.</b> Each child i wants a cookie of size at least g[i], and each cookie j has size s[j] and can be given to at most one child. Return the maximum number of content children.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  g = [1,2,3], s = [1,1]
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  g = [1,2], s = [1,2,3]
+Output: 2</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of children, cookies &lt;= 3 · 10^4; 1 &lt;= g[i], s[j] &lt;= 2^31 - 1; a cookie satisfies one child.</p>
+    <p><b>Approach.</b> Sort both lists. Offer the smallest unassigned cookie to the least demanding unassigned child: if it fits, both advance; if not, the cookie is too small for *everyone* and can be skipped. Never giving a large cookie where a small one works is what keeps the matching maximal.</p>
+    <pre><code>// Two pointers on sorted lists: smallest cookie to least demanding child
+int findContentChildren(vector&lt;int&gt;&amp; g, vector&lt;int&gt;&amp; s) {
+    sort(g.begin(), g.end());
+    sort(s.begin(), s.end());
+    int child = 0, cookie = 0;
+    while (child &lt; (int)g.size() &amp;&amp; cookie &lt; (int)s.size()) {
+        if (s[cookie] &gt;= g[child]) child++;      // this cookie satisfies the child
+        cookie++;                                // either way, the cookie is gone
+    }
+    return child;
+}   // O(n log n + m log m) time · O(1) extra space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n + m log m) time · O(1) beyond the sorts space.</p>
+  </section>
+  <section class="sub" id="lemonade-change">
+    <h3><span class="pn">E2</span> Lemonade Change <span class="pill">Easy</span> <span class="muted small">· greedy change-making with limited denominations</span></h3>
+    <p><b>Problem.</b> Each lemonade costs 5 and customers pay with 5, 10 or 20 in order. Return whether every customer can be given correct change from the notes collected so far.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  bills = [5,5,5,10,20]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  bills = [5,5,10,10,20]
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= bills.length &lt;= 10^5; bills[i] is 5, 10 or 20; change is given in the order customers arrive.</p>
+    <p><b>Approach.</b> Only the counts of 5s and 10s matter, since 20s are never handed back. The one real decision is for a 20: prefer giving a 10 plus a 5, because 5s are the more flexible note and using three of them starves later customers.</p>
+    <pre><code>// Track 5s and 10s; for a 20 prefer 10 + 5 over three 5s
+bool lemonadeChange(vector&lt;int&gt;&amp; bills) {
+    int fives = 0, tens = 0;
+    for (int b : bills) {
+        if (b == 5) fives++;
+        else if (b == 10) { if (!fives) return false; fives--; tens++; }
+        else {
+            if (tens &amp;&amp; fives) { tens--; fives--; }        // best use of a 10
+            else if (fives &gt;= 3) fives -= 3;               // only if forced
+            else return false;
+        }
+    }
+    return true;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="largest-perimeter-triangle">
+    <h3><span class="pn">E3</span> Largest Perimeter Triangle <span class="pill">Easy</span> <span class="muted small">· sort, then test only adjacent triples</span></h3>
+    <p><b>Problem.</b> Given side lengths, choose three that form a triangle with the largest perimeter, and return that perimeter or 0 if none exists.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [2,1,2]
+Output: 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,2,1,10]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 3 &lt;= nums.length &lt;= 10^4; 1 &lt;= nums[i] &lt;= 10^6; a triangle needs a + b &gt; c.</p>
+    <p><b>Approach.</b> Sort the sides. For a fixed largest side c, the best pair of smaller sides is the two just below it, so a single backward scan over adjacent triples suffices: the first triple satisfying a + b &gt; c is the answer, because any smaller pair gives a shorter perimeter and any larger c was already rejected.</p>
+    <pre><code>// Sorted, the best triple is always three adjacent sides
+int largestPerimeter(vector&lt;int&gt;&amp; nums) {
+    sort(nums.begin(), nums.end());
+    for (int i = nums.size() - 1; i &gt;= 2; i--)
+        if (nums[i-2] + nums[i-1] &gt; nums[i])      // the triangle inequality
+            return nums[i-2] + nums[i-1] + nums[i];
+    return 0;                                     // no triple works
+}   // O(n log n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="can-place-flowers">
+    <h3><span class="pn">E4</span> Can Place Flowers <span class="pill">Easy</span> <span class="muted small">· greedy planting with a look-ahead rule</span></h3>
+    <p><b>Problem.</b> Given a flowerbed where 1 means planted and 0 means empty, and flowers cannot be adjacent, decide whether n new flowers can be planted.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  flowerbed = [1,0,0,0,1], n = 1
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  flowerbed = [1,0,0,0,1], n = 2
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= flowerbed.length &lt;= 2 · 10^4; flowerbed[i] is 0 or 1; no two planted flowers are adjacent initially.</p>
+    <p><b>Approach.</b> Scan left to right and plant whenever the current cell and both neighbours are empty, treating the space beyond each end as empty. Planting as early as possible never blocks a later slot, because any valid later slot needs its own left neighbour empty too.</p>
+    <pre><code>// Plant greedily; the ends count as empty space
+bool canPlaceFlowers(vector&lt;int&gt;&amp; bed, int n) {
+    int len = bed.size();
+    for (int i = 0; i &lt; len &amp;&amp; n &gt; 0; i++) {
+        if (bed[i]) continue;
+        bool leftFree = (i == 0) || bed[i-1] == 0;
+        bool rightFree = (i == len - 1) || bed[i+1] == 0;
+        if (leftFree &amp;&amp; rightFree) { bed[i] = 1; n--; }   // plant here
+    }
+    return n == 0;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="maximum-units-on-a-truck">
+    <h3><span class="pn">E5</span> Maximum Units on a Truck <span class="pill">Easy</span> <span class="muted small">· sort by value density, fill the container</span></h3>
+    <p><b>Problem.</b> Each box type has a count and a number of units per box. Load at most truckSize boxes, maximising the total units.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  boxTypes = [[1,3],[2,2],[3,1]], truckSize = 4
+Output: 8</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  boxTypes = [[5,10],[2,5],[4,7],[3,9]], truckSize = 10
+Output: 91</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of box types &lt;= 1000; 1 &lt;= boxes per type, units per box &lt;= 1000; the truck holds any mix of types.</p>
+    <p><b>Approach.</b> This is the fractional knapsack with all-or-nothing boxes, and the exchange argument is short: if a lower-density box is loaded while a higher-density one is left behind, swapping them can only help. Sort by density and take whole types until the truck fills.</p>
+    <pre><code>// Sort by units per box; take whole types until the truck is full
+int maximumUnits(vector&lt;vector&lt;int&gt;&gt;&amp; boxTypes, int truckSize) {
+    sort(boxTypes.begin(), boxTypes.end(),
+         [](const vector&lt;int&gt;&amp; a, const vector&lt;int&gt;&amp; b) { return a[1] &gt; b[1]; });
+    int total = 0;
+    for (auto&amp; b : boxTypes) {
+        if (truckSize == 0) break;
+        int take = min(truckSize, b[0]);         // as many as still fit
+        total += take * b[1];
+        truckSize -= take;
+    }
+    return total;
+}   // O(t log t) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(t log t) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="minimum-number-of-moves-to-seat-everyone">
+    <h3><span class="pn">E6</span> Minimum Number of Moves to Seat Everyone <span class="pill">Easy</span> <span class="muted small">· sort both arrays, pair them up</span></h3>
+    <p><b>Problem.</b> There are n seats and n students at given positions. Moving a student one position costs one move. Seat everyone with the fewest total moves.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  seats = [3,1,5], students = [2,7,4]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  seats = [4,1,5,9], students = [1,3,2,6]
+Output: 7</code></pre></div>
+    <p class="cons"><b>Constraints:</b> n == seats.length == students.length; 1 &lt;= n &lt;= 100; 1 &lt;= positions &lt;= 100.</p>
+    <p><b>Approach.</b> Sort both arrays and pair the k-th smallest seat with the k-th smallest student. If two students crossed over in the pairing, uncrossing them never increases the total distance on a line — the standard exchange argument for matching on a line.</p>
+    <pre><code>// Pair sorted seats with sorted students: crossing pairs never help
+int minMovesToSeat(vector&lt;int&gt;&amp; seats, vector&lt;int&gt;&amp; students) {
+    sort(seats.begin(), seats.end());
+    sort(students.begin(), students.end());
+    int moves = 0;
+    for (int i = 0; i &lt; (int)seats.size(); i++)
+        moves += abs(seats[i] - students[i]);
+    return moves;
+}   // O(n log n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="jump-game">
+    <h3><span class="pn">M1</span> Jump Game <span class="pill">Medium</span> <span class="muted small">· farthest reach so far</span></h3>
+    <p><b>Problem.</b> From position i you may jump up to nums[i] steps forward. Starting at index 0, decide whether the last index is reachable.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [2,3,1,1,4]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [3,2,1,0,4]
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 10^4; 0 &lt;= nums[i] &lt;= 10^5; the first position is always reachable.</p>
+    <p><b>Approach.</b> Track the farthest index reachable so far. Scanning left to right, the moment the current index passes that frontier the game is lost — no earlier position can carry you further. Otherwise the answer is simply whether the frontier covers the last index.</p>
+    <pre><code>// Track the farthest reachable index; stop if you fall behind it
+bool canJump(vector&lt;int&gt;&amp; nums) {
+    int reach = 0;
+    for (int i = 0; i &lt; (int)nums.size(); i++) {
+        if (i &gt; reach) return false;             // this index is unreachable
+        reach = max(reach, i + nums[i]);         // extend the frontier
+        if (reach &gt;= (int)nums.size() - 1) return true;
+    }
+    return true;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="jump-game-ii">
+    <h3><span class="pn">M2</span> Jump Game II <span class="pill">Medium</span> <span class="muted small">· greedy layers (BFS by reach)</span></h3>
+    <p><b>Problem.</b> Return the minimum number of jumps needed to reach the last index, where each jump may cover at most nums[i] positions.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [2,3,1,1,4]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [2,3,0,1,4]
+Output: 2</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 10^4; 0 &lt;= nums[i] &lt;= 1000; the last index is always reachable.</p>
+    <p><b>Approach.</b> Instead of a jump-by-jump BFS, sweep the whole band of positions reachable with the current number of jumps and record how far that band can extend. The frontier update *is* one level of the BFS, giving the level count in a single pass.</p>
+    <pre><code>// Sweep each BFS layer: current reach, and how far this layer extends
+int jump(vector&lt;int&gt;&amp; nums) {
+    int jumps = 0, end = 0, farthest = 0;
+    for (int i = 0; i &lt; (int)nums.size() - 1; i++) {
+        farthest = max(farthest, i + nums[i]);   // the whole layer's reach
+        if (i == end) {                          // the layer is exhausted
+            jumps++;                             // one more jump is needed
+            end = farthest;                      // start the next layer
+        }
+    }
+    return jumps;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="merge-intervals">
+    <h3><span class="pn">M3</span> Merge Intervals <span class="pill">Medium</span> <span class="muted small">· sort by start, fuse overlapping runs</span></h3>
+    <p><b>Problem.</b> Merge all overlapping intervals and return the non-overlapping intervals that cover the same ranges.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  intervals = [[1,3],[2,6],[8,10],[15,18]]
+Output: [[1,6],[8,10],[15,18]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  intervals = [[1,4],[4,5]]
+Output: [[1,5]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= intervals.length &lt;= 10^4; 0 &lt;= start &lt;= end &lt;= 10^4; touching intervals count as overlapping.</p>
+    <p><b>Approach.</b> Sorting by start means overlaps can only happen with the interval currently being built. If the next start falls inside it, extend the end; otherwise the current interval is final. One pass after the sort is enough — no comparisons with earlier intervals.</p>
+    <pre><code>// Sort by start; only the interval being built can still overlap
+vector&lt;vector&lt;int&gt;&gt; merge(vector&lt;vector&lt;int&gt;&gt;&amp; intervals) {
+    sort(intervals.begin(), intervals.end());
+    vector&lt;vector&lt;int&gt;&gt; out;
+    for (auto&amp; cur : intervals) {
+        if (!out.empty() &amp;&amp; cur[0] &lt;= out.back()[1])
+            out.back()[1] = max(out.back()[1], cur[1]);   // extend the run
+        else
+            out.push_back(cur);                           // start a new run
+    }
+    return out;
+}   // O(n log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(n) for the output space.</p>
+  </section>
+  <section class="sub" id="non-overlapping-intervals">
+    <h3><span class="pn">M4</span> Non-overlapping Intervals <span class="pill">Medium</span> <span class="muted small">· interval scheduling by earliest end time</span></h3>
+    <p><b>Problem.</b> Remove the fewest intervals so the rest do not overlap. Return that minimum number of removals.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  intervals = [[1,2],[2,3],[3,4],[1,3]]
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  intervals = [[1,2],[1,2],[1,2]]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  intervals = [[1,2],[2,3]]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= intervals.length &lt;= 10^5; intervals[i] = [start, end]; touching intervals do not overlap.</p>
+    <p><b>Approach.</b> Equivalent to keeping the largest set of non-overlapping intervals, which the earliest-end-first rule solves: always keep the interval that finishes soonest, because it leaves the most room. Between two intervals that end together, take the one that starts earlier — it never blocks the other, while the reverse order does. Counting the kept intervals and subtracting gives the removals.</p>
+    <pre><code>// Keep the interval that ends first; it blocks the least
+int eraseOverlapIntervals(vector&lt;vector&lt;int&gt;&gt;&amp; intervals) {
+    sort(intervals.begin(), intervals.end(), [](const vector&lt;int&gt;&amp; a, const vector&lt;int&gt;&amp; b) {
+        return a[1] != b[1] ? a[1] &lt; b[1] : a[0] &lt; b[0];   // earliest end, then start
+    });
+    int kept = 0, lastEnd = INT_MIN;
+    for (auto&amp; iv : intervals)
+        if (iv[0] &gt;= lastEnd) {                  // no overlap with what we kept
+            kept++;
+            lastEnd = iv[1];
+        }
+    return intervals.size() - kept;
+}   // O(n log n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="insert-interval">
+    <h3><span class="pn">M5</span> Insert Interval <span class="pill">Medium</span> <span class="muted small">· three-phase linear walk</span></h3>
+    <p><b>Problem.</b> Insert a new interval into a sorted list of non-overlapping intervals, merging where needed, and return the result.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  intervals = [[1,3],[6,9]], newInterval = [2,5]
+Output: [[1,5],[6,9]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  intervals = [[1,2],[3,5],[6,7],[8,10],[12,16]], newInterval = [4,8]
+Output: [[1,2],[3,10],[12,16]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= intervals.length &lt;= 10^4; intervals are sorted by start and non-overlapping; the new interval may overlap many.</p>
+    <p><b>Approach.</b> Because the list is already sorted, the work splits into three runs: intervals entirely before the new one, a block that overlaps it (whose union is found by min of starts and max of ends), and everything after. The merge is done on the fly without any search.</p>
+    <pre><code>// Three phases: before, overlapping, after — all in one pass
+vector&lt;vector&lt;int&gt;&gt; insert(vector&lt;vector&lt;int&gt;&gt;&amp; intervals, vector&lt;int&gt;&amp; nw) {
+    vector&lt;vector&lt;int&gt;&gt; out;
+    int i = 0, n = intervals.size();
+    while (i &lt; n &amp;&amp; intervals[i][1] &lt; nw[0]) out.push_back(intervals[i++]);   // before
+    while (i &lt; n &amp;&amp; intervals[i][0] &lt;= nw[1]) {          // overlapping block
+        nw[0] = min(nw[0], intervals[i][0]);
+        nw[1] = max(nw[1], intervals[i][1]);
+        i++;
+    }
+    out.push_back(nw);
+    while (i &lt; n) out.push_back(intervals[i++]);         // after
+    return out;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) for the output space.</p>
+  </section>
+  <section class="sub" id="gas-station">
+    <h3><span class="pn">M6</span> Gas Station <span class="pill">Medium</span> <span class="muted small">· single pass with a resetting start</span></h3>
+    <p><b>Problem.</b> Station i gives gas[i] fuel and reaching station i+1 costs cost[i]. Starting with an empty tank at some station, return the index of a station from which the whole circle can be driven, or -1.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  gas = [1,2,3,4,5], cost = [3,4,5,1,2]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  gas = [2,3,4], cost = [3,4,3]
+Output: -1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= stations &lt;= 10^5; gas[i], cost[i] are non-negative; the answer is unique when it exists.</p>
+    <p><b>Approach.</b> Two facts make one pass enough: the trip is possible exactly when total gas covers total cost, and any start that runs dry cannot be the answer, nor can any station before it — so the search simply restarts after each failure.</p>
+    <pre><code>// Restart the candidate start whenever the tank runs dry
+int canCompleteCircuit(vector&lt;int&gt;&amp; gas, vector&lt;int&gt;&amp; cost) {
+    int total = 0, tank = 0, start = 0;
+    for (int i = 0; i &lt; (int)gas.size(); i++) {
+        int delta = gas[i] - cost[i];
+        total += delta;
+        tank += delta;
+        if (tank &lt; 0) {                          // cannot cross this gap from start
+            start = i + 1;                       // move the candidate forward
+            tank = 0;
+        }
+    }
+    return total &gt;= 0 ? start : -1;              // feasible only if the sum holds
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="partition-labels">
+    <h3><span class="pn">M7</span> Partition Labels <span class="pill">Medium</span> <span class="muted small">· last occurrence as the cut boundary</span></h3>
+    <p><b>Problem.</b> Split the string into as many parts as possible so that each letter appears in at most one part, and return the sizes of those parts.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "ababcbacadefegdehijhklij"
+Output: [9,7,8]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "eccbbbbdec"
+Output: [10]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 500; s contains lowercase English letters; parts are contiguous and cover the whole string.</p>
+    <p><b>Approach.</b> The last occurrence of a letter is the earliest position its part can end. Sweep forward keeping the farthest last occurrence seen so far; when the current index catches it, the part is complete and cannot affect anything to the right.</p>
+    <pre><code>// A part must reach the last occurrence of every letter inside it
+vector&lt;int&gt; partitionLabels(string s) {
+    int last[26];
+    for (int i = 0; i &lt; (int)s.size(); i++) last[s[i] - 'a'] = i;
+    vector&lt;int&gt; parts;
+    int start = 0, end = 0;
+    for (int i = 0; i &lt; (int)s.size(); i++) {
+        end = max(end, last[s[i] - 'a']);        // the part must stretch this far
+        if (i == end) {                          // every letter is contained now
+            parts.push_back(end - start + 1);
+            start = i + 1;
+        }
+    }
+    return parts;
+}   // O(n) time · O(1) extra space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) beyond the output space.</p>
+  </section>
+  <section class="sub" id="task-scheduler">
+    <h3><span class="pn">M8</span> Task Scheduler <span class="pill">Medium</span> <span class="muted small">· counting formula around the most frequent task</span></h3>
+    <p><b>Problem.</b> The CPU runs one task per interval, and equal tasks must be separated by at least n intervals of cooldown (which may be idle). Return the minimum number of intervals to finish all tasks.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  tasks = ["A","A","A","B","B","B"], n = 2
+Output: 8</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  tasks = ["A","C","A","B","D","B"], n = 1
+Output: 6</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  tasks = ["A","A","A","B","B","B"], n = 3
+Output: 10</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= tasks.length &lt;= 10^4; tasks[i] is an uppercase letter; 0 &lt;= n &lt;= 100.</p>
+    <p><b>Approach.</b> Line up the most frequent task with cooldown gaps after each copy: that frame is (maxFreq - 1) * (n + 1) plus however many tasks share the maximum frequency. If other tasks are numerous enough to fill every gap, idle time disappears and the answer is just the task count.</p>
+    <pre><code>// Frame the most frequent task, then check whether the gaps are all filled
+int leastInterval(vector&lt;char&gt;&amp; tasks, int n) {
+    int counts[26] = {0};
+    for (char t : tasks) counts[t - 'A']++;
+    int maxFreq = 0, maxCount = 0;
+    for (int c : counts) maxFreq = max(maxFreq, c);
+    for (int c : counts) if (c == maxFreq) maxCount++;
+    int framed = (maxFreq - 1) * (n + 1) + maxCount;
+    return max(framed, (int)tasks.size());       // enough tasks ⇒ no idle time
+}   // O(t) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(t) time · O(1) — 26 letters space.</p>
+  </section>
+  <section class="sub" id="queue-reconstruction-by-height">
+    <h3><span class="pn">M9</span> Queue Reconstruction by Height <span class="pill">Medium</span> <span class="muted small">· sort by one key, insert by the other</span></h3>
+    <p><b>Problem.</b> Each person is [h, k] where k is the number of people at least as tall standing in front. Rebuild one valid queue.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  people = [[7,0],[4,4],[7,1],[5,0],[6,1],[5,2]]
+Output: [[5,0],[7,0],[5,2],[6,1],[4,4],[7,1]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  people = [[6,0],[5,0],[4,0],[3,2],[2,2],[1,4]]
+Output: [[4,0],[5,0],[2,2],[3,2],[1,4],[6,0]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= people.length &lt;= 2000; 0 &lt;= h &lt;= 10^5; 0 &lt;= k &lt; people.length.</p>
+    <p><b>Approach.</b> Process people from tallest to shortest; ties with the smaller k first. Inserting each person at index k works because everyone already placed is at least as tall, so only their count matters — and the shorter people added later are invisible to the requirement.</p>
+    <pre><code>// Tallest first, insert at index k: later (shorter) people never count
+vector&lt;vector&lt;int&gt;&gt; reconstructQueue(vector&lt;vector&lt;int&gt;&gt;&amp; people) {
+    sort(people.begin(), people.end(), [](const vector&lt;int&gt;&amp; a, const vector&lt;int&gt;&amp; b) {
+        return a[0] == b[0] ? a[1] &lt; b[1] : a[0] &gt; b[0];   // tall first, small k first
+    });
+    vector&lt;vector&lt;int&gt;&gt; out;
+    for (auto&amp; p : people) out.insert(out.begin() + p[1], p);
+    return out;
+}   // O(n²) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) with list insertion time · O(n) space.</p>
+  </section>
+  <section class="sub" id="two-city-scheduling">
+    <h3><span class="pn">M10</span> Two City Scheduling <span class="pill">Medium</span> <span class="muted small">· exchange argument on the cost difference</span></h3>
+    <p><b>Problem.</b> Send exactly n people to city A and n to city B, where each person has a different cost for each city. Minimise the total cost.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  costs = [[10,20],[30,200],[400,50],[30,20]]
+Output: 110</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  costs = [[259,770],[448,54],[926,667],[184,139],[840,118],[577,469]]
+Output: 1859</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  costs = [[515,563],[451,713],[537,709],[343,819],[855,779],[457,60],[650,359],[631,42]]
+Output: 3086</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= costs.length &lt;= 100, even; 1 &lt;= costs[i][0], costs[i][1] &lt;= 1000; exactly half go to each city.</p>
+    <p><b>Approach.</b> Start by sending everyone to A. Switching person i to B changes the total by cost[i][1] - cost[i][0], so the best n switches are simply the n smallest differences. The exchange argument is one line, and the sort makes it concrete.</p>
+    <pre><code>// Switching a person from A to B changes the total by diff = b - a
+int twoCitySchedCost(vector&lt;vector&lt;int&gt;&gt;&amp; costs) {
+    sort(costs.begin(), costs.end(), [](const vector&lt;int&gt;&amp; x, const vector&lt;int&gt;&amp; y) {
+        return (x[1] - x[0]) &lt; (y[1] - y[0]);    // biggest savings from switching
+    });
+    int n = costs.size() / 2, total = 0;
+    for (int i = 0; i &lt; n; i++) total += costs[i][1] + costs[i + n][0];   // big savers to B
+    return total;
+}   // O(n log n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="minimum-number-of-arrows-to-burst-balloons">
+    <h3><span class="pn">M11</span> Minimum Number of Arrows to Burst Balloons <span class="pill">Medium</span> <span class="muted small">· interval stabbing by earliest end</span></h3>
+    <p><b>Problem.</b> Each balloon spans xstart to xend, and an arrow shot at x bursts every balloon containing x. Return the fewest arrows that burst all balloons.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  points = [[10,16],[2,8],[1,6],[7,12]]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  points = [[1,2],[3,4],[5,6],[7,8]]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  points = [[1,2],[2,3],[3,4],[4,5]]
+Output: 2</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= points.length &lt;= 10^5; 0 &lt;= xstart &lt;= xend &lt;= 10^9; arrows may be shot at any real position.</p>
+    <p><b>Approach.</b> Same earliest-end-first rule as interval scheduling: shoot at the end of the first unfinished balloon, burst everything that contains that point, and repeat. Shooting later can only lose balloons, so this is optimal.</p>
+    <pre><code>// Shoot at the end of the earliest finishing balloon
+int findMinArrowShots(vector&lt;vector&lt;int&gt;&gt;&amp; points) {
+    sort(points.begin(), points.end(),
+         [](const vector&lt;int&gt;&amp; a, const vector&lt;int&gt;&amp; b) { return a[1] &lt; b[1]; });
+    int arrows = 0;
+    long long shot = LLONG_MIN;
+    for (auto&amp; p : points)
+        if (p[0] &gt; shot) {                       // this balloon is not yet burst
+            arrows++;
+            shot = p[1];                         // shoot as far right as allowed
+        }
+    return arrows;
+}   // O(n log n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="car-pooling">
+    <h3><span class="pn">M12</span> Car Pooling <span class="pill">Medium</span> <span class="muted small">· sweep line with a running load</span></h3>
+    <p><b>Problem.</b> Trips are [numPassengers, from, to] — passengers leave at 'to'. With a fixed car capacity, decide whether every trip can be served.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  trips = [[2,1,5],[3,3,7]], capacity = 4
+Output: false</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  trips = [[2,1,5],[3,3,7]], capacity = 5
+Output: true</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= trips.length &lt;= 1000; 0 &lt;= from &lt; to &lt;= 1000; 1 &lt;= capacity &lt;= 10^5.</p>
+    <p><b>Approach.</b> Turn each trip into two events with a sign: passengers boarding add to the load, passengers alighting subtract. Sorting the events by location and keeping a running total is the sweep-line pattern that recurs in every load-over-time problem.</p>
+    <pre><code>// Turn trips into +/− events and sweep them in location order
+bool carPooling(vector&lt;vector&lt;int&gt;&gt;&amp; trips, int capacity) {
+    vector&lt;pair&lt;int,int&gt;&gt; events;                // (location, delta)
+    for (auto&amp; t : trips) {
+        events.push_back({t[1], t[0]});          // passengers board
+        events.push_back({t[2], -t[0]});         // passengers alight
+    }
+    sort(events.begin(), events.end());
+    int load = 0;
+    for (auto&amp; [pos, delta] : events) {
+        load += delta;
+        if (load &gt; capacity) return false;       // too heavy on this stretch
+    }
+    return true;
+}   // O(n log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="candy">
+    <h3><span class="pn">H1</span> Candy <span class="pill hot">Hard</span> <span class="muted small">· two passes around a peak constraint</span></h3>
+    <p><b>Problem.</b> Children stand in a line with ratings. Every child gets at least one candy, and a child with a higher rating than an immediate neighbour must get more candy than that neighbour. Return the fewest candies in total.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  ratings = [1,0,2]
+Output: 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  ratings = [1,2,2]
+Output: 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= ratings.length &lt;= 2 · 10^4; 0 &lt;= ratings[i] &lt;= 2 · 10^4; both neighbours' constraints must hold at once.</p>
+    <p><b>Approach.</b> A single pass can only see one direction. Sweep left to right enforcing the rising condition, then right to left enforcing the falling one, taking the larger of the two values per child. Each pass is locally forced, and the maximum of two forced bounds is the smallest total that satisfies both.</p>
+    <pre><code>// One pass for rising slopes, one for falling slopes, take the larger
+int candy(vector&lt;int&gt;&amp; ratings) {
+    int n = ratings.size();
+    vector&lt;int&gt; count(n, 1);                     // everyone gets at least one
+    for (int i = 1; i &lt; n; i++)
+        if (ratings[i] &gt; ratings[i-1]) count[i] = count[i-1] + 1;   // rising pass
+    for (int i = n - 2; i &gt;= 0; i--)
+        if (ratings[i] &gt; ratings[i+1]) count[i] = max(count[i], count[i+1] + 1);
+    return accumulate(count.begin(), count.end(), 0);
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="course-schedule-iii">
+    <h3><span class="pn">H2</span> Course Schedule III <span class="pill hot">Hard</span> <span class="muted small">· deadline sweep with a heap that undoes choices</span></h3>
+    <p><b>Problem.</b> Each course has a duration and a last day by which it must be finished; courses run one at a time. Return the maximum number of courses that can be completed.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  courses = [[100,200],[200,1300],[1000,1250],[2000,3200]]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  courses = [[1,2]]
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  courses = [[3,2],[4,3]]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of courses &lt;= 10^4; 1 &lt;= duration &lt;= lastDay &lt;= 10^4; courses cannot overlap.</p>
+    <p><b>Approach.</b> Sort by deadline and keep adding courses, tracking total time. Whenever the total overshoots the current deadline, drop the *longest* course taken so far: the count stays as high as possible and the freed time is the most you can recover. That undo step is what separates this from plain interval scheduling.</p>
+    <pre><code>// Add courses by deadline; when time overruns, drop the longest course
+int scheduleCourse(vector&lt;vector&lt;int&gt;&gt;&amp; courses) {
+    sort(courses.begin(), courses.end(),
+         [](const vector&lt;int&gt;&amp; a, const vector&lt;int&gt;&amp; b) { return a[1] &lt; b[1]; });
+    priority_queue&lt;int&gt; taken;                   // durations so far, longest on top
+    int time = 0;
+    for (auto&amp; c : courses) {
+        time += c[0];
+        taken.push(c[0]);
+        if (time &gt; c[1]) {                       // this deadline is missed
+            time -= taken.top();                 // undo the costliest choice
+            taken.pop();
+        }
+    }
+    return taken.size();
+}   // O(n log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="minimum-initial-energy-to-finish-tasks">
+    <h3><span class="pn">H3</span> Minimum Initial Energy to Finish Tasks <span class="pill hot">Hard</span> <span class="muted small">· exchange-argument sort by energy gap</span></h3>
+    <p><b>Problem.</b> Task i needs at least minimum[i] energy to start and consumes actual[i] while running. Return the smallest starting energy that finishes every task in some order.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  tasks = [[1,2],[2,4],[4,8]]
+Output: 8</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  tasks = [[1,3],[2,4],[10,11],[10,12],[8,9]]
+Output: 32</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of tasks &lt;= 10^5; 1 &lt;= actual[i] &lt;= minimum[i] &lt;= 10^4; energy only ever decreases.</p>
+    <p><b>Approach.</b> For two adjacent tasks i then j you need max(min[i], min[j] + actual[i]); swapping gives the mirror image, and comparing them shows the larger (minimum - actual) must come first. That single comparison sorts the whole schedule, after which one running sum gives the answer.</p>
+    <pre><code>// Big energy gap first: sort by (minimum - actual) descending
+int minimumEffort(vector&lt;vector&lt;int&gt;&gt;&amp; tasks) {
+    sort(tasks.begin(), tasks.end(), [](const vector&lt;int&gt;&amp; a, const vector&lt;int&gt;&amp; b) {
+        return (a[1] - a[0]) &gt; (b[1] - b[0]);    // largest headroom first
+    });
+    int spent = 0, need = 0;
+    for (auto&amp; t : tasks) {
+        spent += t[0];                           // energy used before this task
+        need = max(need, spent + t[1] - t[0]);   // enough to start it
+    }
+    return need;
+}   // O(n log n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="minimum-number-of-refueling-stops">
+    <h3><span class="pn">H4</span> Minimum Number of Refueling Stops <span class="pill hot">Hard</span> <span class="muted small">· lazy refuelling with a max-heap</span></h3>
+    <p><b>Problem.</b> A car starts with startFuel and must reach a target, with fuel stations at given positions and amounts. Return the fewest refuelling stops, or -1 if the target is unreachable.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  target = 1, startFuel = 1, stations = []
+Output: 0</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  target = 100, startFuel = 1, stations = [[10,100]]
+Output: -1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  target = 100, startFuel = 10, stations = [[10,60],[20,30],[30,30],[60,40]]
+Output: 2</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= target, startFuel &lt;= 10^9; 0 &lt;= stations.length &lt;= 500; stations are sorted by position.</p>
+    <p><b>Approach.</b> Pass every station reachable on the current fuel and remember it in a max-heap without deciding yet. When the fuel runs out, refuel from the *largest* remembered station — the decision that maximises range per stop. Deferring the choice is what makes the greedy correct rather than merely plausible.</p>
+    <pre><code>// Remember every reachable station; refuel from the largest when stuck
+int minRefuelStops(int target, int startFuel, vector&lt;vector&lt;int&gt;&gt;&amp; stations) {
+    priority_queue&lt;int&gt; reachable;               // fuel amounts passed so far
+    int stops = 0, i = 0, n = stations.size();
+    long long fuel = startFuel;
+    while (fuel &lt; target) {
+        while (i &lt; n &amp;&amp; stations[i][0] &lt;= fuel)  // can reach these without a stop
+            reachable.push(stations[i++][1]);
+        if (reachable.empty()) return -1;        // nothing left to burn
+        fuel += reachable.top();                 // refuel at the best station so far
+        reachable.pop();
+        stops++;
+    }
+    return stops;
+}   // O(n log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="maximum-performance-of-a-team">
+    <h3><span class="pn">H5</span> Maximum Performance of a Team <span class="pill hot">Hard</span> <span class="muted small">· sort by one factor, heap over the other</span></h3>
+    <p><b>Problem.</b> Choose at most k engineers. The team's performance is the sum of their speeds multiplied by the smallest efficiency in the team. Return the maximum performance modulo 10^9 + 7.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 6, speed = [2,10,3,1,5,8], efficiency = [5,4,3,9,7,2], k = 2
+Output: 60</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 6, speed = [2,10,3,1,5,8], efficiency = [5,4,3,9,7,2], k = 3
+Output: 68</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  n = 6, speed = [2,10,3,1,5,8], efficiency = [5,4,3,9,7,2], k = 4
+Output: 72</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; 1 &lt;= speed[i], efficiency[i] &lt;= 10^8; at most k engineers may be chosen.</p>
+    <p><b>Approach.</b> Sort by efficiency descending so that, as you sweep, the current engineer is always the least efficient one in any team that includes them — which fixes the multiplier. The question becomes the best speed sum for at most k engineers, kept by a min-heap that discards the slowest whenever it overflows.</p>
+    <pre><code>// Efficiency descending fixes the multiplier; the heap maximises the speed sum
+int maxPerformance(int n, vector&lt;int&gt;&amp; speed, vector&lt;int&gt;&amp; efficiency, int k) {
+    vector&lt;pair&lt;int,int&gt;&gt; eng(n);                // (efficiency, speed)
+    for (int i = 0; i &lt; n; i++) eng[i] = {efficiency[i], speed[i]};
+    sort(eng.rbegin(), eng.rend());
+    priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt; chosen;   // slowest on top
+    long long sum = 0, best = 0;
+    for (auto&amp; [eff, sp] : eng) {
+        sum += sp;
+        chosen.push(sp);
+        if ((int)chosen.size() &gt; k) { sum -= chosen.top(); chosen.pop(); }
+        best = max(best, sum * eff);             // eff is the team minimum here
+    }
+    return (int)(best % 1000000007LL);
+}   // O(n log n) time · O(k) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(k) space.</p>
+  </section>
+  <section class="sub" id="minimum-cost-to-hire-k-workers">
+    <h3><span class="pn">H6</span> Minimum Cost to Hire K Workers <span class="pill hot">Hard</span> <span class="muted small">· pay ratio sweep with a quality heap</span></h3>
+    <p><b>Problem.</b> Each worker has a quality and a minimum expected wage. Hired workers must be paid in proportion to their quality, at least their minimum. Return the cheapest total cost of hiring exactly k workers.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  quality = [10,20,5], wage = [70,50,30], k = 2
+Output: 105.00000</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  quality = [3,1,10,10,1], wage = [4,8,2,2,7], k = 3
+Output: 30.66667</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= k &lt;= n &lt;= 10^4; 1 &lt;= quality[i] &lt;= 10^4; 1 &lt;= wage[i] &lt;= 10^4.</p>
+    <p><b>Approach.</b> The pay rate is set by the strictest worker in the group, so sort by the required rate wage/quality. Sweeping in that order fixes the rate; the cheapest group at that rate uses the k smallest qualities, which a max-heap maintains as the sweep advances.</p>
+    <pre><code>// Sweep the required rate; keep the k smallest qualities in a max-heap
+double mincostToHireWorkers(vector&lt;int&gt;&amp; quality, vector&lt;int&gt;&amp; wage, int k) {
+    int n = quality.size();
+    vector&lt;int&gt; idx(n);
+    iota(idx.begin(), idx.end(), 0);
+    sort(idx.begin(), idx.end(), [&amp;](int a, int b) {          // by wage/quality
+        return (long long)wage[a] * quality[b] &lt; (long long)wage[b] * quality[a];
+    });
+    priority_queue&lt;int&gt; biggest;                 // largest quality on top
+    long long sum = 0;
+    double best = 1e18;
+    for (int i : idx) {
+        biggest.push(quality[i]);
+        sum += quality[i];
+        if ((int)biggest.size() &gt; k) { sum -= biggest.top(); biggest.pop(); }
+        if ((int)biggest.size() == k)
+            best = min(best, (double)wage[i] / quality[i] * sum);   // this rate
+    }
+    return best;
+}   // O(n log n) time · O(k) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(k) space.</p>
+  </section>
+  <section class="sub" id="ipo">
+    <h3><span class="pn">H7</span> IPO <span class="pill hot">Hard</span> <span class="muted small">· two heaps on capital and profit</span></h3>
+    <p><b>Problem.</b> With start capital w you may take up to k projects; project i needs capital[i] to start and gives profit[i]. Return the final capital when you always pick optimally.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  k = 2, w = 0, profits = [1,2,3], capital = [0,1,1]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  k = 3, w = 0, profits = [1,2,3], capital = [0,1,2]
+Output: 6</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= k &lt;= 10^5; 0 &lt;= w, capital[i] &lt;= 10^9; 1 &lt;= profits[i] &lt;= 10^4.</p>
+    <p><b>Approach.</b> Capital only grows, so a project that is affordable stays affordable. That means the affordable set can be maintained incrementally: a min-heap over capital releases projects as the bankroll rises, and a max-heap over profit picks the best of them each round.</p>
+    <pre><code>// Unlock projects by capital, then take the most profitable of those
+int findMaximizedCapital(int k, int w, vector&lt;int&gt;&amp; profits, vector&lt;int&gt;&amp; capital) {
+    int n = profits.size();
+    vector&lt;int&gt; idx(n);
+    iota(idx.begin(), idx.end(), 0);
+    sort(idx.begin(), idx.end(), [&amp;](int a, int b) { return capital[a] &lt; capital[b]; });
+    priority_queue&lt;int&gt; affordable;              // profits of projects we can start
+    int i = 0;
+    for (int step = 0; step &lt; k; step++) {
+        while (i &lt; n &amp;&amp; capital[idx[i]] &lt;= w)    // newly affordable projects
+            affordable.push(profits[idx[i++]]);
+        if (affordable.empty()) break;           // nothing left to invest in
+        w += affordable.top();                   // take the most profitable one
+        affordable.pop();
+    }
+    return w;
+}   // O(n log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="earliest-possible-day-of-full-bloom">
+    <h3><span class="pn">H8</span> Earliest Possible Day of Full Bloom <span class="pill hot">Hard</span> <span class="muted small">· sort by grow time, plant back to back</span></h3>
+    <p><b>Problem.</b> Flower i needs plantTime[i] consecutive days of planting and then growTime[i] days to bloom. Only one flower can be planted per day. Return the earliest day all flowers are blooming.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  plantTime = [1,4,3], growTime = [2,3,1]
+Output: 9</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  plantTime = [1,2,3,2], growTime = [2,1,2,1]
+Output: 9</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of flowers &lt;= 10^5; 1 &lt;= plantTime[i], growTime[i] &lt;= 10^4; planting is sequential, growing is parallel.</p>
+    <p><b>Approach.</b> Planting is the only serial resource, so the schedule should never idle: keep planting in some order. The exchange argument says the flower with the longest growth must be planted first, because a long growth period can overlap with later planting only if it starts early.</p>
+    <pre><code>// Longest growing flower first: growth overlaps the planting that follows
+int earliestFullBloom(vector&lt;int&gt;&amp; plantTime, vector&lt;int&gt;&amp; growTime) {
+    int n = plantTime.size();
+    vector&lt;int&gt; idx(n);
+    iota(idx.begin(), idx.end(), 0);
+    sort(idx.begin(), idx.end(), [&amp;](int a, int b) { return growTime[a] &gt; growTime[b]; });
+    int day = 0, answer = 0;
+    for (int i : idx) {
+        day += plantTime[i];                     // planted immediately after the last
+        answer = max(answer, day + growTime[i]);
+    }
+    return answer;
+}   // O(n log n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="minimum-number-of-taps-to-open-to-water-a-garden">
+    <h3><span class="pn">H9</span> Minimum Number of Taps to Open to Water a Garden <span class="pill hot">Hard</span> <span class="muted small">· taps become intervals, then greedy coverage</span></h3>
+    <p><b>Problem.</b> A garden spans [0, n], and the tap at position i waters [i - taps[i], i + taps[i]]. Return the fewest taps that water the whole garden, or -1.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 5, ranges = [3,4,1,1,0,0]
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 3, ranges = [0,0,0,0]
+Output: -1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^4; 0 &lt;= taps[i] &lt;= 100; coverage outside [0, n] is clipped.</p>
+    <p><b>Approach.</b> Each tap is an interval, so the question becomes covering [0, n] with the fewest intervals — the jump-game greedy. Sweep the intervals in order of left end, always extending the covered frontier as far right as possible with intervals that start inside it; if nothing extends it, coverage is impossible.</p>
+    <pre><code>// Taps are intervals; cover [0, n] with the fewest of them
+int minTaps(int n, vector&lt;int&gt;&amp; taps) {
+    vector&lt;pair&lt;int,int&gt;&gt; iv;                    // (left, right) coverage
+    for (int i = 0; i &lt;= n; i++) {
+        if (taps[i] == 0) continue;
+        iv.push_back({max(0, i - taps[i]), min(n, i + taps[i])});
+    }
+    sort(iv.begin(), iv.end());
+    int count = 0, covered = 0, i = 0, m = iv.size();
+    while (covered &lt; n) {
+        int farthest = covered;
+        while (i &lt; m &amp;&amp; iv[i].first &lt;= covered)  // any interval starting inside
+            farthest = max(farthest, iv[i++].second);
+        if (farthest == covered) return -1;      // nothing extends the frontier
+        count++;
+        covered = farthest;
+    }
+    return count;
+}   // O(n log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="maximum-number-of-tasks-you-can-assign">
+    <h3><span class="pn">H10</span> Maximum Number of Tasks You Can Assign <span class="pill hot">Hard</span> <span class="muted small">· binary search the count, then match k easiest tasks to k strongest workers</span></h3>
+    <p><b>Problem.</b> Task i needs tasks[i] strength. Each worker has a strength and does at most one task, and at most 'pills' workers may be given a boost of 'strength' before starting. Return the maximum number of tasks that can be completed.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  tasks = [3,2,1], workers = [0,3,3], pills = 1, strength = 1
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  tasks = [5,4], workers = [0,0,0], pills = 1, strength = 5
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  tasks = [10,15,30], workers = [0,10,10,10,10], pills = 3, strength = 10
+Output: 2</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= tasks.length, workers.length &lt;= 5 · 10^4; 1 &lt;= pills &lt;= tasks.length; 1 &lt;= strength &lt;= 10^9.</p>
+    <p><b>Approach.</b> If k tasks can be done at all, then the k *easiest* tasks can be done by the k *strongest* workers, so binary search k. The check walks the k chosen tasks from hardest to easiest and hands each one the *weakest* worker still able to do it: that keeps the strong workers free for the tasks below. A pill is spent only when no worker can manage the task unaided, and only on the weakest worker it can lift.</p>
+    <pre><code>// Binary search k; the check matches k easiest tasks to k strongest workers
+int maxTaskAssign(vector&lt;int&gt;&amp; tasks, vector&lt;int&gt;&amp; workers, int pills, int strength) {
+    sort(tasks.begin(), tasks.end());
+    sort(workers.begin(), workers.end());
+    int n = tasks.size(), m = workers.size();
+    auto feasible = [&amp;](int k) {
+        multiset&lt;int&gt; pool(workers.end() - k, workers.end());   // k strongest workers
+        int pillsLeft = pills;
+        for (int i = k - 1; i &gt;= 0; i--) {                      // hardest task first
+            auto fit = pool.lower_bound(tasks[i]);              // weakest that fits
+            if (fit != pool.end()) { pool.erase(fit); continue; }
+            if (pillsLeft) {
+                auto boosted = pool.lower_bound(tasks[i] - strength);
+                if (boosted != pool.end()) {                    // a pill lifts this one
+                    pool.erase(boosted);
+                    pillsLeft--;
+                    continue;
+                }
+            }
+            return false;                                       // nobody could manage it
+        }
+        return true;
+    };
+    int lo = 0, hi = min(n, m);
+    while (lo &lt; hi) {                                           // feasible(k) is monotone
+        int mid = (lo + hi + 1) / 2;
+        if (feasible(mid)) lo = mid; else hi = mid - 1;
+    }
+    return lo;
+}   // O((t + w) log w + log(min) · k log k) time · O(k) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O((t + w) log w + log(min(t, w)) · k log k) time · O(k) space.</p>
+  </section>
+  <section class="sub" id="rearrange-string-k-distance-apart">
+    <h3><span class="pn">H11</span> Rearrange String k Distance Apart <span class="pill hot">Hard</span> <span class="muted small">· most frequent first with a cooldown queue</span></h3>
+    <p><b>Problem.</b> Rearrange the string so that equal characters are at least k positions apart. Return any valid arrangement, or the empty string if none exists.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "aabbcc", k = 3
+Output: abcabc</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "aaabc", k = 3
+Output: </code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  s = "aaadbbcc", k = 2
+Output: abacbdca</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 3 · 10^4; 1 &lt;= k &lt;= s.length; s contains lowercase English letters.</p>
+    <p><b>Approach.</b> Place the most frequent remaining character at each position — it is the one that runs out of room first. A character just used must sit out the next k-1 positions, which a small queue models exactly: hold the last k placed characters and release the oldest one back into the heap before choosing again.</p>
+    <pre><code>// Most frequent first, with the last k characters held in a queue
+string rearrangeString(string s, int k) {
+    if (k &lt;= 1) return s;
+    int counts[26] = {0};
+    for (char c : s) counts[c - 'a']++;
+    priority_queue&lt;pair&lt;int,char&gt;&gt; pq;            // (remaining count, character)
+    for (int c = 0; c &lt; 26; c++) if (counts[c]) pq.push({counts[c], (char)('a' + c)});
+    queue&lt;pair&lt;int,char&gt;&gt; cooldown;               // placed within the last k steps
+    string out;
+    for (int step = 0; step &lt; (int)s.size(); step++) {
+        if ((int)cooldown.size() == k) {          // the character k steps back returns
+            auto back = cooldown.front(); cooldown.pop();
+            if (back.first &gt; 0) pq.push(back);
+        }
+        if (pq.empty()) return "";                // no character is far enough away
+        auto [cnt, ch] = pq.top(); pq.pop();
+        out += ch;
+        cooldown.push({cnt - 1, ch});             // sits out the next k-1 positions
+    }
+    return out;
+}   // O(n log 26) time · O(k + 26) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log 26) time · O(k + 26) space.</p>
+  </section>
+  <section class="sub" id="smallest-range-covering-elements-from-k-lists">
+    <h3><span class="pn">H12</span> Smallest Range Covering Elements from K Lists <span class="pill hot">Hard</span> <span class="muted small">· merge the lists, then slide a window</span></h3>
+    <p><b>Problem.</b> Each of the k sorted lists must contribute at least one element to the chosen range [a, b]. Return the smallest such range, breaking ties by the smallest a.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [[4,10,15,24,26],[0,9,12,20],[5,18,22,30]]
+Output: [20,24]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [[1,2,3],[1,2,3],[1,2,3]]
+Output: [1,1]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= k &lt;= 3500; 1 &lt;= total elements &lt;= 5 · 10^4; each list is sorted ascending.</p>
+    <p><b>Approach.</b> Merge everything into one sorted list while remembering which list each value came from. A window covering all k lists has its range fixed by its two ends, so a sliding window that shrinks from the left whenever all lists are covered finds the minimum — the same pattern as the smallest substring problems.</p>
+    <pre><code>// Merge with list tags, then shrink a window until some list is uncovered
+vector&lt;int&gt; smallestRange(vector&lt;vector&lt;int&gt;&gt;&amp; nums) {
+    vector&lt;pair&lt;int,int&gt;&gt; all;                   // (value, list index)
+    for (int i = 0; i &lt; (int)nums.size(); i++)
+        for (int v : nums[i]) all.push_back({v, i});
+    sort(all.begin(), all.end());
+    int k = nums.size();
+    vector&lt;int&gt; cnt(k, 0);
+    int covered = 0, left = 0;
+    int bestL = all.front().first, bestR = all.back().first;
+    for (int right = 0; right &lt; (int)all.size(); right++) {
+        if (cnt[all[right].second]++ == 0) covered++;       // new list represented
+        while (covered == k) {                   // every list is inside: try shrinking
+            if (all[right].first - all[left].first &lt; bestR - bestL) {
+                bestL = all[left].first;
+                bestR = all[right].first;
+            }
+            if (--cnt[all[left].second] == 0) covered--;
+            left++;
+        }
+    }
+    return {bestL, bestR};
+}   // O(N log N) time · O(N + k) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(N log N) time · O(N + k) space.</p>
+  </section>
+</section>
 
   </main>
 </div>
 
 <footer>
-  <p><b>C++ bank</b> — 270 problems across 9 topics, with complete solutions in
+  <p><b>C++ bank</b> — 300 problems across 10 topics, with complete solutions in
   C++17/20/23 solutions.</p>
   <p class="small">Same problems in every language:
     <a href="cpp-leetcode.html">C++</a> · <a href="java-leetcode.html">Java</a> · <a href="python-leetcode.html">Python</a>
