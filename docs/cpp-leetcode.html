@@ -829,12 +829,824 @@ double findMedianSortedArrays(vector&lt;int&gt;&amp; A, vector&lt;int&gt;&amp; B
     <p class="cx"><b>Complexity:</b> O(log(min(m, n))) time · O(1) space.</p>
   </section>
 </section>
+<section class="chapter" id="t02">
+  <h2><span class="num">2</span> Two Pointers &amp; Sliding Window</h2>
+  <p class="tagline">One pass with two indices instead of two nested loops — the single highest-yield pattern in interviews.</p>
+  <div class="card"><p><b>What this topic trains.</b> Recognising when a window or a pair of pointers can replace an O(n²) search: monotone predicates for windows, sorted-order arguments for opposite-end pointers, and the counting structures that make a window's state updatable in O(1) per step.</p>
+<p class="small muted">Ordering: easy 1–6 are fixed windows and opposite-end pointers on sorted data; medium 1–3 are variable windows with one rule, 4–6 extend opposite-end pointers to k-sum, 7–9 add a counting structure to the window, 10–12 are window counting and greedy two-pointer merge; hard 1–4 are the classic advanced windows, 5–8 need a second structure or a proof, 9–12 are competition-level variants.</p></div>
+  <section class="sub" id="two-sum-sorted">
+    <h3><span class="pn">E1</span> Two Sum in a Sorted Array <span class="pill">Easy</span> <span class="muted small">· opposite-end pointers</span></h3>
+    <p><b>Problem.</b> Given a 1-indexed array sorted in non-decreasing order, return the two indices (1-based, smaller first) of the values that add up to <code>target</code>. Exactly one solution exists and you may not use the same element twice.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [2,7,11,15], target = 9
+Output: [1,2]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [2,3,4], target = 6
+Output: [1,3]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= n &lt;= 3 * 10^4; the array is sorted ascending; exactly one valid pair exists.</p>
+    <p><b>Approach.</b> Start with the smallest and largest values. If their sum is too small, no partner for the smallest value can work (every other value is larger), so move the left pointer; if too large, move the right. The sorted order is what turns an O(n²) pair search into O(n) — this argument is the heart of every two-pointer solution.</p>
+    <pre><code>// Sorted input: the pointer move is justified by the order
+vector&lt;int&gt; twoSumSorted(const vector&lt;int&gt;&amp; a, int target) {
+    int i = 0, j = (int)a.size() - 1;
+    while (i &lt; j) {
+        int sum = a[i] + a[j];
+        if (sum == target) return {i + 1, j + 1};   // 1-based indices
+        if (sum &lt; target) i++;                      // need a bigger value
+        else j--;                                   // need a smaller value
+    }
+    return {};                                      // unreachable for valid input
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="remove-element-in-place">
+    <h3><span class="pn">E2</span> Remove All Occurrences of a Value In Place <span class="pill">Easy</span> <span class="muted small">· write pointer (slow/fast)</span></h3>
+    <p><b>Problem.</b> Remove every occurrence of <code>val</code> from the array in place and return the new length k. The first k elements must be the kept values; the order of the others does not matter.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [3,2,2,3], val = 3
+Output: k = 2, array starts [2,2]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [0,1,2,2,3,0,4,2], val = 2
+Output: k = 5, array starts [0,1,3,0,4]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= n &lt;= 100; 0 &lt;= a[i], val &lt;= 50.</p>
+    <p><b>Approach.</b> A slow pointer marks where the next kept value goes while a fast pointer scans. When the fast value is not <code>val</code>, copy it to the slow slot and advance both; otherwise advance only the fast pointer. One pass, no extra memory, and it works for the whole family of "remove/compact in place" tasks.</p>
+    <pre><code>// Slow pointer writes, fast pointer reads
+int removeElement(vector&lt;int&gt;&amp; a, int val) {
+    int w = 0;
+    for (int v : a) if (v != val) a[w++] = v;
+    return w;                       // a[0..w-1] holds the kept values
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="merge-two-sorted-arrays">
+    <h3><span class="pn">E3</span> Merge Two Sorted Arrays Into a New Array <span class="pill">Easy</span> <span class="muted small">· two read pointers, one write pointer</span></h3>
+    <p><b>Problem.</b> Given two sorted arrays, return a single sorted array containing all their elements (duplicates included).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [1,3,5], [2,4,6]
+Output: [1,2,3,4,5,6]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [], [1,2]
+Output: [1,2]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= m, n &lt;= 10^4; both inputs are sorted ascending.</p>
+    <p><b>Approach.</b> Advance the pointer of the array holding the smaller current value and append that value. When one array is exhausted, append the whole remainder of the other. The two-pointer merge is also the engine inside merge sort and inside every "merge k sorted" problem.</p>
+    <pre><code>// Merge by always taking the smaller current head
+vector&lt;int&gt; mergeSorted(const vector&lt;int&gt;&amp; a, const vector&lt;int&gt;&amp; b) {
+    vector&lt;int&gt; out;
+    out.reserve(a.size() + b.size());
+    int i = 0, j = 0;
+    while (i &lt; (int)a.size() &amp;&amp; j &lt; (int)b.size())
+        out.push_back(a[i] &lt;= b[j] ? a[i++] : b[j++]);   // &lt;= keeps it stable
+    while (i &lt; (int)a.size()) out.push_back(a[i++]);
+    while (j &lt; (int)b.size()) out.push_back(b[j++]);
+    return out;
+}   // O(m+n) time · O(m+n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m + n) time · O(m + n) for the output space.</p>
+  </section>
+  <section class="sub" id="is-subsequence">
+    <h3><span class="pn">E4</span> Is One String a Subsequence of Another? <span class="pill">Easy</span> <span class="muted small">· one pointer per string</span></h3>
+    <p><b>Problem.</b> Return true if <code>s</code> is a subsequence of <code>t</code>, meaning every character of <code>s</code> appears in <code>t</code> in the same relative order (not necessarily contiguously).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "abc", t = "ahbgdc"
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "axc", t = "ahbgdc"
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= length(s) &lt;= 100; 0 &lt;= length(t) &lt;= 10^4.</p>
+    <p><b>Approach.</b> Walk <code>t</code> with one pointer and <code>s</code> with another: every time the characters match, advance the <code>s</code> pointer. If it reaches the end of <code>s</code>, the answer is true. This is the "greedy matching" form of two pointers and generalises to merging, diffing and edit-distance problems.</p>
+    <pre><code>// Greedy: match s left to right inside t
+bool isSubsequence(const string&amp; s, const string&amp; t) {
+    int i = 0;
+    for (int j = 0; i &lt; (int)s.size() &amp;&amp; j &lt; (int)t.size(); j++)
+        if (s[i] == t[j]) i++;              // matched one more character of s
+    return i == (int)s.size();
+}   // O(|t|) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(|t|) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="max-average-subarray-k">
+    <h3><span class="pn">E5</span> Maximum Average Subarray of Fixed Size k <span class="pill">Easy</span> <span class="muted small">· fixed-size sliding window</span></h3>
+    <p><b>Problem.</b> Given an array and an integer k, return the maximum average of any contiguous subarray of length exactly k.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [1,12,-5,-6,50,3], k = 4
+Output: 12.75   (from [12,-5,-6,50])</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [5], k = 1
+Output: 5.0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= k &lt;= n &lt;= 10^5; -10^4 &lt;= a[i] &lt;= 10^4.</p>
+    <p><b>Approach.</b> Compute the first window's sum, then slide: add the incoming element and subtract the outgoing one. Never recompute the window from scratch. Track the best sum and divide once at the end (dividing inside the loop wastes time and adds rounding noise).</p>
+    <pre><code>// Slide the sum: add the entering element, remove the leaving one
+double findMaxAverage(const vector&lt;int&gt;&amp; a, int k) {
+    long long sum = 0;
+    for (int i = 0; i &lt; k; i++) sum += a[i];
+    long long best = sum;
+    for (int i = k; i &lt; (int)a.size(); i++) {
+        sum += a[i] - a[i - k];          // slide one step
+        best = max(best, sum);
+    }
+    return (double)best / k;             // divide once, at the end
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="squares-of-sorted-array">
+    <h3><span class="pn">E6</span> Squares of a Sorted Array, Also Sorted <span class="pill">Easy</span> <span class="muted small">· opposite-end pointers filling from the back</span></h3>
+    <p><b>Problem.</b> Given an array sorted in non-decreasing order (possibly containing negatives), return the array of squares, sorted in non-decreasing order, in O(n) time.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [-4,-1,0,3,10]
+Output: [0,1,9,16,100]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [-7,-3,2,3,11]
+Output: [4,9,9,49,121]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^4; -10^4 &lt;= a[i] &lt;= 10^4; the input is sorted ascending.</p>
+    <p><b>Approach.</b> The largest square comes from whichever end has the larger absolute value. Walk two pointers inward and fill the output from the back, so each step places the next-largest square. Squaring is not monotone across sign changes, which is why a single left-to-right pass fails.</p>
+    <pre><code>// Fill from the back: the biggest square is at one of the two ends
+vector&lt;int&gt; sortedSquares(const vector&lt;int&gt;&amp; a) {
+    int n = a.size();
+    vector&lt;int&gt; out(n);
+    int i = 0, j = n - 1;
+    for (int k = n - 1; k &gt;= 0; k--) {
+        long long li = (long long)a[i] * a[i], rj = (long long)a[j] * a[j];
+        if (li &gt; rj) { out[k] = (int)li; i++; }
+        else         { out[k] = (int)rj; j--; }
+    }
+    return out;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) for the output space.</p>
+  </section>
+  <section class="sub" id="longest-substring-no-repeat">
+    <h3><span class="pn">M1</span> Longest Substring Without Repeating Characters <span class="pill">Medium</span> <span class="muted small">· variable window + last-seen index map</span></h3>
+    <p><b>Problem.</b> Return the length of the longest substring of <code>s</code> that contains no repeated character.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  "abcabcbb"
+Output: 3   ("abc")</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  "bbbbb"
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  "pwwkew"
+Output: 3   ("wke")</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= length &lt;= 5 * 10^4; the string contains letters, digits, symbols and spaces.</p>
+    <p><b>Approach.</b> Grow the window with the right pointer. When the incoming character was last seen inside the current window, jump the left pointer just past that occurrence — one move, not a while loop — and update the last-seen table. Each index is touched twice, so the cost is linear.</p>
+    <pre><code>// Jump left past the previous occurrence of the entering character
+int lengthOfLongestSubstring(const string&amp; s) {
+    vector&lt;int&gt; last(256, -1);            // last index of each character
+    int left = 0, best = 0;
+    for (int right = 0; right &lt; (int)s.size(); right++) {
+        unsigned char c = s[right];
+        if (last[c] &gt;= left) left = last[c] + 1;   // shrink in one jump
+        last[c] = right;
+        best = max(best, right - left + 1);
+    }
+    return best;
+}   // O(n) time · O(1) space (fixed alphabet)</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(min(n, alphabet)) space.</p>
+  </section>
+  <section class="sub" id="min-size-subarray-sum">
+    <h3><span class="pn">M2</span> Minimum Size Subarray With Sum at Least Target <span class="pill">Medium</span> <span class="muted small">· variable window with a while-shrink</span></h3>
+    <p><b>Problem.</b> Given an array of positive integers and a target, return the length of the shortest contiguous subarray whose sum is at least <code>target</code>, or 0 if none exists.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  target = 7, [2,3,1,2,4,3]
+Output: 2   ([4,3])</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  target = 4, [1,4,4]
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  target = 11, [1,1,1,1,1,1,1,1]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; 1 &lt;= a[i] &lt;= 10^4; 1 &lt;= target &lt;= 10^9.</p>
+    <p><b>Approach.</b> All values are positive, so the window sum is monotone in its width: extending can only help, shrinking can only hurt. Expand on the right; while the sum is sufficient, record the length and shrink from the left. The positivity assumption is what makes the single pass correct.</p>
+    <pre><code>// Positive values -&gt; the sum is monotone in window width
+int minSubArrayLen(int target, const vector&lt;int&gt;&amp; a) {
+    long long sum = 0;
+    int left = 0, best = INT_MAX;
+    for (int right = 0; right &lt; (int)a.size(); right++) {
+        sum += a[right];
+        while (sum &gt;= target) {                     // the window is valid: try to shrink
+            best = min(best, right - left + 1);
+            sum -= a[left++];
+        }
+    }
+    return best == INT_MAX ? 0 : best;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="longest-substring-k-distinct">
+    <h3><span class="pn">M3</span> Longest Substring With At Most k Distinct Characters <span class="pill">Medium</span> <span class="muted small">· variable window + frequency map</span></h3>
+    <p><b>Problem.</b> Return the length of the longest substring that contains at most k distinct characters.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "eceba", k = 2
+Output: 3   ("ece")</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "aa", k = 1
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  s = "abcadcacacaca", k = 3
+Output: 8</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= length &lt;= 5 * 10^4; 0 &lt;= k &lt;= 50.</p>
+    <p><b>Approach.</b> This is the general template: maintain a frequency map for the window and shrink from the left while the window violates the rule (<code>map.size() &gt; k</code>). Deleting the entry when its count hits zero is what keeps <code>size()</code> meaningful — the classic bug is leaving zero-counts in the map.</p>
+    <pre><code>// The general variable-window template
+int lengthOfLongestSubstringKDistinct(const string&amp; s, int k) {
+    if (k == 0) return 0;
+    unordered_map&lt;char,int&gt; cnt;
+    int left = 0, best = 0;
+    for (int right = 0; right &lt; (int)s.size(); right++) {
+        cnt[s[right]]++;
+        while ((int)cnt.size() &gt; k) {                 // too many distinct characters
+            char c = s[left++];
+            if (--cnt[c] == 0) cnt.erase(c);          // remove the key, not just the count
+        }
+        best = max(best, right - left + 1);
+    }
+    return best;
+}   // O(n) time · O(k) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(k) space.</p>
+  </section>
+  <section class="sub" id="three-sum">
+    <h3><span class="pn">M4</span> 3Sum — All Unique Triples Summing to Zero <span class="pill">Medium</span> <span class="muted small">· sort + fix one, two-pointers the rest</span></h3>
+    <p><b>Problem.</b> Return all unique triples (a, b, c) from the array with a + b + c = 0. The solution set must not contain duplicate triples.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [-1,0,1,2,-1,-4]
+Output: [[-1,-1,2],[-1,0,1]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [0,0,0]
+Output: [[0,0,0]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  [1,2,-2]
+Output: []</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 3 &lt;= n &lt;= 3000; -10^5 &lt;= a[i] &lt;= 10^5.</p>
+    <p><b>Approach.</b> Sort, then fix the smallest element of each triple and solve the remaining two-sum with pointers. Two skips keep the output duplicate-free: skip equal first elements, and after finding a pair skip equal pointer values. Sorting costs O(n log n) but makes the duplicate handling trivial.</p>
+    <pre><code>// Sort, fix one element, two-pointer the remaining pair
+vector&lt;vector&lt;int&gt;&gt; threeSum(vector&lt;int&gt; a) {
+    sort(a.begin(), a.end());
+    int n = a.size();
+    vector&lt;vector&lt;int&gt;&gt; out;
+    for (int i = 0; i + 2 &lt; n; i++) {
+        if (i &gt; 0 &amp;&amp; a[i] == a[i - 1]) continue;        // skip duplicate first elements
+        if ((long long)a[i] + a[i + 1] + a[i + 2] &gt; 0) break;   // smallest possible triple already too big
+        int l = i + 1, r = n - 1;
+        while (l &lt; r) {
+            long long s = (long long)a[i] + a[l] + a[r];
+            if (s &lt; 0) l++;
+            else if (s &gt; 0) r--;
+            else {
+                out.push_back({a[i], a[l], a[r]});
+                while (l &lt; r &amp;&amp; a[l] == a[l + 1]) l++;   // skip duplicates of the second value
+                while (l &lt; r &amp;&amp; a[r] == a[r - 1]) r--;
+                l++; r--;
+            }
+        }
+    }
+    return out;
+}   // O(n^2) time · O(1) extra space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) time · O(1) besides the output space.</p>
+  </section>
+  <section class="sub" id="three-sum-closest">
+    <h3><span class="pn">M5</span> 3Sum Closest to a Target <span class="pill">Medium</span> <span class="muted small">· sort + pointers with a running best</span></h3>
+    <p><b>Problem.</b> Find the triple whose sum is closest to <code>target</code> and return that sum. Exactly one answer is guaranteed to be optimal.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [-1,2,1,-4], target = 1
+Output: 2   (-1 + 2 + 1)</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [0,0,0], target = 1
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 3 &lt;= n &lt;= 500; -10^3 &lt;= a[i] &lt;= 10^3; -10^4 &lt;= target &lt;= 10^4.</p>
+    <p><b>Approach.</b> Same skeleton as 3Sum, but there is no equality to stop at — instead keep the sum with the smallest absolute distance to the target, and move the pointers according to which side of the target the current sum falls on. Early exit is possible when the distance reaches zero.</p>
+    <pre><code>// Track the closest sum instead of an exact match
+int threeSumClosest(vector&lt;int&gt; a, int target) {
+    sort(a.begin(), a.end());
+    int n = a.size();
+    long long best = (long long)a[0] + a[1] + a[2];
+    for (int i = 0; i + 2 &lt; n; i++) {
+        int l = i + 1, r = n - 1;
+        while (l &lt; r) {
+            long long s = (long long)a[i] + a[l] + a[r];
+            if (llabs(s - target) &lt; llabs(best - target)) best = s;
+            if (s &lt; target) l++;
+            else if (s &gt; target) r--;
+            else return (int)s;                     // exact hit: nothing can be closer
+        }
+    }
+    return (int)best;
+}   // O(n^2) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="four-sum">
+    <h3><span class="pn">M6</span> 4Sum — Unique Quadruples Summing to Target <span class="pill">Medium</span> <span class="muted small">· two fixed loops + two pointers + duplicate skips</span></h3>
+    <p><b>Problem.</b> Return all unique quadruples (a, b, c, d) from the array whose sum equals <code>target</code>.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [1,0,-1,0,-2,2], target = 0
+Output: [[-2,-1,1,2],[-2,0,0,2],[-1,0,0,1]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [2,2,2,2,2], target = 8
+Output: [[2,2,2,2]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 200; -10^9 &lt;= a[i] &lt;= 10^9; -10^9 &lt;= target &lt;= 10^9.</p>
+    <p><b>Approach.</b> Extend the 3Sum recipe by one level: sort, fix the first two values with nested loops, then use two pointers for the remaining pair. Each loop needs its own duplicate skip, and all arithmetic must be done in 64-bit because values reach 10^9.</p>
+    <pre><code>// Two fixed loops + two pointers; 64-bit sums are mandatory
+vector&lt;vector&lt;int&gt;&gt; fourSum(vector&lt;int&gt; a, long long target) {
+    sort(a.begin(), a.end());
+    int n = a.size();
+    vector&lt;vector&lt;int&gt;&gt; out;
+    for (int i = 0; i + 3 &lt; n; i++) {
+        if (i &gt; 0 &amp;&amp; a[i] == a[i - 1]) continue;
+        for (int j = i + 1; j + 2 &lt; n; j++) {
+            if (j &gt; i + 1 &amp;&amp; a[j] == a[j - 1]) continue;
+            int l = j + 1, r = n - 1;
+            while (l &lt; r) {
+                long long s = (long long)a[i] + a[j] + a[l] + a[r];
+                if (s &lt; target) l++;
+                else if (s &gt; target) r--;
+                else {
+                    out.push_back({a[i], a[j], a[l], a[r]});
+                    while (l &lt; r &amp;&amp; a[l] == a[l + 1]) l++;
+                    while (l &lt; r &amp;&amp; a[r] == a[r - 1]) r--;
+                    l++; r--;
+                }
+            }
+        }
+    }
+    return out;
+}   // O(n^3) time · O(1) extra space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n³) time · O(1) besides the output space.</p>
+  </section>
+  <section class="sub" id="character-replacement">
+    <h3><span class="pn">M7</span> Longest Repeating Character Replacement <span class="pill">Medium</span> <span class="muted small">· window + max-frequency bookkeeping</span></h3>
+    <p><b>Problem.</b> You may change at most k characters of a string to any uppercase letter. Return the length of the longest substring that can be made of a single repeated letter.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "ABAB", k = 2
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "AABABBA", k = 1
+Output: 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= length &lt;= 10^5; s consists of uppercase English letters; 0 &lt;= k &lt;= length.</p>
+    <p><b>Approach.</b> A window is feasible when <code>window length − count of its most frequent character ≤ k</code>, because only the non-majority characters need replacing. Track the maximum frequency seen so far and never let the window shrink — the answer only grows, so the left pointer advances at most once per step, keeping the pass linear and the code branch-free.</p>
+    <pre><code>// Feasible when  length - maxFrequency  &lt;= k
+int characterReplacement(const string&amp; s, int k) {
+    int cnt[26] = {0};
+    int left = 0, maxFreq = 0, best = 0;
+    for (int right = 0; right &lt; (int)s.size(); right++) {
+        maxFreq = max(maxFreq, ++cnt[s[right] - 'A']);
+        if (right - left + 1 - maxFreq &gt; k) cnt[s[left++] - 'A']--;   // window can never shrink below best
+        best = max(best, right - left + 1);
+    }
+    return best;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="permutation-in-string">
+    <h3><span class="pn">M8</span> Does s2 Contain a Permutation of s1? <span class="pill">Medium</span> <span class="muted small">· fixed window + letter counts</span></h3>
+    <p><b>Problem.</b> Return true if some contiguous substring of <code>s2</code> is a permutation of <code>s1</code> — that is, contains exactly the same multiset of characters.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s1 = "ab", s2 = "eidbaooo"
+Output: true   ("ba")</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s1 = "ab", s2 = "eidboaoo"
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= |s1|, |s2| &lt;= 10^4; both strings contain lowercase English letters.</p>
+    <p><b>Approach.</b> Slide a window of length |s1| over <code>s2</code> and compare character counts. Comparing 26 buckets per step is O(26n) — fine — or count how many buckets match and keep that number updated as characters enter and leave the window, which makes each step O(1).</p>
+    <pre><code>// Fixed window the size of s1; track how many buckets agree
+bool checkInclusion(const string&amp; s1, const string&amp; s2) {
+    int n1 = s1.size(), n2 = s2.size();
+    if (n1 &gt; n2) return false;
+    vector&lt;int&gt; need(26, 0), win(26, 0);
+    for (char c : s1) need[c - 'a']++;
+    for (int i = 0; i &lt; n1; i++) win[s2[i] - 'a']++;
+    int matches = 0;
+    for (int c = 0; c &lt; 26; c++) if (need[c] == win[c]) matches++;
+    for (int i = 0; ; i++) {
+        if (matches == 26) return true;
+        if (i + n1 &gt;= n2) break;
+        int in = s2[i + n1] - 'a', out = s2[i] - 'a';      // slide one step
+        if (++win[in] == need[in]) matches++;
+        else if (win[in] == need[in] + 1) matches--;
+        if (--win[out] == need[out]) matches++;
+        else if (win[out] == need[out] - 1) matches--;
+    }
+    return false;
+}   // O(|s2|) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(|s1| + |s2|) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="find-all-anagrams">
+    <h3><span class="pn">M9</span> Find All Anagram Start Indices <span class="pill">Medium</span> <span class="muted small">· fixed window + count comparison, collecting all matches</span></h3>
+    <p><b>Problem.</b> Return a list of all start indices in <code>s</code> where a substring is an anagram of <code>p</code>.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "cbaebabacd", p = "abc"
+Output: [0,6]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "abab", p = "ab"
+Output: [0,1,2]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= |s|, |p| &lt;= 3 * 10^4; both strings contain lowercase English letters.</p>
+    <p><b>Approach.</b> Identical to the permutation check, except you must not stop at the first match — collect every valid window position. A single differing count is enough to invalidate a window, so the standard trick is to track a <code>diff</code> counter that reaches zero only for true anagrams.</p>
+    <pre><code>// Sliding counts; `diff` counts buckets that still disagree
+vector&lt;int&gt; findAnagrams(const string&amp; s, const string&amp; p) {
+    vector&lt;int&gt; out;
+    int n = s.size(), m = p.size();
+    if (m &gt; n) return out;
+    vector&lt;int&gt; cnt(26, 0);
+    for (char c : p) cnt[c - 'a']++;
+    int diff = 0;
+    for (int c = 0; c &lt; 26; c++) if (cnt[c] != 0) diff++;      // buckets that need fixing
+    for (int i = 0; i &lt; n; i++) {
+        int in = s[i] - 'a';
+        if (cnt[in] == 0) diff++;                              // this bucket becomes wrong
+        cnt[in]--;
+        if (cnt[in] == 0) diff--;                              // ... and this one becomes right
+        if (i &gt;= m) {
+            int out = s[i - m] - 'a';
+            if (cnt[out] == 0) diff++;
+            cnt[out]++;
+            if (cnt[out] == 0) diff--;
+        }
+        if (diff == 0) out.push_back(i - m + 1);
+    }
+    return out;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(|s|) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="subarray-product-less-than-k">
+    <h3><span class="pn">M10</span> Count Subarrays With Product Less Than k <span class="pill">Medium</span> <span class="muted small">· variable window over a product (all values positive)</span></h3>
+    <p><b>Problem.</b> Count the contiguous subarrays of a positive-integer array whose product is strictly less than k.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [10,5,2,6], k = 100
+Output: 8   (the whole array, plus [5,2], [2,6], [5,2,6] excluded variants)</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [1,2,3], k = 0
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 3 * 10^4; 1 &lt;= a[i] &lt;= 1000; 0 &lt;= k &lt;= 10^6.</p>
+    <p><b>Approach.</b> Slide a window whose product stays below k. Every time the window is valid, <b>all subarrays ending at <code>right</code> and starting anywhere from <code>left</code> to <code>right</code></b> are valid, so add <code>right - left + 1</code> in one go — counting them one by one would be quadratic. Guard k ≤ 1 up front, since a product of positive integers is at least 1.</p>
+    <pre><code>// Every valid window contributes (right - left + 1) subarrays
+long long numSubarrayProductLessThanK(const vector&lt;int&gt;&amp; a, int k) {
+    if (k &lt;= 1) return 0;
+    long long prod = 1, count = 0;
+    int left = 0;
+    for (int right = 0; right &lt; (int)a.size(); right++) {
+        prod *= a[right];
+        while (prod &gt;= k) prod /= a[left++];      // shrink until valid
+        count += right - left + 1;                // all subarrays ending at `right`
+    }
+    return count;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="boats-to-save-people">
+    <h3><span class="pn">M11</span> Boats to Save People (Greedy Two Pointers) <span class="pill">Medium</span> <span class="muted small">· sort + opposite-end greedy pairing</span></h3>
+    <p><b>Problem.</b> Each boat carries at most two people and has a weight limit. Return the minimum number of boats needed to carry everyone.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  people = [1,2], limit = 3
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  people = [3,2,2,1], limit = 3
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  people = [3,5,3,4], limit = 5
+Output: 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 5 * 10^4; 1 &lt;= people[i] &lt;= limit &lt;= 3 * 10^4.</p>
+    <p><b>Approach.</b> Sort, then pair the heaviest remaining person with the lightest if they fit. If they do not fit, the heaviest must travel alone — no lighter partner could help. Every step either places two people or guarantees one boat, so the greedy is optimal and the loop is linear after sorting.</p>
+    <pre><code>// Greedy: pair the heaviest with the lightest when they fit
+int numRescueBoats(vector&lt;int&gt; people, int limit) {
+    sort(people.begin(), people.end());
+    int i = 0, j = people.size() - 1, boats = 0;
+    while (i &lt;= j) {
+        if (people[i] + people[j] &lt;= limit) i++;   // they ride together
+        j--;                                       // the heaviest always leaves
+        boats++;
+    }
+    return boats;
+}   // O(n log n) time · O(1) extra space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(1) besides the sort space.</p>
+  </section>
+  <section class="sub" id="sorted-array-intersection-two">
+    <h3><span class="pn">M12</span> Intersection of Two Sorted Arrays <span class="pill">Medium</span> <span class="muted small">· two forward pointers with equal-advance on match</span></h3>
+    <p><b>Problem.</b> Given two arrays sorted in non-decreasing order, return their intersection (each value once, sorted ascending).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [1,2,2,1] sorted, [2,2]
+Output: [2]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [4,9,5] sorted, [9,4,9,8,4]
+Output: [4,9]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= m, n &lt;= 1000; 0 &lt;= a[i], b[i] &lt;= 1000.</p>
+    <p><b>Approach.</b> Advance the pointer of the smaller value; on equality emit the value (once, skipping repeats) and advance both. This is O(m + n) with no extra memory beyond the output — the set-based solution is O(m + n) too but allocates two hash tables, which matters for large inputs.</p>
+    <pre><code>// Advance the smaller value; equal values are emitted once
+vector&lt;int&gt; intersection(vector&lt;int&gt; a, vector&lt;int&gt; b) {
+    sort(a.begin(), a.end());
+    sort(b.begin(), b.end());
+    vector&lt;int&gt; out;
+    int i = 0, j = 0;
+    while (i &lt; (int)a.size() &amp;&amp; j &lt; (int)b.size()) {
+        if (a[i] &lt; b[j]) i++;
+        else if (a[i] &gt; b[j]) j++;
+        else {
+            out.push_back(a[i]);
+            while (i &lt; (int)a.size() &amp;&amp; a[i] == out.back()) i++;   // skip repeats in a
+            while (j &lt; (int)b.size() &amp;&amp; b[j] == out.back()) j++;   // and in b
+        }
+    }
+    return out;
+}   // O(m + n) after sorting · O(1) extra space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m + n) time · O(1) besides the output space.</p>
+  </section>
+  <section class="sub" id="minimum-window-substring">
+    <h3><span class="pn">H1</span> Minimum Window Substring <span class="pill hot">Hard</span> <span class="muted small">· variable window + shortage counter</span></h3>
+    <p><b>Problem.</b> Return the shortest substring of <code>s</code> that contains every character of <code>t</code> including multiplicities, or an empty string if no such window exists.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "ADOBECODEBANC", t = "ABC"
+Output: "BANC"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "a", t = "a"
+Output: "a"</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  s = "a", t = "aa"
+Output: ""</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= |s|, |t| &lt;= 10^5; both strings contain upper and lower case letters.</p>
+    <p><b>Approach.</b> Keep a <code>need</code> array and a <code>missing</code> counter of characters still required. The window becomes valid when <code>missing</code> hits zero; then shrink from the left while recording the best length, restoring the counter as characters leave. Decrementing <code>need</code> below zero marks a surplus, which is exactly what lets the window shrink without losing validity.</p>
+    <pre><code>// Expand until valid, then shrink while still valid
+string minWindow(const string&amp; s, const string&amp; t) {
+    if (t.size() &gt; s.size()) return "";
+    int need[128] = {0};
+    for (char c : t) need[(unsigned char)c]++;
+    int missing = t.size(), left = 0, bestL = 0, bestLen = INT_MAX;
+    for (int right = 0; right &lt; (int)s.size(); right++) {
+        if (need[(unsigned char)s[right]]-- &gt; 0) missing--;   // consumed a required character
+        while (missing == 0) {                                // valid: try to shrink
+            if (right - left + 1 &lt; bestLen) { bestLen = right - left + 1; bestL = left; }
+            if (need[(unsigned char)s[left++]]++ == 0) missing++;   // giving back a required character
+        }
+    }
+    return bestLen == INT_MAX ? "" : s.substr(bestL, bestLen);
+}   // O(|s| + |t|) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(|s| + |t|) time · O(alphabet) space.</p>
+  </section>
+  <section class="sub" id="substring-concatenation-all-words">
+    <h3><span class="pn">H2</span> Substring With Concatenation of All Words <span class="pill hot">Hard</span> <span class="muted small">· block-aligned sliding window over word-sized chunks</span></h3>
+    <p><b>Problem.</b> Given a string <code>s</code> and a list of equal-length words, return every start index of a substring of <code>s</code> that is exactly a concatenation of all the words, each used once, in any order.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "barfoothefoobarman", words = ["foo","bar"]
+Output: [0,9]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "wordgoodgoodgoodbestword", words = ["word","good","best","word"]
+Output: []</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= |s| &lt;= 10^4; 1 &lt;= number of words &lt;= 5000; all words have equal length.</p>
+    <p><b>Approach.</b> Step through the string in chunks of one word length, but try every offset in <code>[0, wordLen)</code> so no alignment is missed. Maintain counts of the words inside the current block window; when a word exceeds its quota, advance the left end chunk by chunk, and when the window holds exactly all words, record the start. Each chunk enters and leaves once per offset, so the total work is linear.</p>
+    <pre><code>// Try every alignment; slide in word-sized blocks
+vector&lt;int&gt; findSubstring(const string&amp; s, vector&lt;string&gt;&amp; words) {
+    vector&lt;int&gt; out;
+    if (words.empty()) return out;
+    int w = words[0].size(), n = words.size();
+    if ((int)s.size() &lt; w * n) return out;
+    unordered_map&lt;string,int&gt; need;
+    for (const string&amp; x : words) need[x]++;
+    for (int start = 0; start &lt; w; start++) {
+        unordered_map&lt;string,int&gt; seen;
+        int count = 0, left = start;
+        for (int i = start; i + w &lt;= (int)s.size(); i += w) {
+            string piece = s.substr(i, w);
+            if (need.count(piece)) {
+                seen[piece]++;
+                if (seen[piece] &lt;= need[piece]) count++;
+                while (seen[piece] &gt; need[piece]) {          // too many copies: move the left end
+                    string old = s.substr(left, w);
+                    if (--seen[old] &lt; need[old]) count--;
+                    left += w;
+                }
+                if (count == n) out.push_back(left);
+            } else {
+                seen.clear(); count = 0; left = i + w;       // unknown word breaks the window
+            }
+        }
+    }
+    return out;
+}   // O(|s| * wordLen) time · O(distinct words) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(|s| · wordLength) time · O(number of distinct words) space.</p>
+  </section>
+  <section class="sub" id="sliding-window-maximum">
+    <h3><span class="pn">H3</span> Sliding Window Maximum <span class="pill hot">Hard</span> <span class="muted small">· monotonic deque</span></h3>
+    <p><b>Problem.</b> Return the maximum of every contiguous window of size k as the window slides from left to right, in O(n) total time.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [1,3,-1,-3,5,3,6,7], k = 3
+Output: [3,3,5,5,6,7]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [1], k = 1
+Output: [1]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; 1 &lt;= k &lt;= n; -10^4 &lt;= a[i] &lt;= 10^4.</p>
+    <p><b>Approach.</b> Keep a deque of indices whose values decrease from front to back. Before pushing a new index, pop from the back every index whose value is not larger — they can never be the maximum again. Drop the front index once it leaves the window; the front is then the window maximum. Each index is pushed and popped at most once, giving O(n).</p>
+    <pre><code>// Deque of indices, values decreasing front -&gt; back
+vector&lt;int&gt; maxSlidingWindow(const vector&lt;int&gt;&amp; a, int k) {
+    deque&lt;int&gt; dq;
+    vector&lt;int&gt; out;
+    out.reserve(a.size() - k + 1);
+    for (int i = 0; i &lt; (int)a.size(); i++) {
+        while (!dq.empty() &amp;&amp; a[dq.back()] &lt;= a[i]) dq.pop_back();   // dominated: never the max again
+        dq.push_back(i);
+        if (dq.front() &lt;= i - k) dq.pop_front();                     // expired
+        if (i &gt;= k - 1) out.push_back(a[dq.front()]);
+    }
+    return out;
+}   // O(n) time · O(k) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(k) space.</p>
+  </section>
+  <section class="sub" id="smallest-range-k-lists">
+    <h3><span class="pn">H4</span> Smallest Range Covering Elements From k Lists <span class="pill hot">Hard</span> <span class="muted small">· k-way merge with a min-heap and a running maximum</span></h3>
+    <p><b>Problem.</b> Given k sorted lists of integers, find the smallest range [a, b] that contains at least one number from every list. If several are equally small, any of them is accepted.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [[4,10,15,24,26],[0,9,12,20],[5,18,22,30]]
+Output: [20,24]   (one value from each list)</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [[1,2,3],[1,2,3],[1,2,3]]
+Output: [1,1]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= k &lt;= 3500; 1 &lt;= total elements &lt;= 10^5; each list is sorted ascending.</p>
+    <p><b>Approach.</b> Merge the lists lazily: keep one pointer per list in a min-heap, plus the maximum of the current heads. The current heads span a candidate range. Then advance the list owning the smallest head — that is the only move that can improve the range, since the smallest value is what the range must cover on the left. Stop when one list is exhausted.</p>
+    <pre><code>// Merge k lists lazily: heap of heads + running maximum
+vector&lt;int&gt; smallestRange(vector&lt;vector&lt;int&gt;&gt;&amp; lists) {
+    int k = lists.size();
+    priority_queue&lt;tuple&lt;int,int,int&gt;, vector&lt;tuple&lt;int,int,int&gt;&gt;, greater&lt;&gt;&gt; pq;  // value, list, index
+    int curMax = INT_MIN;
+    for (int i = 0; i &lt; k; i++) {
+        pq.emplace(lists[i][0], i, 0);
+        curMax = max(curMax, lists[i][0]);
+    }
+    int bestL = -100000, bestR = 100000;
+    while ((int)pq.size() == k) {
+        auto [v, li, idx] = pq.top(); pq.pop();
+        if (curMax - v &lt; bestR - bestL) { bestL = v; bestR = curMax; }   // a tighter span
+        if (idx + 1 &lt; (int)lists[li].size()) {
+            int nv = lists[li][idx + 1];
+            pq.emplace(nv, li, idx + 1);
+            curMax = max(curMax, nv);
+        }
+    }
+    return {bestL, bestR};
+}   // O(N log k) time · O(k) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(N log k) with N the total number of elements time · O(k) space.</p>
+  </section>
+  <section class="sub" id="k-consecutive-bit-flips">
+    <h3><span class="pn">H5</span> Minimum Number of k Consecutive Bit Flips <span class="pill hot">Hard</span> <span class="muted small">· greedy left-to-right with a sliding flip counter</span></h3>
+    <p><b>Problem.</b> In one operation you choose a window of exactly k consecutive bits and flip all of them. Return the minimum number of operations to make the array all 1s, or -1 if it is impossible.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [0,1,0], k = 1
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [1,1,0], k = 2
+Output: -1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  [0,0,0,1,0,1,1,0], k = 3
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; 1 &lt;= k &lt;= n; a[i] is 0 or 1.</p>
+    <p><b>Approach.</b> Scan left to right: the leftmost bit can only be fixed by a flip starting exactly there. So whenever the current bit is 0 after accounting for the flips still in effect, start a flip here, or return -1 if the window would run past the end. A deque (or an array of flip-start marks) tracks how many flips are still active, which is what makes each step O(1).</p>
+    <pre><code>// The leftmost 0 can only be fixed by a flip starting here
+int minKBitFlips(vector&lt;int&gt;&amp; a, int k) {
+    int n = a.size(), active = 0, ans = 0;
+    vector&lt;int&gt; started(n, 0);                       // flip starts a window here
+    for (int i = 0; i &lt; n; i++) {
+        if (i &gt;= k) active -= started[i - k];        // a flip ended
+        if ((a[i] + active) % 2 == 0) {              // still 0: must flip now
+            if (i + k &gt; n) return -1;                // would run past the end
+            started[i] = 1; active++; ans++;
+        }
+    }
+    return ans;
+}   // O(n) time · O(k) space
+
+// O(1) space variant: mark a flip by adding 2 to a[i], then a[i] &gt;= 2 means "flipped".</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(k) space.</p>
+  </section>
+  <section class="sub" id="minimum-window-subsequence">
+    <h3><span class="pn">H6</span> Minimum Window Subsequence <span class="pill hot">Hard</span> <span class="muted small">· forward match then backward shrink, repeated</span></h3>
+    <p><b>Problem.</b> Return the shortest substring of <code>s1</code> that contains <code>s2</code> as a subsequence. If several are equally short, return the one that appears first. Return an empty string if no such window exists.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s1 = "abcdebdde", s2 = "bde"
+Output: "bcde"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s1 = "jmeqksfrsdcmsiwvaovztaqenprpvnbstl", s2 = "u"
+Output: ""</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= |s1| &lt;= 2 * 10^4; 1 &lt;= |s2| &lt;= 100; both strings contain lowercase letters.</p>
+    <p><b>Approach.</b> Unlike plain substring windows, the window here must obey an order, so start a fresh forward scan from the current position until all of <code>s2</code> is matched; then walk <b>backwards</b> from the last matched character to find the tightest start. That start gives one candidate window, and the next search can resume just after it, so the total work stays linear in the number of productive scans.</p>
+    <pre><code>// Forward to match s2, backward to tighten the start
+string minWindowSubsequence(const string&amp; s1, const string&amp; s2) {
+    int m = s1.size(), n = s2.size();
+    int bestLen = INT_MAX, bestStart = -1;
+    int i = 0;
+    while (i &lt; m) {
+        int j = 0, k = i;
+        while (k &lt; m &amp;&amp; j &lt; n) { if (s1[k] == s2[j]) j++; k++; }   // forward: match s2 in order
+        if (j &lt; n) break;                                          // no full match from here on
+        int end = k - 1, p = n - 1, q = end;
+        while (p &gt;= 0) { if (s1[q] == s2[p]) p--; q--; }            // backward: tighten the start
+        int start = q + 1;
+        if (end - start + 1 &lt; bestLen) { bestLen = end - start + 1; bestStart = start; }
+        i = start + 1;                                              // resume just after this window
+    }
+    return bestStart == -1 ? "" : s1.substr(bestStart, bestLen);
+}   // O(|s1| * |s2|) worst case · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(|s1| · |s2|) worst case, effectively linear in practice time · O(1) space.</p>
+  </section>
+  <section class="sub" id="substrings-containing-three-chars">
+    <h3><span class="pn">H7</span> Number of Substrings Containing All Three Characters <span class="pill hot">Hard</span> <span class="muted small">· count substrings by their tightest left end</span></h3>
+    <p><b>Problem.</b> Given a string of only the characters a, b and c, count how many substrings contain at least one of each.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  "abcabc"
+Output: 10</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  "aaacb"
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  "abc"
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= length &lt;= 5 * 10^4; the string contains only a, b and c.</p>
+    <p><b>Approach.</b> Track the last position of each of the three characters. When all three have been seen, every substring ending at the current index that starts at or before <code>min(last positions)</code> contains all three; there are <code>min(last) + 1</code> such starts, since positions are 0-based. Summing that per index gives every substring exactly once, in O(n) with no explicit window management.</p>
+    <pre><code>// At each index, count starts that cover all three letters
+long long numberOfSubstrings(const string&amp; s) {
+    long long last[3] = {-1, -1, -1}, count = 0;
+    for (int i = 0; i &lt; (int)s.size(); i++) {
+        last[s[i] - 'a'] = i;
+        count += 1 + min({last[0], last[1], last[2]});   // starts 0..min(last) all work
+    }
+    return count;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="kth-smallest-prime-fraction">
+    <h3><span class="pn">H8</span> K-th Smallest Prime Fraction <span class="pill hot">Hard</span> <span class="muted small">· binary search on a value + two-pointer counting</span></h3>
+    <p><b>Problem.</b> Given a sorted array of distinct primes, consider every fraction arr[i]/arr[j] with i &lt; j. Return the k-th smallest fraction as <code>[numerator, denominator]</code>.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [1,2,3,5], k = 3
+Output: [2,5]   (the fractions are 1/5, 1/3, 2/5, 1/2, 3/5, 2/3)</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [1,7], k = 1
+Output: [1,7]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= n &lt;= 1000; 1 &lt;= k &lt;= n(n-1)/2; arr is sorted and its elements are distinct.</p>
+    <p><b>Approach.</b> Binary search on the <b>value</b> of the answer. For a candidate value, count how many fractions are at most it: for each denominator, a single moving pointer over numerators gives the count in O(n) because the pointer only moves forward. While counting, also remember the largest fraction that does not exceed the candidate — that is the exact answer once the count converges to k.</p>
+    <pre><code>// Binary search the value; count fractions &lt;= mid in O(n)
+vector&lt;int&gt; kthSmallestPrimeFraction(vector&lt;int&gt;&amp; arr, int k) {
+    int n = arr.size();
+    double lo = 0.0, hi = 1.0;
+    int bestP = 0, bestQ = 1;
+    for (int iter = 0; iter &lt; 60; iter++) {                 // 60 halvings is well past double precision
+        double mid = (lo + hi) / 2;
+        int count = 0, p = 0, q = 1, i = 0;                 // i = first numerator with arr[i]/arr[j] &gt; mid
+        for (int j = 1; j &lt; n; j++) {
+            while (i &lt; j &amp;&amp; (double)arr[i] / arr[j] &lt;= mid) i++;
+            count += i;                                     // numerators 0..i-1 qualify
+            if (i &gt; 0 &amp;&amp; (long long)arr[i - 1] * q &gt; (long long)p * arr[j]) { p = arr[i - 1]; q = arr[j]; }
+        }
+        if (count &lt; k) lo = mid;                            // too few: the answer is larger
+        else { hi = mid; bestP = p; bestQ = q; }            // mid is an upper bound: keep the best seen
+    }
+    return {bestP, bestQ};
+}   // O(n log(1/eps)) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log(1/eps)) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="min-operations-reduce-x">
+    <h3><span class="pn">H9</span> Minimum Operations to Reduce x to Zero <span class="pill hot">Hard</span> <span class="muted small">· complement of a sliding window</span></h3>
+    <p><b>Problem.</b> From either end of the array you may remove one element per operation, subtracting it from a target x. Return the minimum number of operations to make x exactly zero, or -1 if impossible.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [1,1,4,2,3], x = 5
+Output: 2   (remove 2 and 3 from the right)</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [5,6,7,8,9], x = 4
+Output: -1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; 1 &lt;= a[i] &lt;= 10^4; 1 &lt;= x &lt;= 10^9.</p>
+    <p><b>Approach.</b> Removing prefix and suffix elements leaves a <b>contiguous middle subarray</b> untouched, so minimising the removed count means maximising the length of the middle whose sum is <code>total - x</code>. That is a classic positive-values sliding window: the answer is <code>n - longest such subarray</code>.</p>
+    <pre><code>// Maximise the untouched middle with sum = total - x
+int minOperations(vector&lt;int&gt;&amp; a, int x) {
+    long long total = accumulate(a.begin(), a.end(), 0LL);
+    long long need = total - x;
+    if (need &lt; 0) return -1;                       // must remove more than everything
+    if (need == 0) return a.size();                // remove the whole array
+    int n = a.size(), left = 0, best = -1;
+    long long sum = 0;
+    for (int right = 0; right &lt; n; right++) {
+        sum += a[right];
+        while (sum &gt; need) sum -= a[left++];       // shrink until the sum fits
+        if (sum == need) best = max(best, right - left + 1);
+    }
+    return best == -1 ? -1 : n - best;             // the rest is removed from the ends
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="constrained-subsequence-sum">
+    <h3><span class="pn">H10</span> Constrained Subsequence Sum <span class="pill hot">Hard</span> <span class="muted small">· DP + monotonic deque</span></h3>
+    <p><b>Problem.</b> Choose a subsequence (possibly empty) such that any two chosen indices differ by at most k in position, and return the maximum possible sum. The empty subsequence sums to 0.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [10,2,-10,5,20], k = 2
+Output: 37   (10 + 2 + 5 + 20)</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [-1,-2,-3], k = 1
+Output: -1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  [10,-2,-10,-5,20], k = 2
+Output: 23</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; 1 &lt;= k &lt;= n; -10^4 &lt;= a[i] &lt;= 10^4.</p>
+    <p><b>Approach.</b> Let <code>dp[i]</code> be the best sum of a valid subsequence ending exactly at i. Then <code>dp[i] = a[i] + max(0, max dp[j] for j in [i-k, i-1])</code>, and a monotonic deque over the last k dp values answers that maximum in O(1) per step. The window of candidate predecessors moves with i, which is exactly what a deque is for.</p>
+    <pre><code>// dp[i] = a[i] + max(0, best dp in the last k positions)
+int constrainedSubsetSum(vector&lt;int&gt;&amp; a, int k) {
+    int n = a.size();
+    vector&lt;int&gt; dp(n);
+    deque&lt;int&gt; dq;                                  // indices with decreasing dp values
+    int best = INT_MIN;
+    for (int i = 0; i &lt; n; i++) {
+        if (!dq.empty() &amp;&amp; dq.front() &lt; i - k) dq.pop_front();          // out of range
+        int prev = dq.empty() ? 0 : max(0, dp[dq.front()]);             // 0 = start fresh here
+        dp[i] = a[i] + prev;
+        while (!dq.empty() &amp;&amp; dp[dq.back()] &lt;= dp[i]) dq.pop_back();    // dominated
+        dq.push_back(i);
+        best = max(best, dp[i]);
+    }
+    return best;
+}   // O(n) time · O(k) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(k) space.</p>
+  </section>
+  <section class="sub" id="maximum-score-two-arrays">
+    <h3><span class="pn">H11</span> Get the Maximum Score From Two Sorted Arrays <span class="pill hot">Hard</span> <span class="muted small">· two pointers with segment sums and greedy jumps</span></h3>
+    <p><b>Problem.</b> Starting from either array's beginning, walk right through one array or switch arrays only on positions holding the same value in both. Return the maximum sum reachable, modulo 10^9 + 7.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [2,4,5,8,10], [4,6,8,9]
+Output: 30   (2+4+6+8+10)</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [1,3,5,7], [2,4,6,8]
+Output: 16   (pick the better single array)</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= m, n &lt;= 10^5; arrays are sorted strictly ascending; values may be large.</p>
+    <p><b>Approach.</b> Walk both arrays with two pointers, accumulating the running sum of the current segment in each. On a shared value, the sums so far are two alternative paths to the same junction: keep the larger and restart both accumulators. At the end, add the larger of the two remaining tails — a greedy that is optimal because each segment between junctions must be taken whole.</p>
+    <pre><code>// Keep the better path at every shared value
+int maxSum(vector&lt;int&gt;&amp; a, vector&lt;int&gt;&amp; b) {
+    const long long MOD = 1000000007LL;
+    int i = 0, j = 0;
+    long long sumA = 0, sumB = 0, total = 0;
+    while (i &lt; (int)a.size() &amp;&amp; j &lt; (int)b.size()) {
+        if (a[i] &lt; b[j]) sumA += a[i++];
+        else if (a[i] &gt; b[j]) sumB += b[j++];
+        else {                                    // a shared junction: take the better path so far
+            total += max(sumA, sumB) + a[i];
+            sumA = sumB = 0;
+            i++; j++;
+        }
+    }
+    while (i &lt; (int)a.size()) sumA += a[i++];      // remaining tails
+    while (j &lt; (int)b.size()) sumB += b[j++];
+    total += max(sumA, sumB);
+    return (int)(total % MOD);
+}   // O(m + n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m + n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="count-subarrays-fixed-bounds">
+    <h3><span class="pn">H12</span> Count Subarrays With Fixed Minimum and Maximum <span class="pill hot">Hard</span> <span class="muted small">· last-position tracking window</span></h3>
+    <p><b>Problem.</b> Count the subarrays whose minimum is exactly <code>minK</code> and whose maximum is exactly <code>maxK</code>.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [1,3,5,2,7,5], minK = 1, maxK = 5
+Output: 2   ([1,3,5] and [1,3,5,2])</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [1,1,1,1], minK = 1, maxK = 1
+Output: 10   (every subarray)</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; 1 &lt;= a[i], minK, maxK &lt;= 10^9.</p>
+    <p><b>Approach.</b> Scan once, remembering the last position of a <b>bad</b> value (outside <code>[minK, maxK]</code>), the last position equal to <code>minK</code> and the last equal to <code>maxK</code>. A subarray ending at i is valid precisely when it starts after the last bad position and at or before the earlier of the two boundary positions, giving <code>min(lastMin, lastMax) - lastBad</code> valid starts — clamped at zero before both boundary values have appeared.</p>
+    <pre><code>// Count valid starts for each ending index
+long long countSubarrays(vector&lt;int&gt;&amp; a, int minK, int maxK) {
+    long long ans = 0;
+    int lastBad = -1, lastMin = -1, lastMax = -1;
+    for (int i = 0; i &lt; (int)a.size(); i++) {
+        if (a[i] &lt; minK || a[i] &gt; maxK) lastBad = i;     // this value can never be inside a valid subarray
+        if (a[i] == minK) lastMin = i;
+        if (a[i] == maxK) lastMax = i;
+        long long starts = (long long)min(lastMin, lastMax) - lastBad;   // negative before both appear
+        if (starts &gt; 0) ans += starts;
+    }
+    return ans;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+</section>
 
   </main>
 </div>
 
 <footer>
-  <p><b>C++ bank</b> — 30 problems across 1 topics, with complete solutions in
+  <p><b>C++ bank</b> — 60 problems across 2 topics, with complete solutions in
   C++17/20/23 solutions.</p>
   <p class="small">Same problems in every language:
     <a href="cpp-leetcode.html">C++</a> · <a href="java-leetcode.html">Java</a> · <a href="python-leetcode.html">Python</a>

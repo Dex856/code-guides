@@ -1,20 +1,27 @@
 # Publishing the Code Guides site to GitHub Pages
 
-> **Status (2026-10-02):** the token you supplied authenticates as **Dex856** and can see
-> `Dex856/code-guides`, but it has **no write permissions** — every write probe returned
-> `403 Resource not accessible by personal access token`:
-> `git push`, creating a file via the REST API, enabling Pages, and creating the workflow file.
+> **Status (2026-10-02, updated):** ✅ **the code is pushed.** Token writes now work
+> (`Contents: write`), and `Dex856/code-guides` holds the whole project on `main`.
 >
-> **Fix — edit the existing token, no new token needed:**
-> <https://github.com/settings/personal-access-tokens> → click the token → *Repository permissions* →
-> set **Contents: Read and write**, **Workflows: Read and write**, **Pages: Read and write** → **Save**.
-> The token value stays valid, so nothing has to be pasted again.
+> ⛔ **One click is still needed from you, and only you can make it.** GitHub refuses to let any
+> token — or the Actions `GITHUB_TOKEN` — *create* a Pages site (`administration: write` is required
+> for `POST /repos/…/pages`, which the Actions token can never have). Deploying to an existing site
+> works fine; creating the site once does not. The workflow run therefore stops at
+> *Configure Pages* with `Not Found` until the site exists.
 >
-> Minimal alternative if you prefer fewer permissions: give **Contents: Read and write** only. I will
-> push (the site also exists pre-mirrored in `docs/`), and you click once:
-> repo → **Settings → Pages → Source: Deploy from a branch → main → /docs**.
+> **Do this (≈10 seconds):** open
+> <https://github.com/Dex856/code-guides/settings/pages> and pick either source:
 >
-> The repository is committed locally and ready: 4 commits, 53 files, working tree clean.
+> | Pick | Effect |
+> |---|---|
+> | **Source: GitHub Actions** | every future `git push` to `main` redeploys automatically |
+> | **Source: Deploy from a branch → `main` → `/docs`** | goes live immediately, no workflow run needed (the `docs/` mirror is already committed) |
+>
+> Expected URL once either is set: **<https://Dex856.github.io/code-guides/>** (usually live within a
+> minute; hard-refresh if you see the 404 page).
+>
+> The token in this session expires **2026-10-09 15:37 UTC** and can be deleted as soon as the site
+> is live — the deploy workflow then uses GitHub's own `GITHUB_TOKEN`.
 
 Two paths. **Path A** is if you want me to do the push; **Path B** is if you want to keep the credential
 entirely on your side.
