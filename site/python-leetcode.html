@@ -4945,12 +4945,742 @@ Output: [7,0,5,5,0]</code></pre></div>
     <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
   </section>
 </section>
+<section class="chapter" id="t07">
+  <h2><span class="num">7</span> Trees &amp; BSTs</h2>
+  <p class="tagline">Recursion on a binary tree is three lines: handle null, recurse left, recurse right — the difficulty is deciding what each call returns.</p>
+  <div class="card"><p><b>What this topic trains.</b> Two return styles cover almost everything: bottom-up functions that return a summary of the subtree (height, sum, validity) and top-down functions that pass context down (bounds, target sums, parent links). BST questions add one idea — the in-order sequence is sorted — and construction questions add index arithmetic on two traversals.</p>
+<p class="small muted">Ordering: easy 1–6 are pure bottom-up recursion; medium 1–4 are traversals and classic BST properties, 5–8 are construction and path sums, 9–12 are deletion, pruning and counting; hard 1–4 are path-based recursion and serialisation, 5–8 mix global state with bottom-up returns, 9–12 are iterator/ordering designs.</p></div>
+  <section class="sub" id="max-depth-of-binary-tree">
+    <h3><span class="pn">E1</span> Maximum Depth of a Binary Tree <span class="pill">Easy</span> <span class="muted small">· bottom-up recursion</span></h3>
+    <p><b>Problem.</b> Return the number of nodes on the longest path from the root down to a leaf.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [3,9,20,null,null,15,7]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = []
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 10^4; -100 &lt;= node values &lt;= 100; the empty tree has depth 0.</p>
+    <p><b>Approach.</b> The depth of a tree is one more than the deeper of its two subtrees; the base case is the empty tree, which has depth 0. That single recurrence is the template for every bottom-up tree function in this topic.</p>
+    <pre><code>def max_depth(root):
+    if not root:
+        return 0
+    return 1 + max(max_depth(root.left), max_depth(root.right))</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) recursion depth space.</p>
+  </section>
+  <section class="sub" id="same-tree">
+    <h3><span class="pn">E2</span> Same Tree <span class="pill">Easy</span> <span class="muted small">· paired recursion</span></h3>
+    <p><b>Problem.</b> Return true if two binary trees are structurally identical and hold the same values.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  p = [1,2,3], q = [1,2,3]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  p = [1,2], q = [1,null,2]
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= nodes per tree &lt;= 100; -10^4 &lt;= node values &lt;= 10^4; the comparison is exact.</p>
+    <p><b>Approach.</b> Recurse on both trees at once: the pair must either be two empties, or two nodes with equal values whose left pairs and right pairs also match. Testing the null cases together is what keeps the code to four lines.</p>
+    <pre><code>def is_same_tree(p, q):
+    if not p or not q:
+        return p is q          # both None, or exactly one None
+    return p.val == q.val and is_same_tree(p.left, q.left) and is_same_tree(p.right, q.right)</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="invert-binary-tree">
+    <h3><span class="pn">E3</span> Invert Binary Tree <span class="pill">Easy</span> <span class="muted small">· swap then recurse</span></h3>
+    <p><b>Problem.</b> Mirror the tree: every node's left and right subtrees are exchanged, and the root is returned.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [4,2,7,1,3,6,9]
+Output: [4,7,2,9,6,3,1]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = []
+Output: []</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 100; -100 &lt;= node values &lt;= 100; the mirroring must be in place.</p>
+    <p><b>Approach.</b> Swap the two children at the current node, then recurse into both. Order does not matter, and the same shape of loop works with an explicit queue if you prefer iterative form.</p>
+    <pre><code>def invert_tree(root):
+    if not root:
+        return None
+    root.left, root.right = root.right, root.left    # local mirror step
+    invert_tree(root.left)
+    invert_tree(root.right)
+    return root</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="symmetric-tree">
+    <h3><span class="pn">E4</span> Symmetric Tree <span class="pill">Easy</span> <span class="muted small">· mirrored paired recursion</span></h3>
+    <p><b>Problem.</b> Return true if the tree is a mirror of itself around its centre.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [1,2,2,3,4,4,3]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [1,2,2,null,3,null,3]
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 1000; -100 &lt;= node values &lt;= 100; the comparison is like for like.</p>
+    <p><b>Approach.</b> Same paired recursion as Same Tree, except the calls cross over: the left subtree of one node must match the *right* subtree of the other. Writing a helper take (a, b) makes the crossing explicit instead of hiding it in index arithmetic.</p>
+    <pre><code>def is_symmetric(root):
+    def mirror(a, b):
+        if not a or not b:
+            return a is b
+        return a.val == b.val and mirror(a.left, b.right) and mirror(a.right, b.left)
+
+    return not root or mirror(root.left, root.right)</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="diameter-of-binary-tree">
+    <h3><span class="pn">E5</span> Diameter of a Binary Tree <span class="pill">Easy</span> <span class="muted small">· height recursion + running best</span></h3>
+    <p><b>Problem.</b> Return the length (number of edges) of the longest path between any two nodes of the tree; the path need not pass through the root.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [1,2,3,4,5]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [1,2]
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 10^4; -100 &lt;= node values &lt;= 100; the path may bend at any node.</p>
+    <p><b>Approach.</b> Each node sees exactly the best path that bends at it: the height of the left subtree plus the height of the right. Return heights upward while updating a running maximum — the standard way to combine a bottom-up return with a global answer.</p>
+    <pre><code>def diameter_of_binary_tree(root):
+    best = 0
+    def height(node):
+        nonlocal best
+        if not node:
+            return 0
+        l, r = height(node.left), height(node.right)
+        best = max(best, l + r)      # path that bends at this node
+        return 1 + max(l, r)         # height handed back to the parent
+
+    height(root)
+    return best</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="balanced-binary-tree">
+    <h3><span class="pn">E6</span> Balanced Binary Tree <span class="pill">Easy</span> <span class="muted small">· height with an early exit</span></h3>
+    <p><b>Problem.</b> Return true if the tree is height-balanced: at every node the two subtree heights differ by at most one.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [3,9,20,null,null,15,7]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [1,2,2,3,3,null,null,4,4]
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 5000; -10^4 &lt;= node values &lt;= 10^4; the check applies to every node, not just the root.</p>
+    <p><b>Approach.</b> Compute heights bottom-up and return -1 as soon as any subtree is unbalanced, so the failure propagates upward and the recursion stops early instead of recomputing heights at every node (which would be O(n²)).</p>
+    <pre><code>def is_balanced(root):
+    def check(node):
+        if not node:
+            return 0
+        l = check(node.left)
+        if l == -1:
+            return -1
+        r = check(node.right)
+        if r == -1:
+            return -1
+        if abs(l - r) &gt; 1:
+            return -1            # unbalanced: stop the work here
+        return 1 + max(l, r)
+
+    return check(root) != -1</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="binary-tree-level-order-traversal">
+    <h3><span class="pn">M1</span> Level Order Traversal <span class="pill">Medium</span> <span class="muted small">· queue + level size</span></h3>
+    <p><b>Problem.</b> Return the node values level by level, from left to right, as a list of lists.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [3,9,20,null,null,15,7]
+Output: [[3],[9,20],[15,7]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = []
+Output: []</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 2000; -1000 &lt;= node values &lt;= 1000; levels must not be mixed together.</p>
+    <p><b>Approach.</b> A queue gives breadth-first order, but the levels only appear if you snapshot the queue's size *before* draining it: that count is exactly one level. Forgetting the snapshot is the classic bug that merges levels.</p>
+    <pre><code>from collections import deque
+
+def level_order(root):
+    if not root:
+        return []
+    out, q = [], deque([root])
+    while q:
+        size = len(q)                 # exactly one level
+        level = []
+        for _ in range(size):
+            node = q.popleft()
+            level.append(node.val)
+            if node.left:
+                q.append(node.left)
+            if node.right:
+                q.append(node.right)
+        out.append(level)
+    return out</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="path-sum">
+    <h3><span class="pn">M2</span> Path Sum <span class="pill">Medium</span> <span class="muted small">· top-down target reduction</span></h3>
+    <p><b>Problem.</b> Return true if some root-to-leaf path adds up to the target sum.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [5,4,8,11,null,13,4,7,2], targetSum = 22
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [1,2,3], targetSum = 5
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 5000; -1000 &lt;= values, targetSum &lt;= 1000; the path must end at a leaf.</p>
+    <p><b>Approach.</b> Carry the *remaining* target downward and subtract as you descend; at a leaf the remainder must be exactly zero. Checking <code>!node-&gt;left &amp;&amp; !node-&gt;right</code> (rather than <code>!node</code>) is what stops a half-finished path from counting as a leaf path.</p>
+    <pre><code>def has_path_sum(node, target):
+    if not node:
+        return False
+    if not node.left and not node.right:
+        return target == node.val        # a leaf must match exactly
+    return (has_path_sum(node.left, target - node.val)
+            or has_path_sum(node.right, target - node.val))</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="lowest-common-ancestor-of-a-bst">
+    <h3><span class="pn">M3</span> Lowest Common Ancestor in a BST <span class="pill">Medium</span> <span class="muted small">· walk the search path</span></h3>
+    <p><b>Problem.</b> Given two nodes in a BST, return their lowest common ancestor.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [6,2,8,0,4,7,9], p = 2, q = 8
+Output: 6</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [6,2,8,0,4,7,9], p = 2, q = 4
+Output: 2</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= number of nodes &lt;= 10^5; all values are distinct and the BST property holds; p and q both exist in the tree.</p>
+    <p><b>Approach.</b> The BST order turns the problem into a decision at each step: if both targets are smaller, go left; if both are bigger, go right; otherwise the current node is the split point and therefore the ancestor. No recursion or parent pointers needed.</p>
+    <pre><code>def lowest_common_ancestor_bst(root, p, q):
+    while root:
+        if p.val &lt; root.val and q.val &lt; root.val:
+            root = root.left
+        elif p.val &gt; root.val and q.val &gt; root.val:
+            root = root.right
+        else:
+            return root              # the split point
+    return None</code></pre>
+    <p class="cx"><b>Complexity:</b> O(h) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="validate-binary-search-tree">
+    <h3><span class="pn">M4</span> Validate a Binary Search Tree <span class="pill">Medium</span> <span class="muted small">· top-down bounds</span></h3>
+    <p><b>Problem.</b> Return true if the tree is a valid BST: every node is greater than all values in its left subtree and smaller than all values in its right subtree.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [2,1,3]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [5,1,4,null,null,3,6]
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 10^4; -2^31 &lt;= node values &lt;= 2^31 - 1; comparing only with the immediate children is wrong.</p>
+    <p><b>Approach.</b> Pass an open interval (lo, hi) down the recursion and tighten it as you descend. Local comparisons are not enough — a node deep on the right can still be smaller than an ancestor — and using long bounds avoids trouble at the extremes of the value range.</p>
+    <pre><code>def is_valid_bst(root):
+    def valid(node, lo, hi):        # the open interval this node must fall in
+        if not node:
+            return True
+        if not lo &lt; node.val &lt; hi:
+            return False
+        return valid(node.left, lo, node.val) and valid(node.right, node.val, hi)
+
+    return valid(root, float('-inf'), float('inf'))</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="kth-smallest-element-in-a-bst">
+    <h3><span class="pn">M5</span> K-th Smallest Element in a BST <span class="pill">Medium</span> <span class="muted small">· in-order traversal</span></h3>
+    <p><b>Problem.</b> Return the k-th smallest value in a BST (1-indexed).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [3,1,4,null,2], k = 1
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [5,3,6,2,4,null,null,1], k = 3
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= k &lt;= number of nodes &lt;= 10^4; 0 &lt;= node values &lt;= 10^4; an O(h + k) solution is expected.</p>
+    <p><b>Approach.</b> An in-order traversal of a BST visits values in sorted order, so counting up to k while walking in-order gives the answer. Stopping the recursion as soon as the counter hits k is the difference between O(h + k) and a full O(n) walk.</p>
+    <pre><code>def kth_smallest(root, k):
+    order = []
+    def walk(node):
+        if not node or len(order) &gt;= k:
+            return
+        walk(node.left)
+        order.append(node.val)      # in-order: values arrive sorted
+        walk(node.right)
+
+    walk(root)
+    return order[k - 1]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(h + k) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="binary-tree-right-side-view">
+    <h3><span class="pn">M6</span> Binary Tree Right Side View <span class="pill">Medium</span> <span class="muted small">· level order, last of each level</span></h3>
+    <p><b>Problem.</b> Standing to the right of the tree, return the values of the nodes you can see, ordered from top to bottom.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [1,2,3,null,5,null,4]
+Output: [1,3,4]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [1,null,3]
+Output: [1,3]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 100; -100 &lt;= node values &lt;= 100; one value per level is reported.</p>
+    <p><b>Approach.</b> Do a normal level-order traversal and keep the last node of each level. Pushing the left child before the right is what makes the final node of a level the rightmost one.</p>
+    <pre><code>from collections import deque
+
+def right_side_view(root):
+    if not root:
+        return []
+    out, q = [], deque([root])
+    while q:
+        size = len(q)
+        for i in range(size):
+            node = q.popleft()
+            if i == size - 1:
+                out.append(node.val)   # rightmost of this level
+            if node.left:
+                q.append(node.left)    # left before right
+            if node.right:
+                q.append(node.right)
+    return out</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="zigzag-level-order-traversal">
+    <h3><span class="pn">M7</span> Zigzag Level Order Traversal <span class="pill">Medium</span> <span class="muted small">· level order with a direction flag</span></h3>
+    <p><b>Problem.</b> Return the level order traversal but alternate the direction of every level: left to right, then right to left, and so on.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [3,9,20,null,null,15,7]
+Output: [[3],[20,9],[15,7]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = []
+Output: []</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 2000; -100 &lt;= node values &lt;= 100; the shape of the output is a list of lists.</p>
+    <p><b>Approach.</b> Keep the ordinary level-order traversal and reverse every other level before appending it — reversing a collected level is clearer and no slower than juggling the queue. Toggling a boolean at the end of each level does the bookkeeping.</p>
+    <pre><code>from collections import deque
+
+def zigzag_level_order(root):
+    if not root:
+        return []
+    out, q, left_to_right = [], deque([root]), True
+    while q:
+        size = len(q)
+        level = [0] * size
+        for i in range(size):
+            node = q.popleft()
+            level[i if left_to_right else size - 1 - i] = node.val   # place directly
+            if node.left:
+                q.append(node.left)
+            if node.right:
+                q.append(node.right)
+        out.append(level)
+        left_to_right = not left_to_right
+    return out</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="construct-binary-tree-from-preorder-and-inorder">
+    <h3><span class="pn">M8</span> Construct a Tree From Preorder and Inorder <span class="pill">Medium</span> <span class="muted small">· index split with a hash map</span></h3>
+    <p><b>Problem.</b> Rebuild the binary tree from its preorder and inorder traversals. All values are unique.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  preorder = [3,9,20,15,7], inorder = [9,3,15,20,7]
+Output: the original tree</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  preorder = [-1], inorder = [-1]
+Output: a single node</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 3000; values are unique; both traversals describe the same tree.</p>
+    <p><b>Approach.</b> Preorder hands you the root first; inorder tells you how many nodes go left and how many go right. A hash map from value to its inorder index makes that split O(1), which is what keeps the whole build linear instead of quadratic.</p>
+    <pre><code>def build_tree_pre_in(preorder, inorder):
+    pos = {v: i for i, v in enumerate(inorder)}     # value -&gt; inorder index
+
+    def build(pre_lo, in_lo, size):
+        if size &lt;= 0:
+            return None
+        root_val = preorder[pre_lo]
+        left_size = pos[root_val] - in_lo           # nodes in the left subtree
+        node = TreeNode(root_val)
+        node.left = build(pre_lo + 1, in_lo, left_size)
+        node.right = build(pre_lo + 1 + left_size, in_lo + left_size + 1, size - 1 - left_size)
+        return node
+
+    return build(0, 0, len(preorder))</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="sum-root-to-leaf-numbers">
+    <h3><span class="pn">M9</span> Sum Root-to-Leaf Numbers <span class="pill">Medium</span> <span class="muted small">· top-down accumulation</span></h3>
+    <p><b>Problem.</b> Each root-to-leaf path spells a number (digits along the path). Return the sum of all those numbers.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [1,2,3]
+Output: 25  (12 + 13)</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [4,9,0,5,1]
+Output: 1026  (495 + 491 + 40)</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 1000; 0 &lt;= node values &lt;= 9; the answer fits in a 32-bit integer.</p>
+    <p><b>Approach.</b> Carry the number built so far downward: entering a node multiplies it by ten and adds the node's digit, and at a leaf the accumulated number is added to the total. This is the top-down mirror image of the path-sum style.</p>
+    <pre><code>def sum_numbers(root):
+    def walk(node, acc):
+        if not node:
+            return 0
+        acc = acc * 10 + node.val      # extend the number
+        if not node.left and not node.right:
+            return acc                 # a complete leaf number
+        return walk(node.left, acc) + walk(node.right, acc)
+
+    return walk(root, 0)</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="delete-node-in-a-bst">
+    <h3><span class="pn">M10</span> Delete a Node in a BST <span class="pill">Medium</span> <span class="muted small">· search, then restructure</span></h3>
+    <p><b>Problem.</b> Delete the node with the given key from a BST (if it exists) and return the root, keeping the BST property.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [5,3,6,2,4,null,7], key = 3
+Output: [5,4,6,2,null,null,7]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [5,3,6,2,4,null,7], key = 0
+Output: the tree unchanged</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 10^4; -10^5 &lt;= values, key &lt;= 10^5; values are unique.</p>
+    <p><b>Approach.</b> Search down the BST. When the target is found, there are three cases: no children (return null), one child (return it), two children (replace the value with the in-order successor and then delete that successor from the right subtree). Only the two-child case needs thought, and using the successor keeps all values to its right larger.</p>
+    <pre><code>def delete_node(root, key):
+    if not root:
+        return None
+    if key &lt; root.val:
+        root.left = delete_node(root.left, key)
+    elif key &gt; root.val:
+        root.right = delete_node(root.right, key)
+    else:
+        if not root.left:
+            return root.right        # zero or one child
+        if not root.right:
+            return root.left
+        succ = root.right            # smallest value on the right
+        while succ.left:
+            succ = succ.left
+        root.val = succ.val
+        root.right = delete_node(root.right, succ.val)   # remove that successor
+    return root</code></pre>
+    <p class="cx"><b>Complexity:</b> O(h) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="binary-tree-pruning">
+    <h3><span class="pn">M11</span> Binary Tree Pruning <span class="pill">Medium</span> <span class="muted small">· post-order filtering</span></h3>
+    <p><b>Problem.</b> Remove every subtree that contains no 1, and return the root of the pruned tree.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [1,null,0,0,1]
+Output: [1,null,0,null,1]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [1,0,1,0,0,0,1]
+Output: [1,null,1,null,1]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 200; node values are 0 or 1; a leaf with value 0 must be removed.</p>
+    <p><b>Approach.</b> Prune the children first, then decide about the current node: if both children are gone and this value is 0, return null. Post-order is essential here, because you cannot know whether a node should survive until its subtrees are settled.</p>
+    <pre><code>def prune_tree(node):
+    if not node:
+        return None
+    node.left = prune_tree(node.left)     # settle the subtrees first
+    node.right = prune_tree(node.right)
+    if node.val == 0 and not node.left and not node.right:
+        return None                       # a 0 leaf disappears
+    return node</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="count-good-nodes-in-binary-tree">
+    <h3><span class="pn">M12</span> Count Good Nodes <span class="pill">Medium</span> <span class="muted small">· top-down maximum</span></h3>
+    <p><b>Problem.</b> A node is good if no node on the path from the root to it has a larger value. Return how many good nodes the tree has.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [3,1,4,3,null,1,5]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [3,3,null,4,2]
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 10^5; -10^4 &lt;= node values &lt;= 10^4; the root is always good.</p>
+    <p><b>Approach.</b> Pass the largest value seen so far downward and count a node when its value is at least that maximum. The comparison must be greater-or-equal, so ties along a path all count.</p>
+    <pre><code>def good_nodes(root):
+    def count(node, best):
+        if not node:
+            return 0
+        good = 1 if node.val &gt;= best else 0      # ties count as good
+        best = max(best, node.val)
+        return good + count(node.left, best) + count(node.right, best)
+
+    return count(root, float('-inf'))</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="binary-tree-maximum-path-sum">
+    <h3><span class="pn">H1</span> Maximum Path Sum <span class="pill hot">Hard</span> <span class="muted small">· bottom-up gain with a global best</span></h3>
+    <p><b>Problem.</b> A path is any sequence of nodes connected by edges, each used once. Return the largest sum any path can have; negative nodes may be skipped, but a path must contain at least one node.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [1,2,3]
+Output: 6</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [-10,9,20,null,null,15,7]
+Output: 42</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 3 * 10^4; -1000 &lt;= node values &lt;= 1000; paths may start and end anywhere.</p>
+    <p><b>Approach.</b> Each node contributes to its parent at most one side — the better of its two branches, floored at zero so a negative branch is dropped. Separately, the best path *through* the node uses both sides, and that is what updates the global answer.</p>
+    <pre><code>def max_path_sum(root):
+    best = float('-inf')
+    def gain(node):
+        nonlocal best
+        if not node:
+            return 0
+        l = max(0, gain(node.left))     # drop negative branches
+        r = max(0, gain(node.right))
+        best = max(best, node.val + l + r)   # path through this node
+        return node.val + max(l, r)          # only one side goes up
+
+    gain(root)
+    return best</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="serialize-and-deserialize-binary-tree">
+    <h3><span class="pn">H2</span> Serialize and Deserialize a Binary Tree <span class="pill hot">Hard</span> <span class="muted small">· preorder with explicit nulls</span></h3>
+    <p><b>Problem.</b> Design serialize(root) producing a string and deserialize(data) rebuilding the identical tree.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [1,2,3,null,null,4,5]
+Output: round-trips to the same tree</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = []
+Output: round-trips to an empty tree</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 10^4; -1000 &lt;= node values &lt;= 1000; the format is yours to choose.</p>
+    <p><b>Approach.</b> Emit a preorder walk in which null children are written explicitly as a marker. That marker is what makes the payload self-describing: rebuilding can then allocate children in order without any length or level bookkeeping, which is why the round trip is exactly one pass each way.</p>
+    <pre><code>def serialize(root):
+    parts = []
+    def enc(node):
+        if not node:
+            parts.append('#')          # explicit null marker
+            return
+        parts.append(str(node.val))
+        enc(node.left)
+        enc(node.right)
+
+    enc(root)
+    return ','.join(parts)
+
+def deserialize(data):
+    tokens = iter(data.split(','))
+    def dec():
+        tok = next(tokens)
+        if tok == '#':
+            return None
+        node = TreeNode(int(tok))
+        node.left = dec()              # the next token starts the left subtree
+        node.right = dec()
+        return node
+
+    return dec()</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="recover-binary-search-tree">
+    <h3><span class="pn">H3</span> Recover a Swapped BST <span class="pill hot">Hard</span> <span class="muted small">· in-order with two violations</span></h3>
+    <p><b>Problem.</b> Exactly two nodes of a BST were swapped by mistake. Restore the tree without changing its structure.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [1,3,null,null,2]
+Output: [3,1,null,null,2]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [3,1,4,null,null,2]
+Output: [2,1,4,null,null,3]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= number of nodes &lt;= 1000; -2^31 &lt;= node values &lt;= 2^31 - 1; the fix must swap the values, not relink nodes.</p>
+    <p><b>Approach.</b> An in-order walk of a correct BST is increasing, so a swap shows up as one or two descents. Record the previous node only on the first descent and the current node on every descent — for adjacent swaps there is only one descent, and handling that case is where most solutions break.</p>
+    <pre><code>def recover_tree(root):
+    prev = first = second = None
+    def walk(node):
+        nonlocal prev, first, second
+        if not node:
+            return
+        walk(node.left)
+        if prev and prev.val &gt; node.val:
+            if not first:
+                first = prev            # first descent: remember prev
+            second = node               # latest descent: remember cur
+        prev = node
+        walk(node.right)
+
+    walk(root)
+    first.val, second.val = second.val, first.val   # swap values, not links</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="binary-tree-cameras">
+    <h3><span class="pn">H4</span> Binary Tree Cameras <span class="pill hot">Hard</span> <span class="muted small">· three-state greedy DP</span></h3>
+    <p><b>Problem.</b> A camera on a node covers that node, its parent and its children. Return the minimum number of cameras needed to cover every node.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [0,0,null,0,0]
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [0,0,null,0,null,0,null,null,0]
+Output: 2</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 1000; each node value is 0; cameras may be placed on any node.</p>
+    <p><b>Approach.</b> Each subtree reports one of three states: it still needs coverage, it is covered by its children, or it has a camera. Placing a camera only when a child reports 'needs coverage' is the greedy choice that makes the count optimal, and the root may need a final camera if it is still uncovered.</p>
+    <pre><code>def min_camera_cover(root):
+    cameras = 0
+    def dfs(node):
+        nonlocal cameras
+        if not node:
+            return 1                  # a missing child counts as covered
+        l, r = dfs(node.left), dfs(node.right)
+        if l == 0 or r == 0:
+            cameras += 1              # a child demands a camera here
+            return 2
+        if l == 2 or r == 2:
+            return 1                  # covered from below
+        return 0                      # needs its parent's camera
+
+    return cameras + 1 if dfs(root) == 0 else cameras</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="vertical-order-traversal-of-a-binary-tree">
+    <h3><span class="pn">H5</span> Vertical Order Traversal <span class="pill hot">Hard</span> <span class="muted small">· coordinate sorting</span></h3>
+    <p><b>Problem.</b> Report node values column by column from left to right; inside one column, order by row, and for equal row and column, by value.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [3,9,20,null,null,15,7]
+Output: [[9],[3,15],[20],[7]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [1,2,3,4,5,6,7]
+Output: [[4],[2],[1,5,6],[3],[7]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 1000; 0 &lt;= node values &lt;= 1000; the value tie-break inside a cell is part of the answer.</p>
+    <p><b>Approach.</b> Give every node a coordinate (column, row, value) during a traversal, then sort that list once. The sorting does all the work: columns first, then rows, then values, so the tie-break rule needs no special code.</p>
+    <pre><code>from collections import deque
+
+def vertical_traversal(root):
+    nodes = []                       # (col, row, val)
+    q = deque([(root, 0, 0)])
+    while q:
+        node, col, row = q.popleft()
+        nodes.append((col, row, node.val))
+        if node.left:
+            q.append((node.left, col - 1, row + 1))
+        if node.right:
+            q.append((node.right, col + 1, row + 1))
+    nodes.sort()                     # column, then row, then value
+    out, last_col = [], None
+    for col, row, val in nodes:
+        if col != last_col:
+            out.append([])
+            last_col = col
+        out[-1].append(val)
+    return out</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="path-sum-iii">
+    <h3><span class="pn">H6</span> Path Sum III <span class="pill hot">Hard</span> <span class="muted small">· prefix sums on a root path</span></h3>
+    <p><b>Problem.</b> Count the paths that go downward (parent to child, not necessarily starting at the root or ending at a leaf) whose values sum to the target.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [10,5,-3,3,2,null,11,3,-2,null,1], targetSum = 8
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [5,4,8,11,null,4,4,7,2,null,null,5,1], targetSum = 22
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 1000; -10^9 &lt;= values, targetSum &lt;= 10^9; the answer fits in a 32-bit integer.</p>
+    <p><b>Approach.</b> Every downward path is the difference of two root-path sums, so keep a map of how many times each running sum has appeared along the current root-to-node path. Insert the current sum in the map *before* recursing and remove it afterwards — that removal is what restricts the counts to genuine downward paths instead of arbitrary ones.</p>
+    <pre><code>def path_sum_iii(root, target):
+    seen = {0: 1}                    # running sum -&gt; how often it occurred
+    def walk(node, run):
+        if not node:
+            return 0
+        run += node.val
+        found = seen.get(run - target, 0)   # paths ending here
+        seen[run] = seen.get(run, 0) + 1    # add before recursing
+        total = found + walk(node.left, run) + walk(node.right, run)
+        seen[run] -= 1                      # remove on the way back up
+        if seen[run] == 0:
+            del seen[run]
+        return total
+
+    return walk(root, 0)</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="house-robber-iii">
+    <h3><span class="pn">H7</span> House Robber III <span class="pill hot">Hard</span> <span class="muted small">· two-value subtree DP</span></h3>
+    <p><b>Problem.</b> The houses form a binary tree and adjacent houses (parent and child) cannot both be robbed. Return the maximum amount.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [3,2,3,null,3,null,1]
+Output: 7</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [3,4,5,1,3,null,1]
+Output: 9</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 10^4; 0 &lt;= node values &lt;= 10^4; parent and child may not both be taken.</p>
+    <p><b>Approach.</b> Return a pair from every subtree: the best when this node is robbed and the best when it is not. Robbing the node forces the children's 'not robbed' values; skipping it lets each child use its better option. Both numbers travel upward together, so no node is visited twice.</p>
+    <pre><code>def rob_tree(root):
+    def dfs(node):                   # returns (rob this node, skip this node)
+        if not node:
+            return 0, 0
+        rob_l, skip_l = dfs(node.left)
+        rob_r, skip_r = dfs(node.right)
+        rob = node.val + skip_l + skip_r         # children must be skipped
+        skip = max(rob_l, skip_l) + max(rob_r, skip_r)
+        return rob, skip
+
+    return max(dfs(root))</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="lowest-common-ancestor-of-a-binary-tree">
+    <h3><span class="pn">H8</span> Lowest Common Ancestor of a Binary Tree <span class="pill hot">Hard</span> <span class="muted small">· post-order signalling</span></h3>
+    <p><b>Problem.</b> Given two nodes in an ordinary binary tree, return their lowest common ancestor.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [3,5,1,6,2,0,8], p = 5, q = 1
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [3,5,1,6,2,0,8], p = 5, q = 4
+Output: 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= number of nodes &lt;= 10^5; values are unique; p and q both exist and may be the same node.</p>
+    <p><b>Approach.</b> Recurse into both subtrees and let each call report whether it found p, q, or neither. The first node that receives a hit from both sides (or is a target itself with a hit from one side) is the answer — returned upward all the way, so no parent pointers are needed.</p>
+    <pre><code>def lowest_common_ancestor_binary(root, p, q):
+    if not root or root is p or root is q:
+        return root
+    l = lowest_common_ancestor_binary(root.left, p, q)
+    r = lowest_common_ancestor_binary(root.right, p, q)
+    if l and r:
+        return root                  # one target on each side
+    return l or r                    # carry the hit upward</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="all-nodes-distance-k-in-binary-tree">
+    <h3><span class="pn">H9</span> All Nodes at Distance K <span class="pill hot">Hard</span> <span class="muted small">· parent map + BFS</span></h3>
+    <p><b>Problem.</b> Given a target node in a binary tree, return the values of all nodes exactly k edges away.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [3,5,1,6,2,0,8,null,null,7,4], target = 5, k = 2
+Output: [7,4,1]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [1], target = 1, k = 3
+Output: []</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 500; 0 &lt;= node values &lt;= 500; all values are unique.</p>
+    <p><b>Approach.</b> Distances in a tree run both down and *up*, and a plain traversal cannot go up. Add a parent pointer per node, then the tree becomes an undirected graph and a breadth-first search from the target finds the k-th layer.</p>
+    <pre><code>def distance_k(root, target, k):
+    parent = {}
+    def record(node, par):
+        if not node:
+            return
+        parent[node] = par
+        record(node.left, node)
+        record(node.right, node)
+
+    record(root, None)
+    seen = {target}
+    frontier = [target]
+    while k &gt; 0 and frontier:            # expand one layer at a time
+        nxt = []
+        for node in frontier:
+            for nb in (node.left, node.right, parent[node]):
+                if nb and nb not in seen:
+                    seen.add(nb)
+                    nxt.append(nb)
+        frontier = nxt
+        k -= 1
+    return [node.val for node in frontier]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="maximum-sum-bst-in-binary-tree">
+    <h3><span class="pn">H10</span> Maximum Sum BST in a Binary Tree <span class="pill hot">Hard</span> <span class="muted small">· subtree summary (min, max, sum, valid)</span></h3>
+    <p><b>Problem.</b> Return the largest sum of node values over all subtrees that are themselves valid BSTs; return 0 if none exists.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [1,4,3,2,4,2,5,null,null,null,null,null,null,4,6]
+Output: 20</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [4,3,null,1,2]
+Output: 2</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 4 * 10^4; -4 * 10^4 &lt;= node values &lt;= 4 * 10^4; only complete subtrees count.</p>
+    <p><b>Approach.</b> Every subtree reports four things: its minimum, its maximum, its sum and whether it is a valid BST. A node is a valid BST exactly when both children are valid and its value sits strictly between the children's extremes — so one bottom-up pass answers everything.</p>
+    <pre><code>def max_sum_bst(root):
+    best = 0
+    def dfs(node):                   # returns (min, max, sum, is_bst)
+        nonlocal best
+        if not node:
+            return float('inf'), float('-inf'), 0, True
+        lmin, lmax, lsum, lok = dfs(node.left)
+        rmin, rmax, rsum, rok = dfs(node.right)
+        if lok and rok and lmax &lt; node.val &lt; rmin:
+            total = lsum + rsum + node.val
+            best = max(best, total)
+            return min(lmin, node.val), max(rmax, node.val), total, True
+        return float('-inf'), float('inf'), 0, False   # invalid: parents ignore it
+
+    dfs(root)
+    return best</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="bst-iterator">
+    <h3><span class="pn">H11</span> BST Iterator <span class="pill hot">Hard</span> <span class="muted small">· controlled in-order stack</span></h3>
+    <p><b>Problem.</b> Design a class over a BST with next() returning the next smallest value and hasNext() reporting whether one exists, both in O(1) amortised time and O(h) memory.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  tree [7,3,15,null,null,9,20], next(), next(), hasNext()
+Output: 3, 7, true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  continuing: next(), next()
+Output: 9, 15</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 10^5; 0 &lt;= node values &lt;= 10^6; the amortised cost must be O(1) per call.</p>
+    <p><b>Approach.</b> Do the in-order walk lazily: push the whole left spine at the start, and after each <code>next()</code> push the left spine of the popped node's right child. The stack holds exactly the path to the next value, so memory is O(h) rather than O(n).</p>
+    <pre><code>class BSTIterator:
+    def __init__(self, root):
+        self.st = []
+        self._push_left(root)         # the whole left spine
+
+    def _push_left(self, node):
+        while node:
+            self.st.append(node)
+            node = node.left
+
+    def next(self):
+        node = self.st.pop()
+        self._push_left(node.right)   # the next values may be to the right
+        return node.val
+
+    def has_next(self):
+        return bool(self.st)</code></pre>
+    <p class="cx"><b>Complexity:</b> O(1) amortised per call time · O(h) space.</p>
+  </section>
+  <section class="sub" id="closest-binary-search-tree-value-ii">
+    <h3><span class="pn">H12</span> Closest BST Values <span class="pill hot">Hard</span> <span class="muted small">· in-order with a capped buffer</span></h3>
+    <p><b>Problem.</b> Given a BST and a target, return the k values closest to the target, sorted ascending.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [4,2,5,1,3], target = 3.714286, k = 2
+Output: [4,3]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [1], target = 0.5, k = 1
+Output: [1]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= k &lt;= number of nodes &lt;= 10^4; 0 &lt;= node values &lt;= 10^9; the output must be sorted ascending.</p>
+    <p><b>Approach.</b> An in-order walk produces values in ascending order, so a fixed-size queue that is kept as close as possible to the target collapses the problem to a sliding window of size k. Whenever the queue is full, compare the new value against the front — the front is always the *farthest* of the current candidates, so dropping it is optimal.</p>
+    <pre><code>from collections import deque
+
+def closest_k_values(root, target, k):
+    win = deque()                    # ascending values, size at most k
+    def walk(node):
+        if not node:
+            return
+        walk(node.left)
+        win.append(node.val)
+        if len(win) &gt; k:             # drop the candidate farthest from target
+            if abs(win[0] - target) &lt;= abs(win[-1] - target):
+                win.pop()
+            else:
+                win.popleft()
+        walk(node.right)
+
+    walk(root)
+    return list(win)</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log k) time · O(h + k) space.</p>
+  </section>
+</section>
 
   </main>
 </div>
 
 <footer>
-  <p><b>Python bank</b> — 180 problems across 6 topics, with complete solutions in
+  <p><b>Python bank</b> — 210 problems across 7 topics, with complete solutions in
   Python 3.12+ solutions.</p>
   <p class="small">Same problems in every language:
     <a href="cpp-leetcode.html">C++</a> · <a href="java-leetcode.html">Java</a> · <a href="python-leetcode.html">Python</a>

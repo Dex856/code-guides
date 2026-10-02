@@ -4912,12 +4912,763 @@ vector&lt;int&gt; nextLargerNodes(ListNode* head) {
     <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
   </section>
 </section>
+<section class="chapter" id="t07">
+  <h2><span class="num">7</span> Trees &amp; BSTs</h2>
+  <p class="tagline">Recursion on a binary tree is three lines: handle null, recurse left, recurse right — the difficulty is deciding what each call returns.</p>
+  <div class="card"><p><b>What this topic trains.</b> Two return styles cover almost everything: bottom-up functions that return a summary of the subtree (height, sum, validity) and top-down functions that pass context down (bounds, target sums, parent links). BST questions add one idea — the in-order sequence is sorted — and construction questions add index arithmetic on two traversals.</p>
+<p class="small muted">Ordering: easy 1–6 are pure bottom-up recursion; medium 1–4 are traversals and classic BST properties, 5–8 are construction and path sums, 9–12 are deletion, pruning and counting; hard 1–4 are path-based recursion and serialisation, 5–8 mix global state with bottom-up returns, 9–12 are iterator/ordering designs.</p></div>
+  <section class="sub" id="max-depth-of-binary-tree">
+    <h3><span class="pn">E1</span> Maximum Depth of a Binary Tree <span class="pill">Easy</span> <span class="muted small">· bottom-up recursion</span></h3>
+    <p><b>Problem.</b> Return the number of nodes on the longest path from the root down to a leaf.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [3,9,20,null,null,15,7]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = []
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 10^4; -100 &lt;= node values &lt;= 100; the empty tree has depth 0.</p>
+    <p><b>Approach.</b> The depth of a tree is one more than the deeper of its two subtrees; the base case is the empty tree, which has depth 0. That single recurrence is the template for every bottom-up tree function in this topic.</p>
+    <pre><code>// depth(v) = 1 + max(depth(left), depth(right))
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+int maxDepth(TreeNode* root) {
+    if (!root) return 0;
+    return 1 + max(maxDepth(root-&gt;left), maxDepth(root-&gt;right));
+}   // O(n) time · O(h) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) recursion depth space.</p>
+  </section>
+  <section class="sub" id="same-tree">
+    <h3><span class="pn">E2</span> Same Tree <span class="pill">Easy</span> <span class="muted small">· paired recursion</span></h3>
+    <p><b>Problem.</b> Return true if two binary trees are structurally identical and hold the same values.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  p = [1,2,3], q = [1,2,3]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  p = [1,2], q = [1,null,2]
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= nodes per tree &lt;= 100; -10^4 &lt;= node values &lt;= 10^4; the comparison is exact.</p>
+    <p><b>Approach.</b> Recurse on both trees at once: the pair must either be two empties, or two nodes with equal values whose left pairs and right pairs also match. Testing the null cases together is what keeps the code to four lines.</p>
+    <pre><code>// Compare the two trees in lockstep
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+bool isSameTree(TreeNode* p, TreeNode* q) {
+    if (!p || !q) return p == q;                 // both null, or exactly one null
+    return p-&gt;val == q-&gt;val &amp;&amp; isSameTree(p-&gt;left, q-&gt;left) &amp;&amp; isSameTree(p-&gt;right, q-&gt;right);
+}   // O(n) time · O(h) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="invert-binary-tree">
+    <h3><span class="pn">E3</span> Invert Binary Tree <span class="pill">Easy</span> <span class="muted small">· swap then recurse</span></h3>
+    <p><b>Problem.</b> Mirror the tree: every node's left and right subtrees are exchanged, and the root is returned.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [4,2,7,1,3,6,9]
+Output: [4,7,2,9,6,3,1]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = []
+Output: []</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 100; -100 &lt;= node values &lt;= 100; the mirroring must be in place.</p>
+    <p><b>Approach.</b> Swap the two children at the current node, then recurse into both. Order does not matter, and the same shape of loop works with an explicit queue if you prefer iterative form.</p>
+    <pre><code>// Swap the children, then fix both subtrees
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+TreeNode* invertTree(TreeNode* root) {
+    if (!root) return nullptr;
+    swap(root-&gt;left, root-&gt;right);               // the local mirror step
+    invertTree(root-&gt;left);
+    invertTree(root-&gt;right);
+    return root;
+}   // O(n) time · O(h) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="symmetric-tree">
+    <h3><span class="pn">E4</span> Symmetric Tree <span class="pill">Easy</span> <span class="muted small">· mirrored paired recursion</span></h3>
+    <p><b>Problem.</b> Return true if the tree is a mirror of itself around its centre.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [1,2,2,3,4,4,3]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [1,2,2,null,3,null,3]
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 1000; -100 &lt;= node values &lt;= 100; the comparison is like for like.</p>
+    <p><b>Approach.</b> Same paired recursion as Same Tree, except the calls cross over: the left subtree of one node must match the *right* subtree of the other. Writing a helper take (a, b) makes the crossing explicit instead of hiding it in index arithmetic.</p>
+    <pre><code>// Cross-paired recursion: left of a with right of b
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+bool mirror(TreeNode* a, TreeNode* b) {
+    if (!a || !b) return a == b;
+    return a-&gt;val == b-&gt;val &amp;&amp; mirror(a-&gt;left, b-&gt;right) &amp;&amp; mirror(a-&gt;right, b-&gt;left);
+}
+bool isSymmetric(TreeNode* root) { return !root || mirror(root-&gt;left, root-&gt;right); }
+// O(n) time · O(h) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="diameter-of-binary-tree">
+    <h3><span class="pn">E5</span> Diameter of a Binary Tree <span class="pill">Easy</span> <span class="muted small">· height recursion + running best</span></h3>
+    <p><b>Problem.</b> Return the length (number of edges) of the longest path between any two nodes of the tree; the path need not pass through the root.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [1,2,3,4,5]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [1,2]
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 10^4; -100 &lt;= node values &lt;= 100; the path may bend at any node.</p>
+    <p><b>Approach.</b> Each node sees exactly the best path that bends at it: the height of the left subtree plus the height of the right. Return heights upward while updating a running maximum — the standard way to combine a bottom-up return with a global answer.</p>
+    <pre><code>// Return the height, but record the best bend at every node
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+int dfs(TreeNode* node, int&amp; best) {
+    if (!node) return 0;
+    int l = dfs(node-&gt;left, best), r = dfs(node-&gt;right, best);
+    best = max(best, l + r);                     // path bending at this node
+    return 1 + max(l, r);                        // height reported upward
+}
+int diameterOfBinaryTree(TreeNode* root) { int best = 0; dfs(root, best); return best; }
+// O(n) time · O(h) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="balanced-binary-tree">
+    <h3><span class="pn">E6</span> Balanced Binary Tree <span class="pill">Easy</span> <span class="muted small">· height with an early exit</span></h3>
+    <p><b>Problem.</b> Return true if the tree is height-balanced: at every node the two subtree heights differ by at most one.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [3,9,20,null,null,15,7]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [1,2,2,3,3,null,null,4,4]
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 5000; -10^4 &lt;= node values &lt;= 10^4; the check applies to every node, not just the root.</p>
+    <p><b>Approach.</b> Compute heights bottom-up and return -1 as soon as any subtree is unbalanced, so the failure propagates upward and the recursion stops early instead of recomputing heights at every node (which would be O(n²)).</p>
+    <pre><code>// -1 means "already unbalanced", and it propagates upward
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+int check(TreeNode* node) {
+    if (!node) return 0;
+    int l = check(node-&gt;left);  if (l == -1) return -1;
+    int r = check(node-&gt;right); if (r == -1) return -1;
+    if (abs(l - r) &gt; 1) return -1;               // this node breaks the rule
+    return 1 + max(l, r);
+}
+bool isBalanced(TreeNode* root) { return check(root) != -1; }
+// O(n) time · O(h) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="binary-tree-level-order-traversal">
+    <h3><span class="pn">M1</span> Level Order Traversal <span class="pill">Medium</span> <span class="muted small">· queue + level size</span></h3>
+    <p><b>Problem.</b> Return the node values level by level, from left to right, as a list of lists.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [3,9,20,null,null,15,7]
+Output: [[3],[9,20],[15,7]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = []
+Output: []</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 2000; -1000 &lt;= node values &lt;= 1000; levels must not be mixed together.</p>
+    <p><b>Approach.</b> A queue gives breadth-first order, but the levels only appear if you snapshot the queue's size *before* draining it: that count is exactly one level. Forgetting the snapshot is the classic bug that merges levels.</p>
+    <pre><code>// Snapshot the queue size: that count is one level
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+vector&lt;vector&lt;int&gt;&gt; levelOrder(TreeNode* root) {
+    vector&lt;vector&lt;int&gt;&gt; out;
+    if (!root) return out;
+    queue&lt;TreeNode*&gt; q; q.push(root);
+    while (!q.empty()) {
+        int size = q.size();                     // exactly one level
+        vector&lt;int&gt; level;
+        while (size--) {
+            TreeNode* n = q.front(); q.pop();
+            level.push_back(n-&gt;val);
+            if (n-&gt;left) q.push(n-&gt;left);
+            if (n-&gt;right) q.push(n-&gt;right);
+        }
+        out.push_back(level);
+    }
+    return out;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="path-sum">
+    <h3><span class="pn">M2</span> Path Sum <span class="pill">Medium</span> <span class="muted small">· top-down target reduction</span></h3>
+    <p><b>Problem.</b> Return true if some root-to-leaf path adds up to the target sum.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [5,4,8,11,null,13,4,7,2], targetSum = 22
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [1,2,3], targetSum = 5
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 5000; -1000 &lt;= values, targetSum &lt;= 1000; the path must end at a leaf.</p>
+    <p><b>Approach.</b> Carry the *remaining* target downward and subtract as you descend; at a leaf the remainder must be exactly zero. Checking <code>!node-&gt;left &amp;&amp; !node-&gt;right</code> (rather than <code>!node</code>) is what stops a half-finished path from counting as a leaf path.</p>
+    <pre><code>// Subtract on the way down; a leaf must land exactly on zero
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+bool hasPathSum(TreeNode* node, int target) {
+    if (!node) return false;
+    if (!node-&gt;left &amp;&amp; !node-&gt;right) return target == node-&gt;val;   // real leaf
+    return hasPathSum(node-&gt;left, target - node-&gt;val) ||
+           hasPathSum(node-&gt;right, target - node-&gt;val);
+}   // O(n) time · O(h) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="lowest-common-ancestor-of-a-bst">
+    <h3><span class="pn">M3</span> Lowest Common Ancestor in a BST <span class="pill">Medium</span> <span class="muted small">· walk the search path</span></h3>
+    <p><b>Problem.</b> Given two nodes in a BST, return their lowest common ancestor.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [6,2,8,0,4,7,9], p = 2, q = 8
+Output: 6</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [6,2,8,0,4,7,9], p = 2, q = 4
+Output: 2</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= number of nodes &lt;= 10^5; all values are distinct and the BST property holds; p and q both exist in the tree.</p>
+    <p><b>Approach.</b> The BST order turns the problem into a decision at each step: if both targets are smaller, go left; if both are bigger, go right; otherwise the current node is the split point and therefore the ancestor. No recursion or parent pointers needed.</p>
+    <pre><code>// Follow the search path until the two targets split
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+TreeNode* lowestCommonAncestor(TreeNode* root, TreeNode* p, TreeNode* q) {
+    while (root) {
+        if (p-&gt;val &lt; root-&gt;val &amp;&amp; q-&gt;val &lt; root-&gt;val) root = root-&gt;left;
+        else if (p-&gt;val &gt; root-&gt;val &amp;&amp; q-&gt;val &gt; root-&gt;val) root = root-&gt;right;
+        else return root;                        // the split point
+    }
+    return nullptr;
+}   // O(h) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(h) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="validate-binary-search-tree">
+    <h3><span class="pn">M4</span> Validate a Binary Search Tree <span class="pill">Medium</span> <span class="muted small">· top-down bounds</span></h3>
+    <p><b>Problem.</b> Return true if the tree is a valid BST: every node is greater than all values in its left subtree and smaller than all values in its right subtree.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [2,1,3]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [5,1,4,null,null,3,6]
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 10^4; -2^31 &lt;= node values &lt;= 2^31 - 1; comparing only with the immediate children is wrong.</p>
+    <p><b>Approach.</b> Pass an open interval (lo, hi) down the recursion and tighten it as you descend. Local comparisons are not enough — a node deep on the right can still be smaller than an ancestor — and using long bounds avoids trouble at the extremes of the value range.</p>
+    <pre><code>// Tighten an interval as you descend; local checks are not enough
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+bool valid(TreeNode* node, long lo, long hi) {
+    if (!node) return true;
+    if (node-&gt;val &lt;= lo || node-&gt;val &gt;= hi) return false;
+    return valid(node-&gt;left, lo, node-&gt;val) &amp;&amp; valid(node-&gt;right, node-&gt;val, hi);
+}
+bool isValidBST(TreeNode* root) { return valid(root, LONG_MIN, LONG_MAX); }
+// O(n) time · O(h) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="kth-smallest-element-in-a-bst">
+    <h3><span class="pn">M5</span> K-th Smallest Element in a BST <span class="pill">Medium</span> <span class="muted small">· in-order traversal</span></h3>
+    <p><b>Problem.</b> Return the k-th smallest value in a BST (1-indexed).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [3,1,4,null,2], k = 1
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [5,3,6,2,4,null,null,1], k = 3
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= k &lt;= number of nodes &lt;= 10^4; 0 &lt;= node values &lt;= 10^4; an O(h + k) solution is expected.</p>
+    <p><b>Approach.</b> An in-order traversal of a BST visits values in sorted order, so counting up to k while walking in-order gives the answer. Stopping the recursion as soon as the counter hits k is the difference between O(h + k) and a full O(n) walk.</p>
+    <pre><code>// In-order visits values in sorted order; stop at the k-th
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+int count_ = 0, answer = 0;
+void walk(TreeNode* node, int k) {
+    if (!node || count_ &gt;= k) return;
+    walk(node-&gt;left, k);
+    if (++count_ == k) { answer = node-&gt;val; return; }   // stop early
+    walk(node-&gt;right, k);
+}
+int kthSmallest(TreeNode* root, int k) { count_ = 0; walk(root, k); return answer; }
+// O(h + k) time · O(h) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(h + k) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="binary-tree-right-side-view">
+    <h3><span class="pn">M6</span> Binary Tree Right Side View <span class="pill">Medium</span> <span class="muted small">· level order, last of each level</span></h3>
+    <p><b>Problem.</b> Standing to the right of the tree, return the values of the nodes you can see, ordered from top to bottom.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [1,2,3,null,5,null,4]
+Output: [1,3,4]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [1,null,3]
+Output: [1,3]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 100; -100 &lt;= node values &lt;= 100; one value per level is reported.</p>
+    <p><b>Approach.</b> Do a normal level-order traversal and keep the last node of each level. Pushing the left child before the right is what makes the final node of a level the rightmost one.</p>
+    <pre><code>// Level order; the last node of each level is the visible one
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+vector&lt;int&gt; rightSideView(TreeNode* root) {
+    vector&lt;int&gt; out;
+    if (!root) return out;
+    queue&lt;TreeNode*&gt; q; q.push(root);
+    while (!q.empty()) {
+        int size = q.size();
+        for (int i = 0; i &lt; size; i++) {
+            TreeNode* n = q.front(); q.pop();
+            if (i == size - 1) out.push_back(n-&gt;val);    // rightmost of the level
+            if (n-&gt;left) q.push(n-&gt;left);                // left before right
+            if (n-&gt;right) q.push(n-&gt;right);
+        }
+    }
+    return out;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="zigzag-level-order-traversal">
+    <h3><span class="pn">M7</span> Zigzag Level Order Traversal <span class="pill">Medium</span> <span class="muted small">· level order with a direction flag</span></h3>
+    <p><b>Problem.</b> Return the level order traversal but alternate the direction of every level: left to right, then right to left, and so on.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [3,9,20,null,null,15,7]
+Output: [[3],[20,9],[15,7]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = []
+Output: []</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 2000; -100 &lt;= node values &lt;= 100; the shape of the output is a list of lists.</p>
+    <p><b>Approach.</b> Keep the ordinary level-order traversal and reverse every other level before appending it — reversing a collected level is clearer and no slower than juggling the queue. Toggling a boolean at the end of each level does the bookkeeping.</p>
+    <pre><code>// Collect each level, then reverse it on alternate levels
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+vector&lt;vector&lt;int&gt;&gt; zigzagLevelOrder(TreeNode* root) {
+    vector&lt;vector&lt;int&gt;&gt; out;
+    if (!root) return out;
+    queue&lt;TreeNode*&gt; q; q.push(root);
+    bool leftToRight = true;
+    while (!q.empty()) {
+        int size = q.size();
+        vector&lt;int&gt; level(size);
+        for (int i = 0; i &lt; size; i++) {
+            TreeNode* n = q.front(); q.pop();
+            int idx = leftToRight ? i : size - 1 - i;    // place it directly
+            level[idx] = n-&gt;val;
+            if (n-&gt;left) q.push(n-&gt;left);
+            if (n-&gt;right) q.push(n-&gt;right);
+        }
+        out.push_back(move(level));
+        leftToRight = !leftToRight;
+    }
+    return out;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="construct-binary-tree-from-preorder-and-inorder">
+    <h3><span class="pn">M8</span> Construct a Tree From Preorder and Inorder <span class="pill">Medium</span> <span class="muted small">· index split with a hash map</span></h3>
+    <p><b>Problem.</b> Rebuild the binary tree from its preorder and inorder traversals. All values are unique.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  preorder = [3,9,20,15,7], inorder = [9,3,15,20,7]
+Output: the original tree</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  preorder = [-1], inorder = [-1]
+Output: a single node</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 3000; values are unique; both traversals describe the same tree.</p>
+    <p><b>Approach.</b> Preorder hands you the root first; inorder tells you how many nodes go left and how many go right. A hash map from value to its inorder index makes that split O(1), which is what keeps the whole build linear instead of quadratic.</p>
+    <pre><code>// Preorder gives the root, inorder gives the split
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+unordered_map&lt;int, int&gt; pos;
+TreeNode* build(vector&lt;int&gt;&amp; pre, int preLo, int inLo, int size) {
+    if (size &lt;= 0) return nullptr;
+    int rootVal = pre[preLo];
+    int leftSize = pos[rootVal] - inLo;          // nodes in the left subtree
+    TreeNode* node = new TreeNode(rootVal);
+    node-&gt;left  = build(pre, preLo + 1, inLo, leftSize);
+    node-&gt;right = build(pre, preLo + 1 + leftSize, inLo + leftSize + 1, size - 1 - leftSize);
+    return node;
+}
+TreeNode* buildTree(vector&lt;int&gt;&amp; pre, vector&lt;int&gt;&amp; in) {
+    pos.clear();
+    for (int i = 0; i &lt; (int)in.size(); i++) pos[in[i]] = i;
+    return build(pre, 0, 0, pre.size());
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="sum-root-to-leaf-numbers">
+    <h3><span class="pn">M9</span> Sum Root-to-Leaf Numbers <span class="pill">Medium</span> <span class="muted small">· top-down accumulation</span></h3>
+    <p><b>Problem.</b> Each root-to-leaf path spells a number (digits along the path). Return the sum of all those numbers.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [1,2,3]
+Output: 25  (12 + 13)</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [4,9,0,5,1]
+Output: 1026  (495 + 491 + 40)</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 1000; 0 &lt;= node values &lt;= 9; the answer fits in a 32-bit integer.</p>
+    <p><b>Approach.</b> Carry the number built so far downward: entering a node multiplies it by ten and adds the node's digit, and at a leaf the accumulated number is added to the total. This is the top-down mirror image of the path-sum style.</p>
+    <pre><code>// Carry the number down: value * 10 + digit, add it at each leaf
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+int walk(TreeNode* node, int acc) {
+    if (!node) return 0;
+    acc = acc * 10 + node-&gt;val;                  // extend the number
+    if (!node-&gt;left &amp;&amp; !node-&gt;right) return acc; // a complete leaf number
+    return walk(node-&gt;left, acc) + walk(node-&gt;right, acc);
+}
+int sumNumbers(TreeNode* root) { return walk(root, 0); }
+// O(n) time · O(h) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="delete-node-in-a-bst">
+    <h3><span class="pn">M10</span> Delete a Node in a BST <span class="pill">Medium</span> <span class="muted small">· search, then restructure</span></h3>
+    <p><b>Problem.</b> Delete the node with the given key from a BST (if it exists) and return the root, keeping the BST property.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [5,3,6,2,4,null,7], key = 3
+Output: [5,4,6,2,null,null,7]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [5,3,6,2,4,null,7], key = 0
+Output: the tree unchanged</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 10^4; -10^5 &lt;= values, key &lt;= 10^5; values are unique.</p>
+    <p><b>Approach.</b> Search down the BST. When the target is found, there are three cases: no children (return null), one child (return it), two children (replace the value with the in-order successor and then delete that successor from the right subtree). Only the two-child case needs thought, and using the successor keeps all values to its right larger.</p>
+    <pre><code>// Three cases; the two-child case pulls up the in-order successor
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+TreeNode* deleteNode(TreeNode* root, int key) {
+    if (!root) return nullptr;
+    if (key &lt; root-&gt;val) root-&gt;left = deleteNode(root-&gt;left, key);
+    else if (key &gt; root-&gt;val) root-&gt;right = deleteNode(root-&gt;right, key);
+    else {
+        if (!root-&gt;left) return root-&gt;right;     // 0 or 1 child
+        if (!root-&gt;right) return root-&gt;left;
+        TreeNode* succ = root-&gt;right;            // smallest in the right subtree
+        while (succ-&gt;left) succ = succ-&gt;left;
+        root-&gt;val = succ-&gt;val;
+        root-&gt;right = deleteNode(root-&gt;right, succ-&gt;val);   // delete the successor
+    }
+    return root;
+}   // O(h) time · O(h) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(h) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="binary-tree-pruning">
+    <h3><span class="pn">M11</span> Binary Tree Pruning <span class="pill">Medium</span> <span class="muted small">· post-order filtering</span></h3>
+    <p><b>Problem.</b> Remove every subtree that contains no 1, and return the root of the pruned tree.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [1,null,0,0,1]
+Output: [1,null,0,null,1]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [1,0,1,0,0,0,1]
+Output: [1,null,1,null,1]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 200; node values are 0 or 1; a leaf with value 0 must be removed.</p>
+    <p><b>Approach.</b> Prune the children first, then decide about the current node: if both children are gone and this value is 0, return null. Post-order is essential here, because you cannot know whether a node should survive until its subtrees are settled.</p>
+    <pre><code>// Prune the children first, then drop this node if it is a 0 leaf
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+TreeNode* pruneTree(TreeNode* node) {
+    if (!node) return nullptr;
+    node-&gt;left = pruneTree(node-&gt;left);          // settle the subtrees first
+    node-&gt;right = pruneTree(node-&gt;right);
+    if (node-&gt;val == 0 &amp;&amp; !node-&gt;left &amp;&amp; !node-&gt;right) return nullptr;   // 0 leaf
+    return node;
+}   // O(n) time · O(h) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="count-good-nodes-in-binary-tree">
+    <h3><span class="pn">M12</span> Count Good Nodes <span class="pill">Medium</span> <span class="muted small">· top-down maximum</span></h3>
+    <p><b>Problem.</b> A node is good if no node on the path from the root to it has a larger value. Return how many good nodes the tree has.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [3,1,4,3,null,1,5]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [3,3,null,4,2]
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 10^5; -10^4 &lt;= node values &lt;= 10^4; the root is always good.</p>
+    <p><b>Approach.</b> Pass the largest value seen so far downward and count a node when its value is at least that maximum. The comparison must be greater-or-equal, so ties along a path all count.</p>
+    <pre><code>// Carry the path maximum down; a node counts when it is &gt;= that maximum
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+int count(TreeNode* node, int best) {
+    if (!node) return 0;
+    int good = node-&gt;val &gt;= best ? 1 : 0;        // ties also count as good
+    int next = max(best, node-&gt;val);
+    return good + count(node-&gt;left, next) + count(node-&gt;right, next);
+}
+int goodNodes(TreeNode* root) { return count(root, INT_MIN); }
+// O(n) time · O(h) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="binary-tree-maximum-path-sum">
+    <h3><span class="pn">H1</span> Maximum Path Sum <span class="pill hot">Hard</span> <span class="muted small">· bottom-up gain with a global best</span></h3>
+    <p><b>Problem.</b> A path is any sequence of nodes connected by edges, each used once. Return the largest sum any path can have; negative nodes may be skipped, but a path must contain at least one node.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [1,2,3]
+Output: 6</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [-10,9,20,null,null,15,7]
+Output: 42</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 3 * 10^4; -1000 &lt;= node values &lt;= 1000; paths may start and end anywhere.</p>
+    <p><b>Approach.</b> Each node contributes to its parent at most one side — the better of its two branches, floored at zero so a negative branch is dropped. Separately, the best path *through* the node uses both sides, and that is what updates the global answer.</p>
+    <pre><code>// Report at most one side upward; record the both-sides path locally
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+int best_;
+int gain(TreeNode* node) {
+    if (!node) return 0;
+    int l = max(0, gain(node-&gt;left));            // drop negative branches
+    int r = max(0, gain(node-&gt;right));
+    best_ = max(best_, node-&gt;val + l + r);       // path through this node
+    return node-&gt;val + max(l, r);                // one side to the parent
+}
+int maxPathSum(TreeNode* root) { best_ = INT_MIN; gain(root); return best_; }
+// O(n) time · O(h) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="serialize-and-deserialize-binary-tree">
+    <h3><span class="pn">H2</span> Serialize and Deserialize a Binary Tree <span class="pill hot">Hard</span> <span class="muted small">· preorder with explicit nulls</span></h3>
+    <p><b>Problem.</b> Design serialize(root) producing a string and deserialize(data) rebuilding the identical tree.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [1,2,3,null,null,4,5]
+Output: round-trips to the same tree</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = []
+Output: round-trips to an empty tree</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 10^4; -1000 &lt;= node values &lt;= 1000; the format is yours to choose.</p>
+    <p><b>Approach.</b> Emit a preorder walk in which null children are written explicitly as a marker. That marker is what makes the payload self-describing: rebuilding can then allocate children in order without any length or level bookkeeping, which is why the round trip is exactly one pass each way.</p>
+    <pre><code>// Preorder with explicit nulls: the stream rebuilds itself
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+class Codec {
+    void enc(TreeNode* node, string&amp; out) {
+        if (!node) { out += "#,"; return; }      // explicit null marker
+        out += to_string(node-&gt;val) + ",";
+        enc(node-&gt;left, out);
+        enc(node-&gt;right, out);
+    }
+    TreeNode* dec(stringstream&amp; ss) {
+        string tok; getline(ss, tok, ',');
+        if (tok == "#" || tok.empty()) return nullptr;
+        TreeNode* node = new TreeNode(stoi(tok));
+        node-&gt;left = dec(ss);                    // next token is the left subtree
+        node-&gt;right = dec(ss);
+        return node;
+    }
+public:
+    string serialize(TreeNode* root) { string out; enc(root, out); return out; }
+    TreeNode* deserialize(string data) { stringstream ss(data); return dec(ss); }
+};   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="recover-binary-search-tree">
+    <h3><span class="pn">H3</span> Recover a Swapped BST <span class="pill hot">Hard</span> <span class="muted small">· in-order with two violations</span></h3>
+    <p><b>Problem.</b> Exactly two nodes of a BST were swapped by mistake. Restore the tree without changing its structure.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [1,3,null,null,2]
+Output: [3,1,null,null,2]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [3,1,4,null,null,2]
+Output: [2,1,4,null,null,3]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= number of nodes &lt;= 1000; -2^31 &lt;= node values &lt;= 2^31 - 1; the fix must swap the values, not relink nodes.</p>
+    <p><b>Approach.</b> An in-order walk of a correct BST is increasing, so a swap shows up as one or two descents. Record the previous node only on the first descent and the current node on every descent — for adjacent swaps there is only one descent, and handling that case is where most solutions break.</p>
+    <pre><code>// In-order: record the first descent's 'prev' and the last descent's 'cur'
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+class Solver {
+public:
+    TreeNode *prev = nullptr, *first = nullptr, *second = nullptr;
+    void walk(TreeNode* node) {                  // Morris would give O(1) space
+        if (!node) return;
+        walk(node-&gt;left);
+        if (prev &amp;&amp; prev-&gt;val &gt; node-&gt;val) {
+            if (!first) first = prev;            // first descent: keep prev
+            second = node;                       // latest descent: keep cur
+        }
+        prev = node;
+        walk(node-&gt;right);
+    }
+    void recoverTree(TreeNode* root) {
+        walk(root);
+        if (first &amp;&amp; second) swap(first-&gt;val, second-&gt;val);   // values, not links
+    }
+};   // O(n) time · O(h) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="binary-tree-cameras">
+    <h3><span class="pn">H4</span> Binary Tree Cameras <span class="pill hot">Hard</span> <span class="muted small">· three-state greedy DP</span></h3>
+    <p><b>Problem.</b> A camera on a node covers that node, its parent and its children. Return the minimum number of cameras needed to cover every node.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [0,0,null,0,0]
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [0,0,null,0,null,0,null,null,0]
+Output: 2</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 1000; each node value is 0; cameras may be placed on any node.</p>
+    <p><b>Approach.</b> Each subtree reports one of three states: it still needs coverage, it is covered by its children, or it has a camera. Placing a camera only when a child reports 'needs coverage' is the greedy choice that makes the count optimal, and the root may need a final camera if it is still uncovered.</p>
+    <pre><code>// States: 0 = needs cover, 1 = covered, 2 = has a camera
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+int cameras;
+int dfs(TreeNode* node) {
+    if (!node) return 1;                         // a missing child counts as covered
+    int l = dfs(node-&gt;left), r = dfs(node-&gt;right);
+    if (l == 0 || r == 0) { cameras++; return 2; }   // a child demands a camera here
+    if (l == 2 || r == 2) return 1;                  // a camera below covers this
+    return 0;                                        // needs its parent's camera
+}
+int minCameraCover(TreeNode* root) {
+    cameras = 0;
+    return dfs(root) == 0 ? cameras + 1 : cameras;   // the root may still need one
+}   // O(n) time · O(h) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="vertical-order-traversal-of-a-binary-tree">
+    <h3><span class="pn">H5</span> Vertical Order Traversal <span class="pill hot">Hard</span> <span class="muted small">· coordinate sorting</span></h3>
+    <p><b>Problem.</b> Report node values column by column from left to right; inside one column, order by row, and for equal row and column, by value.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [3,9,20,null,null,15,7]
+Output: [[9],[3,15],[20],[7]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [1,2,3,4,5,6,7]
+Output: [[4],[2],[1,5,6],[3],[7]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 1000; 0 &lt;= node values &lt;= 1000; the value tie-break inside a cell is part of the answer.</p>
+    <p><b>Approach.</b> Give every node a coordinate (column, row, value) during a traversal, then sort that list once. The sorting does all the work: columns first, then rows, then values, so the tie-break rule needs no special code.</p>
+    <pre><code>// Collect (col, row, val), sort once, then group by column
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+vector&lt;vector&lt;int&gt;&gt; verticalTraversal(TreeNode* root) {
+    vector&lt;array&lt;int, 3&gt;&gt; nodes;                 // {col, row, val}
+    queue&lt;pair&lt;TreeNode*, pair&lt;int,int&gt;&gt;&gt; q;     // node, {col, row}
+    q.push({root, {0, 0}});
+    while (!q.empty()) {
+        auto [node, cr] = q.front(); q.pop();
+        auto [col, row] = cr;
+        nodes.push_back({col, row, node-&gt;val});
+        if (node-&gt;left) q.push({node-&gt;left, {col - 1, row + 1}});
+        if (node-&gt;right) q.push({node-&gt;right, {col + 1, row + 1}});
+    }
+    sort(nodes.begin(), nodes.end());             // col, then row, then value
+    vector&lt;vector&lt;int&gt;&gt; out;
+    int lastCol = INT_MIN;
+    for (auto&amp; n : nodes) {
+        if (n[0] != lastCol) { out.push_back({}); lastCol = n[0]; }
+        out.back().push_back(n[2]);
+    }
+    return out;
+}   // O(n log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="path-sum-iii">
+    <h3><span class="pn">H6</span> Path Sum III <span class="pill hot">Hard</span> <span class="muted small">· prefix sums on a root path</span></h3>
+    <p><b>Problem.</b> Count the paths that go downward (parent to child, not necessarily starting at the root or ending at a leaf) whose values sum to the target.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [10,5,-3,3,2,null,11,3,-2,null,1], targetSum = 8
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [5,4,8,11,null,4,4,7,2,null,null,5,1], targetSum = 22
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 1000; -10^9 &lt;= values, targetSum &lt;= 10^9; the answer fits in a 32-bit integer.</p>
+    <p><b>Approach.</b> Every downward path is the difference of two root-path sums, so keep a map of how many times each running sum has appeared along the current root-to-node path. Insert the current sum in the map *before* recursing and remove it afterwards — that removal is what restricts the counts to genuine downward paths instead of arbitrary ones.</p>
+    <pre><code>// Prefix sums along the current root path, subtracted from the target
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+unordered_map&lt;long long, int&gt; seen{{0, 1}};      // the empty prefix
+int countPaths(TreeNode* node, long long run, int target) {
+    if (!node) return 0;
+    run += node-&gt;val;
+    int found = seen.count(run - target) ? seen[run - target] : 0;   // earlier prefixes
+    seen[run]++;                                  // add before recursing
+    int total = found + countPaths(node-&gt;left, run, target)
+                      + countPaths(node-&gt;right, run, target);
+    seen[run]--;                                  // remove on the way back up
+    if (seen[run] == 0) seen.erase(run);
+    return total;
+}
+int pathSum(TreeNode* root, int target) {
+    seen.clear(); seen[0] = 1;
+    return countPaths(root, 0, target);
+}   // O(n) time · O(h) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="house-robber-iii">
+    <h3><span class="pn">H7</span> House Robber III <span class="pill hot">Hard</span> <span class="muted small">· two-value subtree DP</span></h3>
+    <p><b>Problem.</b> The houses form a binary tree and adjacent houses (parent and child) cannot both be robbed. Return the maximum amount.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [3,2,3,null,3,null,1]
+Output: 7</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [3,4,5,1,3,null,1]
+Output: 9</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 10^4; 0 &lt;= node values &lt;= 10^4; parent and child may not both be taken.</p>
+    <p><b>Approach.</b> Return a pair from every subtree: the best when this node is robbed and the best when it is not. Robbing the node forces the children's 'not robbed' values; skipping it lets each child use its better option. Both numbers travel upward together, so no node is visited twice.</p>
+    <pre><code>// Each subtree returns {rob this node, skip this node}
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+pair&lt;int, int&gt; dfs(TreeNode* node) {             // {rob, skip}
+    if (!node) return {0, 0};
+    auto [robL, skipL] = dfs(node-&gt;left);
+    auto [robR, skipR] = dfs(node-&gt;right);
+    int rob = node-&gt;val + skipL + skipR;         // children must be skipped
+    int skip = max(robL, skipL) + max(robR, skipR);
+    return {rob, skip};
+}
+int rob(TreeNode* root) {
+    auto [rob, skip] = dfs(root);
+    return max(rob, skip);
+}   // O(n) time · O(h) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="lowest-common-ancestor-of-a-binary-tree">
+    <h3><span class="pn">H8</span> Lowest Common Ancestor of a Binary Tree <span class="pill hot">Hard</span> <span class="muted small">· post-order signalling</span></h3>
+    <p><b>Problem.</b> Given two nodes in an ordinary binary tree, return their lowest common ancestor.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [3,5,1,6,2,0,8], p = 5, q = 1
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [3,5,1,6,2,0,8], p = 5, q = 4
+Output: 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= number of nodes &lt;= 10^5; values are unique; p and q both exist and may be the same node.</p>
+    <p><b>Approach.</b> Recurse into both subtrees and let each call report whether it found p, q, or neither. The first node that receives a hit from both sides (or is a target itself with a hit from one side) is the answer — returned upward all the way, so no parent pointers are needed.</p>
+    <pre><code>// A node receiving hits from both sides is the LCA
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+TreeNode* lowestCommonAncestor(TreeNode* node, TreeNode* p, TreeNode* q) {
+    if (!node || node == p || node == q) return node;
+    TreeNode* l = lowestCommonAncestor(node-&gt;left, p, q);
+    TreeNode* r = lowestCommonAncestor(node-&gt;right, p, q);
+    if (l &amp;&amp; r) return node;                     // one target on each side
+    return l ? l : r;                            // pass the hit upward
+}   // O(n) time · O(h) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="all-nodes-distance-k-in-binary-tree">
+    <h3><span class="pn">H9</span> All Nodes at Distance K <span class="pill hot">Hard</span> <span class="muted small">· parent map + BFS</span></h3>
+    <p><b>Problem.</b> Given a target node in a binary tree, return the values of all nodes exactly k edges away.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [3,5,1,6,2,0,8,null,null,7,4], target = 5, k = 2
+Output: [7,4,1]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [1], target = 1, k = 3
+Output: []</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 500; 0 &lt;= node values &lt;= 500; all values are unique.</p>
+    <p><b>Approach.</b> Distances in a tree run both down and *up*, and a plain traversal cannot go up. Add a parent pointer per node, then the tree becomes an undirected graph and a breadth-first search from the target finds the k-th layer.</p>
+    <pre><code>// Parent pointers make the tree undirected; BFS k layers out
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+unordered_map&lt;TreeNode*, TreeNode*&gt; parent;
+void record(TreeNode* node, TreeNode* par) {
+    if (!node) return;
+    parent[node] = par;
+    record(node-&gt;left, node);
+    record(node-&gt;right, node);
+}
+vector&lt;int&gt; distanceK(TreeNode* root, TreeNode* target, int k) {
+    parent.clear();
+    record(root, nullptr);
+    unordered_set&lt;TreeNode*&gt; seen{target};
+    vector&lt;TreeNode*&gt; frontier{target};
+    while (k-- &gt; 0 &amp;&amp; !frontier.empty()) {       // walk out one layer at a time
+        vector&lt;TreeNode*&gt; next;
+        for (TreeNode* node : frontier)
+            for (TreeNode* nb : {node-&gt;left, node-&gt;right, parent[node]})
+                if (nb &amp;&amp; seen.insert(nb).second) next.push_back(nb);
+        frontier = move(next);
+    }
+    vector&lt;int&gt; out;
+    for (TreeNode* node : frontier) out.push_back(node-&gt;val);
+    return out;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="maximum-sum-bst-in-binary-tree">
+    <h3><span class="pn">H10</span> Maximum Sum BST in a Binary Tree <span class="pill hot">Hard</span> <span class="muted small">· subtree summary (min, max, sum, valid)</span></h3>
+    <p><b>Problem.</b> Return the largest sum of node values over all subtrees that are themselves valid BSTs; return 0 if none exists.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [1,4,3,2,4,2,5,null,null,null,null,null,null,4,6]
+Output: 20</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [4,3,null,1,2]
+Output: 2</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 4 * 10^4; -4 * 10^4 &lt;= node values &lt;= 4 * 10^4; only complete subtrees count.</p>
+    <p><b>Approach.</b> Every subtree reports four things: its minimum, its maximum, its sum and whether it is a valid BST. A node is a valid BST exactly when both children are valid and its value sits strictly between the children's extremes — so one bottom-up pass answers everything.</p>
+    <pre><code>// Each subtree reports {min, max, sum, isBST}
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+int bestSum;
+array&lt;long long, 4&gt; dfs(TreeNode* node) {        // {min, max, sum, valid}
+    if (!node) return {LLONG_MAX, LLONG_MIN, 0, 1};
+    auto l = dfs(node-&gt;left), r = dfs(node-&gt;right);
+    bool ok = l[3] &amp;&amp; r[3] &amp;&amp; node-&gt;val &gt; l[1] &amp;&amp; node-&gt;val &lt; r[0];
+    if (ok) {
+        long long sum = l[2] + r[2] + node-&gt;val;
+        bestSum = max&lt;long long&gt;(bestSum, sum);
+        return {min&lt;long long&gt;(l[0], node-&gt;val), max&lt;long long&gt;(r[1], node-&gt;val), sum, 1};
+    }
+    return {LLONG_MIN, LLONG_MAX, 0, 0};         // invalid; parents must not use it
+}
+int maxSumBST(TreeNode* root) {
+    bestSum = 0;
+    dfs(root);
+    return bestSum;
+}   // O(n) time · O(h) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(h) space.</p>
+  </section>
+  <section class="sub" id="bst-iterator">
+    <h3><span class="pn">H11</span> BST Iterator <span class="pill hot">Hard</span> <span class="muted small">· controlled in-order stack</span></h3>
+    <p><b>Problem.</b> Design a class over a BST with next() returning the next smallest value and hasNext() reporting whether one exists, both in O(1) amortised time and O(h) memory.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  tree [7,3,15,null,null,9,20], next(), next(), hasNext()
+Output: 3, 7, true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  continuing: next(), next()
+Output: 9, 15</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 10^5; 0 &lt;= node values &lt;= 10^6; the amortised cost must be O(1) per call.</p>
+    <p><b>Approach.</b> Do the in-order walk lazily: push the whole left spine at the start, and after each <code>next()</code> push the left spine of the popped node's right child. The stack holds exactly the path to the next value, so memory is O(h) rather than O(n).</p>
+    <pre><code>// Lazy in-order: the stack is the path to the next smallest value
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+class BSTIterator {
+    vector&lt;TreeNode*&gt; st;
+    void pushLeft(TreeNode* node) {              // the whole left spine
+        for (; node; node = node-&gt;left) st.push_back(node);
+    }
+public:
+    BSTIterator(TreeNode* root) { pushLeft(root); }
+    int next() {
+        TreeNode* node = st.back(); st.pop_back();
+        pushLeft(node-&gt;right);                   // the next values may be to the right
+        return node-&gt;val;
+    }
+    bool hasNext() { return !st.empty(); }
+};   // O(1) amortised per call · O(h) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(1) amortised per call time · O(h) space.</p>
+  </section>
+  <section class="sub" id="closest-binary-search-tree-value-ii">
+    <h3><span class="pn">H12</span> Closest BST Values <span class="pill hot">Hard</span> <span class="muted small">· in-order with a capped buffer</span></h3>
+    <p><b>Problem.</b> Given a BST and a target, return the k values closest to the target, sorted ascending.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [4,2,5,1,3], target = 3.714286, k = 2
+Output: [4,3]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [1], target = 0.5, k = 1
+Output: [1]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= k &lt;= number of nodes &lt;= 10^4; 0 &lt;= node values &lt;= 10^9; the output must be sorted ascending.</p>
+    <p><b>Approach.</b> An in-order walk produces values in ascending order, so a fixed-size queue that is kept as close as possible to the target collapses the problem to a sliding window of size k. Whenever the queue is full, compare the new value against the front — the front is always the *farthest* of the current candidates, so dropping it is optimal.</p>
+    <pre><code>// In-order + a size-k window: drop the farthest value when full
+struct TreeNode { int val; TreeNode *left, *right; TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {} };
+void walk(TreeNode* node, double target, int k, deque&lt;int&gt;&amp; win) {
+    if (!node) return;
+    walk(node-&gt;left, target, k, win);
+    win.push_back(node-&gt;val);                    // values arrive ascending
+    if ((int)win.size() &gt; k) {
+        if (abs(win.front() - target) &lt;= abs(win.back() - target)) win.pop_back();
+        else win.pop_front();                    // the front was farther away
+    }
+    walk(node-&gt;right, target, k, win);
+}
+vector&lt;int&gt; closestKValues(TreeNode* root, double target, int k) {
+    deque&lt;int&gt; win;
+    walk(root, target, k, win);
+    return vector&lt;int&gt;(win.begin(), win.end());
+}   // O(n) time · O(h + k) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log k) time · O(h + k) space.</p>
+  </section>
+</section>
 
   </main>
 </div>
 
 <footer>
-  <p><b>C++ bank</b> — 180 problems across 6 topics, with complete solutions in
+  <p><b>C++ bank</b> — 210 problems across 7 topics, with complete solutions in
   C++17/20/23 solutions.</p>
   <p class="small">Same problems in every language:
     <a href="cpp-leetcode.html">C++</a> · <a href="java-leetcode.html">Java</a> · <a href="python-leetcode.html">Python</a>
