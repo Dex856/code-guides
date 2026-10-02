@@ -1,0 +1,2868 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C++ for LeetCode — Complete Guide (2026)</title>
+<meta name="description" content="A complete C++ guide specialised for LeetCode: STL containers and algorithms, patterns, pitfalls, paste-ready templates and complexity — with diagrams. Built for C++17/20/23.">
+<style>
+:root{
+  --bg:#ffffff; --fg:#141b26; --muted:#57637a; --line:#e2e8f2; --card:#f5f8fd; --card2:#eef3fa;
+  --accent:#5b4b8a; --accent-soft:#efeafb; --accent2:#0f766e; --warn:#b3342a; --warn-soft:#fdecea;
+  --ok:#166534; --ok-soft:#e8f6ee; --zebra:#fafbfe;
+  --code:#0d1425; --codefg:#e2ebf8; --code-hi:#0a1020;
+  --dg-bx:#eff4fb; --dg-line:#9db4d4; --dg-a:#e9eefb; --dg-b:#fff4d6; --dg-c:#e6f6ee; --dg-d:#fdecea; --dg-p:#f1ecfb;
+  --shadow:0 1px 2px rgba(16,24,40,.06),0 8px 24px rgba(16,24,40,.06);
+}
+html[data-theme=dark]{
+  --bg:#0c1117; --fg:#e6edf7; --muted:#95a3b8; --line:#212b3a; --card:#141c27; --card2:#1a2331;
+  --accent:#b6a6f0; --accent-soft:#1c1730; --accent2:#5eead4; --warn:#f08a80; --warn-soft:#2a1a19;
+  --ok:#6dd39b; --ok-soft:#12261c; --zebra:#111823;
+  --code:#080d16; --codefg:#e2ebf8; --code-hi:#0a1020;
+  --dg-bx:#16202e; --dg-line:#3d5a75; --dg-a:#1a2233; --dg-b:#2b2410; --dg-c:#12281d; --dg-d:#2b1716; --dg-p:#221a30;
+  --shadow:0 1px 2px rgba(0,0,0,.5),0 8px 24px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:76px}
+body{margin:0;background:var(--bg);color:var(--fg);font:15.5px/1.66 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+code,pre,kbd,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+#progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,#5b4b8a,#0f766e);width:0;z-index:60}
+.topbar{position:sticky;top:0;z-index:50;display:flex;gap:12px;align-items:center;padding:9px 16px;background:var(--bg);background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;background:linear-gradient(145deg,#5b4b8a,#0f766e);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:800}
+.brand small{font-weight:500;color:var(--muted);font-size:11.5px}
+.searchwrap{position:relative;flex:1;max-width:560px;margin-left:auto}
+#q{width:100%;padding:9px 34px 9px 34px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--fg);font-size:14px;outline:none}
+#q:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.searchwrap .ico{position:absolute;left:11px;top:9px;opacity:.55}
+.searchwrap .hint{position:absolute;right:9px;top:7px;font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:1px 6px;background:var(--bg)}
+#results{position:absolute;top:46px;left:0;right:0;background:var(--bg);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);max-height:60vh;overflow:auto;display:none;padding:6px}
+#results.on{display:block}
+#results a{display:block;padding:7px 10px;border-radius:8px;color:var(--fg)}
+#results a:hover,#results a.sel{background:var(--card2);text-decoration:none}
+#results .rp{color:var(--muted);font-size:12px}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:9px;padding:7px 10px;font-size:13px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:28px;max-width:1420px;margin:0 auto;padding:0 18px 80px}
+#toc{position:sticky;top:60px;align-self:start;max-height:calc(100vh - 82px);overflow:auto;padding:14px 6px 40px 0;font-size:13.5px;border-right:1px solid var(--line)}
+#toc .navhead{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:8px 8px 6px}
+.navch>a{display:block;padding:5px 9px;border-radius:8px;color:var(--fg);font-weight:600}
+.navch>a:hover{background:var(--card);text-decoration:none}
+.navch.active>a{background:var(--accent-soft);color:var(--accent)}
+.navch ul{list-style:none;margin:0 0 6px;padding:0 0 0 12px}
+.navch ul a{display:block;padding:2px 8px;border-radius:6px;color:var(--muted);font-size:12.4px;border-left:2px solid var(--line)}
+.navch ul a:hover,.navch ul a.on{color:var(--accent);border-left-color:var(--accent);text-decoration:none;background:var(--card)}
+main{min-width:0;padding-top:8px}
+@media(max-width:1030px){.layout{grid-template-columns:1fr}#toc{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line)}}
+@media(max-width:720px){.brand small{display:none}.searchwrap .hint{display:none}#q{padding-right:12px}}
+.hero{margin:20px 0 6px;border:1px solid var(--line);border-radius:18px;padding:26px 24px;background:radial-gradient(1000px 340px at 4% -30%,rgba(91,75,138,.16),transparent 62%),radial-gradient(900px 320px at 100% 0%,rgba(15,118,110,.14),transparent 60%),var(--card)}
+.hero h1{margin:0 0 6px;font-size:clamp(25px,4.2vw,38px);line-height:1.14;letter-spacing:-.4px}
+.hero p.lede{color:var(--muted);font-size:15.6px;margin:.4rem 0 1rem;max-width:76ch}
+.stats{display:flex;flex-wrap:wrap;gap:10px}
+.stat{border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:8px 13px;font-size:12.5px;color:var(--muted)}
+.stat b{display:block;font-size:19px;color:var(--fg);line-height:1.2}
+.badges{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}
+.pill{font-size:11.5px;border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:3px 10px;color:var(--muted)}
+.pill.hot{border-color:var(--accent);color:var(--accent)}
+.chapter{margin:42px 0 0;scroll-margin-top:78px}
+.chapter>h2{display:flex;align-items:center;gap:12px;font-size:clamp(19px,2.9vw,26px);margin:0 0 4px;letter-spacing:-.3px}
+.chapter>h2 .num{flex:0 0 auto;display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:linear-gradient(145deg,#5b4b8a,#3d3260);color:#fff;font-size:14px;font-weight:700}
+.chapter>.tagline{color:var(--muted);margin:0 0 6px;font-size:14.4px}
+.sub{margin:24px 0 0;scroll-margin-top:78px}
+.sub h3{font-size:17.4px;margin:0 0 8px;padding-bottom:5px;border-bottom:1px solid var(--line)}
+h4{font-size:15px;margin:15px 0 6px}
+p{margin:.55rem 0}
+ul,ol{margin:.5rem 0 .5rem 1.1rem;padding:0}
+li{margin:.22rem 0}
+pre{position:relative;background:var(--code);color:var(--codefg);border-radius:12px;padding:15px 16px;overflow:auto;font-size:13.3px;line-height:1.58;border:1px solid #1b2436;margin:.7rem 0}
+pre code{white-space:pre}
+.copy{position:absolute;top:8px;right:8px;font-size:11px;background:#1b2635;color:#9fb2c9;border:1px solid #2b3a4d;border-radius:7px;padding:3px 8px;cursor:pointer;opacity:0;transition:.15s}
+pre:hover .copy{opacity:1}
+.copy:hover{color:#fff;border-color:#4d6b8f}
+:not(pre)>code{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:1px 5px;font-size:.88em;color:var(--accent)}
+.tok-k{color:#ff7ab2;font-weight:600}.tok-s{color:#9ae08a}.tok-c{color:#7b8ba3;font-style:italic}
+.tok-n{color:#f2cc60}.tok-f{color:#79c0ff}.tok-d{color:#ffa657}.tok-b{color:#ffa657;font-style:italic}.tok-t{color:#7fd1c4}
+.card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:14px 16px;margin:.8rem 0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:13px;margin:.8rem 0}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:.8rem 0}
+.note,.warn,.tip,.trap{border-radius:12px;padding:11px 14px;margin:.8rem 0;border:1px solid;font-size:14.3px}
+.note{background:var(--accent-soft);border-color:var(--accent)}
+.warn{background:var(--warn-soft);border-color:var(--warn)}
+.tip{background:var(--ok-soft);border-color:var(--ok)}
+.trap{background:var(--card2);border-color:var(--line)}
+.tbl{width:100%;border-collapse:collapse;font-size:13.6px;margin:.75rem 0;display:block;overflow-x:auto}
+.tbl th,.tbl td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+.tbl th{background:var(--card);font-weight:650;white-space:nowrap}
+.tbl tbody tr:nth-child(even) td{background:var(--zebra)}
+figure{margin:1.1rem 0}
+figure svg{display:block;width:100%;height:auto;max-width:920px;margin:0 auto;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+figcaption{text-align:center;color:var(--muted);font-size:12.5px;margin-top:7px}
+.dg text{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;fill:var(--fg)}
+.dg .t{font-weight:700;font-size:13px}
+.dg .tt{font-weight:700;font-size:15px}
+.dg .sm{font-size:11px;fill:var(--muted)}
+.dg .mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.6px}
+.dg .w{fill:#fff}
+html[data-theme=dark] .dg .w{fill:#0c1117}
+.bx{fill:var(--dg-bx);stroke:var(--dg-line);stroke-width:1.4;rx:9}
+.ba{fill:var(--dg-a);stroke:#5b4b8a;stroke-width:1.5;rx:9}
+.bb{fill:var(--dg-b);stroke:#c99700;stroke-width:1.5;rx:9}
+.bc{fill:var(--dg-c);stroke:#2e9e63;stroke-width:1.5;rx:9}
+.bd{fill:var(--dg-d);stroke:#c9524a;stroke-width:1.5;rx:9}
+.bp{fill:var(--dg-p);stroke:#8e6fc0;stroke-width:1.5;rx:9}
+.ar{stroke:#7b8798;stroke-width:1.6;fill:none;marker-end:url(#ah)}
+.ar2{stroke:#5b4b8a;stroke-width:1.8;fill:none;marker-end:url(#ah2)}
+.lnd{stroke:#9aa7b8;stroke-width:1.3;fill:none;stroke-dasharray:5 4}
+.kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:0 5px;font-size:12px;background:var(--card)}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.reslist{list-style:none;margin-left:0}
+.reslist li{border-bottom:1px dashed var(--line);padding:6px 0}
+#top{position:fixed;right:18px;bottom:18px;z-index:50;display:none}
+#top.on{display:block}
+footer{border-top:1px solid var(--line);margin-top:56px;padding:22px 18px 60px;color:var(--muted);font-size:13.4px;text-align:center}
+mark{background:var(--accent2);color:#08110f;border-radius:3px;padding:0 2px}
+.flash{animation:fl 1.8s ease}
+@keyframes fl{0%{background:var(--accent-soft)}100%{background:transparent}}
+@media print{
+  .topbar,#toc,#top,.copy,#progress{display:none!important}
+  .layout{display:block;max-width:none}
+  .chapter{page-break-before:always}
+  body{font-size:11.5pt}
+  pre{background:#f5f7fa;color:#111;border-color:#ccc}
+  .tok-k,.tok-s,.tok-c,.tok-n,.tok-f,.tok-d,.tok-b,.tok-t{color:#111!important;font-style:normal}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#7b8798"/></marker>
+  <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#5b4b8a"/></marker>
+</defs></svg>
+
+<header class="topbar">
+  <div class="brand"><span class="logo">C++</span>
+    <div>C++ for LeetCode<br><small id="versions">C++17 / 20 / 23 · offline reference</small></div>
+  </div>
+  <div class="searchwrap">
+    <span class="ico">🔍</span>
+    <input id="q" type="search" placeholder="Search — try “unordered_map”, “priority_queue”, “overflow”, “DSU”…" autocomplete="off" spellcheck="false">
+    <span class="hint">/</span>
+    <div id="results"></div>
+  </div>
+  <button class="btn" id="theme" title="Toggle dark / light">🌙</button>
+  <button class="btn" id="print" title="Print or save as PDF">🖨</button>
+</header>
+
+<div class="layout">
+  <nav id="toc" aria-label="Contents"></nav>
+  <main id="content">
+
+<section class="chapter" id="start">
+  <h2><span class="num">0</span> How to use this guide</h2>
+  <p class="tagline">C++ reduced to exactly what wins coding-round problems: the STL you actually type, the idioms that
+  make solutions short, and the traps that cost submissions.</p>
+
+  <div class="hero">
+    <h1>C++ for LeetCode</h1>
+    <p class="lede">Most C++ you will never need for interviews. This guide covers the ~20% that solves ~100% of problems:
+    <b>vector, string, unordered_map, set, priority_queue, sort/lower_bound</b>, the classic patterns mapped onto them,
+    and paste-ready templates for graphs, DSU, binary search on answer and DP — plus the pitfalls (overflow, iterator
+    invalidation, comparator bugs, cache-hostile code) that separate “works on my machine” from “accepted”.</p>
+    <div class="stats" id="stats">
+      <div class="stat"><b>—</b>chapters</div><div class="stat"><b>—</b>topics</div>
+      <div class="stat"><b>—</b>snippets</div><div class="stat"><b>—</b>diagrams</div>
+    </div>
+    <div class="badges">
+      <span class="pill hot">LeetCode-default standard: C++17 (C++20/23 available)</span>
+      <span class="pill">STL-first</span><span class="pill">Compiles with g++ / clang++</span>
+      <span class="pill">Interview-ready templates</span>
+    </div>
+  </div>
+
+  <section class="sub">
+    <h3>0.1 Three ways to read this</h3>
+    <div class="grid3">
+      <div class="card"><h4>🌱 New to C++</h4>Read <b>2 → 6</b> in order and type every snippet. C++ rewards precision: the type system and STL come before cleverness.</div>
+      <div class="card"><h4>🎯 Interview in a week</h4><b>Ch. 5</b> (containers), <b>ch. 7</b> (comparators), <b>ch. 11</b> (pattern→STL map), <b>ch. 12</b> (pitfalls), <b>ch. 14</b> (templates). That set solves most problems.</div>
+      <div class="card"><h4>🐍 Coming from Python</h4><b>Ch. 2.4</b> (types/overflow), <b>ch. 5</b> (which container replaces list/dict/set), <b>ch. 12</b> — then you are done.</div>
+    </div>
+    <div class="tip"><b>Companion material:</b> pair this with the <a href="cpp-leetcode.html">C++ LeetCode question bank</a>
+    (6 easy / 12 medium / 12 hard per topic, all solutions compiled and tested) and the
+    <a href="java-guide.html">Java guide</a> / <a href="python-guide.html">Python guide</a>.</div>
+  </section>
+
+  <section class="sub">
+    <h3>0.2 Conventions</h3>
+    <table class="tbl">
+      <thead><tr><th>Notation</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>int</code>, <code>ll</code></td><td>In this guide <code>ll</code> means <code>long long</code> — the type you should reach for the moment sums can exceed 2·10⁹.</td></tr>
+        <tr><td><span class="pill hot">C++17</span> <span class="pill hot">C++20</span></td><td>Minimum standard needed. LeetCode’s default is C++17; C++20 is selected via a dropdown.</td></tr>
+        <tr><td><b>⏱ O(...)</b></td><td>Time complexity, average case, per operation unless stated.</td></tr>
+        <tr><td><b>UB</b></td><td>Undefined behaviour — “works” today, fails on the judge tomorrow.</td></tr>
+      </tbody>
+    </table>
+  </section>
+</section>
+
+<section class="chapter" id="ch1">
+  <h2><span class="num">1</span> Setup, compilation and the LeetCode workflow</h2>
+  <p class="tagline">From a blank file to a running solution: the compiler flags that catch bugs early, and a local test loop.</p>
+
+  <section class="sub">
+    <h3>1.1 Compile and run in one command</h3>
+    <pre><code># Single file, LeetCode-style solution + your own main()
+g++ -std=c++20 -O2 -Wall -Wextra -o sol sol.cpp && ./sol
+
+# The flags that matter
+#   -std=c++17|c++20|c++23   choose the standard (LeetCode uses C++17 by default)
+#   -O2                      optimise (judge uses -O2); use -O0 for readable debug info
+#   -g                       debug symbols (gdb)
+#   -Wall -Wextra            warnings = free bug detection
+#   -fsanitize=address,undefined   catch out-of-bounds, overflow, UB in tests! (dev only)
+#   -D_GLIBCXX_DEBUG         checked STL iterators (catches invalid iterator use)
+
+g++ -std=c++20 -O1 -g -fsanitize=address,undefined sol.cpp -o sol_dbg && ./sol_dbg
+
+# Windows: MSVC via Developer Prompt
+#   cl /std:c++20 /EHsc /O2 sol.cpp
+# macOS: clang++ -std=c++20 -O2 sol.cpp -o sol
+# Fast input for competitive-style problems
+#   ios::sync_with_stdio(false); cin.tie(nullptr);</code></pre>
+    <div class="tip"><b>Use sanitizers locally, never on the judge.</b> A 3-second run under
+    <code>-fsanitize=address,undefined</code> finds the out-of-bounds write that would otherwise show up as a mysterious
+    Wrong Answer at test 200. This is the single highest-value habit in this chapter.</div>
+  </section>
+
+  <section class="sub">
+    <h3>1.2 The LeetCode skeleton you actually write</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 300" role="img" aria-label="LeetCode C++ solution skeleton">
+        <text class="tt" x="20" y="26">What the judge gives you, and what you must add</text>
+        <rect x="30" y="50" width="420" height="228" class="db bx"/>
+        <text class="t" x="240" y="74" text-anchor="middle">Your submitted file</text>
+        <text class="mono sm" x="50" y="100">#include &lt;bits/stdc++.h&gt;   // or the specific headers</text>
+        <text class="mono sm" x="50" y="122">using namespace std;</text>
+        <text class="mono sm" x="50" y="150">class Solution {</text>
+        <text class="mono sm" x="70" y="172">public:</text>
+        <text class="mono sm" x="90" y="194">vector&lt;int&gt; solve(vector&lt;int&gt;&amp; nums, int k) {</text>
+        <text class="mono sm" x="110" y="216">// your algorithm here</text>
+        <text class="mono sm" x="110" y="238">}</text>
+        <text class="mono sm" x="70" y="260">};</text>
+
+        <rect x="470" y="50" width="400" height="100" class="bc"/>
+        <text class="t" x="670" y="74" text-anchor="middle">Judge wraps this</text>
+        <text class="sm" x="490" y="98">It generates main(), parses the input JSON,</text>
+        <text class="sm" x="490" y="118">constructs ListNode/TreeNode when needed,</text>
+        <text class="sm" x="490" y="138">calls your method, compares the output.</text>
+
+        <rect x="470" y="164" width="400" height="114" class="bb"/>
+        <text class="t" x="670" y="188" text-anchor="middle">Locally, you write the harness</text>
+        <text class="mono sm" x="490" y="212">int main() {</text>
+        <text class="mono sm" x="490" y="232">  vector&lt;int&gt; a{2,7,11,15};</text>
+        <text class="mono sm" x="490" y="252">  auto r = Solution().solve(a, 9);</text>
+        <text class="mono sm" x="490" y="272">  for (int x : r) cout &lt;&lt; x &lt;&lt; ' ';</text>
+        <text class="mono sm" x="600" y="272">}</text>
+      </svg>
+      <figcaption>Fig 1.1 — Paste the class in, add a main() for local testing, delete it before submitting (or keep it — LeetCode ignores it).</figcaption>
+    </figure>
+    <pre><code>#include &lt;bits/stdc++.h&gt;      // GCC/Clang convenience header used by most competitive C++
+using namespace std;
+
+class Solution {
+public:
+    long long total(const vector&lt;int&gt;&amp; nums) const {   // const&amp; = read-only, no copy
+        long long s = 0;                                  // accumulate in 64-bit
+        for (int x : nums) s += x;
+        return s;
+    }
+};
+
+#ifdef LOCAL_TEST                       // only compiled when you ask for it
+int main() {
+    vector&lt;int&gt; v{1, 2, 3};
+    cout &lt;&lt; Solution().total(v) &lt;&lt; '\n';   // 6
+    assert(Solution().total({}) == 0);
+    cout &lt;&lt; "OK\n";
+}
+#endif
+// compile with:  g++ -std=c++20 -O2 -DLOCAL_TEST sol.cpp -o sol</code></pre>
+    <div class="note"><b>Why <code>&lt;bits/stdc++.h&gt;</code>?</b> It is a GCC header that pulls in the whole standard
+    library — perfect for contests, useless in production (it is non-portable and slows compile times). Know how to write
+    explicit includes too: <code>&lt;vector&gt; &lt;string&gt; &lt;unordered_map&gt; &lt;algorithm&gt; &lt;queue&gt;
+    &lt;numeric&gt; &lt;climits&gt;</code>.</div>
+  </section>
+
+  <section class="sub">
+    <h3>1.3 Standard-library quick reference (the headers worth knowing)</h3>
+    <table class="tbl">
+      <thead><tr><th>Header</th><th>Provides</th><th>You will use</th></tr></thead>
+      <tbody>
+        <tr><td><code>&lt;vector&gt;</code> <code>&lt;array&gt;</code></td><td>dynamic / fixed arrays</td><td><code>vector&lt;int&gt;</code>, <code>vector&lt;vector&lt;int&gt;&gt;</code></td></tr>
+        <tr><td><code>&lt;string&gt;</code></td><td>text</td><td><code>string s</code>, <code>substr</code>, <code>find</code>, <code>stoi</code></td></tr>
+        <tr><td><code>&lt;algorithm&gt;</code></td><td>sorting, searching</td><td><code>sort</code>, <code>lower_bound</code>, <code>unique</code>, <code>max_element</code>, <code>next_permutation</code></td></tr>
+        <tr><td><code>&lt;unordered_map&gt;</code> <code>&lt;unordered_set&gt;</code> <code>&lt;map&gt;</code> <code>&lt;set&gt;</code></td><td>hash/ordered tables</td><td>counting, dedupe, ordered traversal</td></tr>
+        <tr><td><code>&lt;queue&gt;</code> <code>&lt;stack&gt;</code> <code>&lt;deque&gt;</code></td><td>adapters</td><td>BFS, DFS-stack, monotonic deque</td></tr>
+        <tr><td><code>&lt;queue&gt;</code> → <code>priority_queue</code></td><td>binary heap</td><td>top-K, Dijkstra, merge-k-lists</td></tr>
+        <tr><td><code>&lt;numeric&gt;</code></td><td>numeric algorithms</td><td><code>accumulate</code>, <code>gcd</code>, <code>lcm</code>, <code>iota</code>, <code>partial_sum</code></td></tr>
+        <tr><td><code>&lt;climits&gt;</code> <code>&lt;limits&gt;</code></td><td>numeric limits</td><td><code>INT_MAX</code>, <code>numeric_limits&lt;long long&gt;::max()</code></td></tr>
+        <tr><td><code>&lt;bitset&gt;</code></td><td>fixed bit vectors</td><td>bitmask DP, reachability, <code>count()</code></td></tr>
+        <tr><td><code>&lt;tuple&gt;</code> <code>&lt;utility&gt;</code></td><td>pairs &amp; tuples</td><td><code>pair&lt;int,int&gt;</code>, structured bindings</td></tr>
+        <tr><td><code>&lt;functional&gt;</code></td><td>callables</td><td><code>function&lt;...&gt;</code>, <code>greater&lt;int&gt;</code>, <code>less&lt;&gt;</code></td></tr>
+        <tr><td><code>&lt;random&gt;</code></td><td>RNG for stress tests</td><td><code>mt19937</code>, <code>uniform_int_distribution</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>1.4 Local test loop that catches real bugs</h3>
+    <pre><code>// Three levels of testing, in increasing power:
+// 1) assert on the examples          2) random stress vs brute force         3) sanitizers
+
+#include &lt;bits/stdc++.h&gt;
+using namespace std;
+
+// ---- level 2: stress test -------------------------------------------------
+int solveFast(const vector&lt;int&gt;&amp; a);           // your optimised solution
+int solveBrute(const vector&lt;int&gt;&amp; a);          // obviously-correct slow version
+
+int main() {
+    mt19937 rng(12345);                        // fixed seed = reproducible
+    uniform_int_distribution&lt;int&gt; nDist(1, 8), vDist(-5, 5);
+    for (int iter = 0; iter &lt; 20000; ++iter) {
+        int n = nDist(rng);
+        vector&lt;int&gt; a(n);
+        for (int&amp; x : a) x = vDist(rng);
+        int f = solveFast(a), b = solveBrute(a);
+        if (f != b) {
+            cout &lt;&lt; "MISMATCH on: ";
+            for (int x : a) cout &lt;&lt; x &lt;&lt; ' ';
+            cout &lt;&lt; "\nfast=" &lt;&lt; f &lt;&lt; " brute=" &lt;&lt; b &lt;&lt; '\n';
+            return 1;
+        }
+    }
+    cout &lt;&lt; "all random tests passed\n";       // then compile with sanitizers
+}</code></pre>
+    <div class="tip"><b>The stress-test habit:</b> write the brute force first, then optimise. Twenty thousand random cases
+    under sanitizers finds essentially every indexing and overflow bug in minutes — it is faster than staring at code, and
+    it is how experienced contestants avoid re-submitting 6 times.</div>
+  </section>
+</section>
+
+<section class="chapter" id="ch2">
+  <h2><span class="num">2</span> Types, references and the overflow trap</h2>
+  <p class="tagline">C++ is statically typed; most wrong answers come from the type you chose, not the algorithm you wrote.</p>
+
+  <section class="sub">
+    <h3>2.1 The types you need (and nothing else)</h3>
+    <table class="tbl">
+      <thead><tr><th>Type</th><th>Bytes (typical)</th><th>Range</th><th>Use for</th></tr></thead>
+      <tbody>
+        <tr><td><code>int</code></td><td>4</td><td>±2.147·10⁹</td><td>default integer; indices, counts up to 2·10⁹</td></tr>
+        <tr><td><code>long long</code></td><td>8</td><td>±9.22·10¹⁸</td><td><b>any sum/product that can overflow int</b>; distances; modular math</td></tr>
+        <tr><td><code>unsigned</code></td><td>4</td><td>0 … 4.29·10⁹</td><td>bit tricks only — <b>never</b> for subtraction-heavy logic</td></tr>
+        <tr><td><code>double</code></td><td>8</td><td>~15–17 significant digits</td><td>geometry, averages, <code>sqrt</code>; compare with epsilon</td></tr>
+        <tr><td><code>long double</code></td><td>12–16</td><td>~18 digits</td><td>rarely needed; avoid relying on it</td></tr>
+        <tr><td><code>char</code></td><td>1</td><td>−128…127 / 0…255</td><td>single characters; arithmetic on ASCII</td></tr>
+        <tr><td><code>bool</code></td><td>1</td><td>true / false</td><td>flags; <code>vector&lt;bool&gt;</code> is special (ch. 12)</td></tr>
+        <tr><td><code>size_t</code></td><td>8 (64-bit)</td><td>0 … 2⁶⁴−1</td><td>what <code>.size()</code> returns — <b>unsigned!</b></td></tr>
+      </tbody>
+    </table>
+    <pre><code>#include &lt;bits/stdc++.h&gt;
+using namespace std;
+using ll = long long;                 // the alias you will type a thousand times
+const int INF = 1e9;                  // "infinity" for int-based graphs
+const ll  LINF = 4e18;                // "infinity" for long long
+
+const int MOD = 1'000'000'007;        // digit separators are legal C++14+
+
+int main() {
+    int a = 1e9, b = 1e9;
+    // int c = a + b;                  // UB (signed overflow) → garbage or wrap
+    long long c = 1LL * a + b;         // 2e9, correct
+
+    // The three ways overflow sneaks in:
+    // 1) multiplication before promotion
+    int x = 100000, y = 100000;
+    // int bad = x * y;                // overflow happens in int, BEFORE assignment
+    long long good = 1LL * x * y;      // promote one operand to 64-bit first
+
+    // 2) accumulate defaults to the container's type
+    vector&lt;int&gt; v(1e5, 1e6);
+    // long long wrong = accumulate(v.begin(), v.end(), 0);      // sums in int!
+    long long right = accumulate(v.begin(), v.end(), 0LL);       // 0LL forces 64-bit
+
+    // 3) mod arithmetic with negative results
+    // (a - b) % MOD can be negative → ((a - b) % MOD + MOD) % MOD
+    return 0;
+}</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>2.2 Values, references and pointers — the memory picture</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 320" role="img" aria-label="Value, reference and pointer semantics plus copy cost">
+        <text class="tt" x="20" y="26">Pass by value vs reference: what actually happens to memory</text>
+        <rect x="30" y="50" width="200" height="44" class="ba"/><text class="t" x="130" y="78" text-anchor="middle">caller's vector v</text>
+        <rect x="30" y="104" width="200" height="30" class="bx"/><text class="mono sm" x="130" y="124" text-anchor="middle">{1,2,3} heap buffer</text>
+
+        <rect x="300" y="50" width="250" height="84" class="bb"/>
+        <text class="t" x="425" y="74" text-anchor="middle">void f(vector&lt;int&gt; v)</text>
+        <text class="sm" x="320" y="96">COPIES every element — O(n) time + memory</text>
+        <text class="sm" x="320" y="116">use only for small types (int, pair, string_view)</text>
+        <path class="ar" d="M232 100 H298"/>
+
+        <rect x="590" y="50" width="280" height="84" class="bc"/>
+        <text class="t" x="730" y="74" text-anchor="middle">void f(const vector&lt;int&gt;&amp; v)</text>
+        <text class="sm" x="610" y="96">No copy. Read-only view of the caller's buffer.</text>
+        <text class="sm" x="610" y="116">★ the default for every input parameter</text>
+        <path class="ar" d="M232 78 C400 20 560 40 588 70"/>
+
+        <rect x="300" y="160" width="250" height="84" class="bp"/>
+        <text class="t" x="425" y="184" text-anchor="middle">void f(vector&lt;int&gt;&amp; v)</text>
+        <text class="sm" x="320" y="206">Alias: writes are visible to the caller</text>
+        <text class="sm" x="320" y="226">use for out-parameters and in-place mutation</text>
+        <rect x="590" y="160" width="280" height="84" class="bd"/>
+        <text class="t" x="730" y="184" text-anchor="middle">Danger: returning a reference</text>
+        <text class="mono sm" x="610" y="206">int&amp; f(){ int x=5; return x; }  // UB</text>
+        <text class="sm" x="610" y="228">x dies at the closing brace → dangling</text>
+
+        <rect x="30" y="258" width="840" height="48" class="bx"/>
+        <text class="sm" x="50" y="278">Rule of thumb: <tspan class="mono">const T&amp;</tspan> for reading, <tspan class="mono">T&amp;</tspan> to mutate, <tspan class="mono">T</tspan> for cheap copies (int, double, char, pair&lt;int,int&gt;, string_view).</text>
+        <text class="sm" x="50" y="298">Pointers (<tspan class="mono">int*</tspan>) you need only for linked lists / trees / graphs (nodes you allocate), and even there <tspan class="mono">nullptr</tspan> checks matter.</text>
+      </svg>
+      <figcaption>Fig 2.1 — In C++ the default parameter type is a decision, not a detail. <code>const&amp;</code> saves both time and memory in every recursive call.</figcaption>
+    </figure>
+    <pre><code>void byValue(vector&lt;int&gt; v)        { v.push_back(4); }   // caller unchanged; copied
+void byRef(vector&lt;int&gt;&amp; v)         { v.push_back(4); }   // caller CHANGED
+void byConstRef(const vector&lt;int&gt;&amp; v) { /* read only */ }  // caller unchanged, no copy
+
+vector&lt;int&gt; a{1,2,3};
+byValue(a);   // a = {1,2,3}
+byRef(a);     // a = {1,2,3,4}
+
+// auto, structured bindings, and const correctness
+auto n = a.size();                      // size_t (unsigned!)
+auto [lo, hi] = pair{1, 2};             // structured binding (C++17)
+for (const auto&amp; [k, val] : mapOfStuff) { /* no copy, no mutation */ }
+for (auto&amp; x : a) x *= 2;               // mutate in place without indices
+
+// constexpr / const
+const double PI = 3.141592653589793;
+constexpr int SZ = 1000;                // compile-time constant: usable for array sizes
+
+// Type conversion rules that bite
+int   i = 7;     double d = i / 2;      // 3.0  ← integer division first!
+double e = i / 2.0;                     // 3.5
+char  c = '7';   int  digit = c - '0';  // 7    ← the standard char→digit trick
+int   z = c;                            // 55   ← ASCII code, not the digit</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>2.3 Operators, integer division, and comparison gotchas</h3>
+    <pre><code>7 / 2        //  3   (integer division truncates toward zero)
+-7 / 2       // -3   ← C++ truncates; Python floors to -4. Different answers!
+-7 % 2       // -1   ← C++ remainder keeps the sign of the dividend
+7 % 2        //  1
+// Floor division & positive modulo, the safe versions:
+int floordiv(int a, int b) { return (a - (a % b + b) % b) / b; }
+int mod(int a, int m)      { return ((a % m) + m) % m; }
+
+// Comparison and boolean ops
+a == b   a != b   a &lt; b   a &lt;= b
+a &amp;&amp; b   a || b   !a            // short-circuit: b is not evaluated if a decides it
+x ? y : z                       // ternary
+// Bitwise (ch. 10): a &amp; b   a | b   a ^ b   ~a   a &lt;&lt; k   a &gt;&gt; k
+
+// The classic pitfall: mixing signed and unsigned
+vector&lt;int&gt; v{1,2,3};
+// for (int i = 0; i &lt; v.size(); ++i)      // warning: signed/unsigned comparison
+for (size_t i = 0; i &lt; v.size(); ++i)      // clean
+for (int i = 0; i &lt; (int)v.size(); ++i)    // or cast (fine for n &lt; 2^31)
+for (size_t i = 0; i + 1 &lt; v.size(); ++i)  // the idiom that avoids v[i+1] overrun
+
+// Comparing doubles: never ==
+bool close(double a, double b, double eps = 1e-9) { return fabs(a - b) &lt; eps; }</code></pre>
+    <div class="trap"><b>Subscript with a negative index is UB, not an exception.</b> C++ has no bounds checking on
+    <code>v[i]</code>. <code>v.at(i)</code> throws and is the debugging variant — use it while developing, and use
+    <code>-D_GLIBCXX_DEBUG</code> or ASan to catch the rest.</div>
+  </section>
+
+  <section class="sub">
+    <h3>2.4 Coming from Python: the translation table</h3>
+    <table class="tbl">
+      <thead><tr><th>Python</th><th>C++</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>[]</code> / <code>list</code></td><td><code>vector&lt;int&gt;</code></td><td>Fixed type; no mixed types.</td></tr>
+        <tr><td><code>{}</code> / <code>dict</code></td><td><code>unordered_map&lt;K,V&gt;</code></td><td>Ordered version: <code>map&lt;K,V&gt;</code> (red-black tree, O(log n)).</td></tr>
+        <tr><td><code>set()</code></td><td><code>unordered_set&lt;T&gt;</code> / <code>set&lt;T&gt;</code></td><td>Hash vs tree.</td></tr>
+        <tr><td><code>tuple</code></td><td><code>pair&lt;A,B&gt;</code> / <code>tuple&lt;...&gt;</code></td><td><code>make_pair</code>, <code>get&lt;1&gt;(t)</code>, structured bindings.</td></tr>
+        <tr><td><code>heapq</code></td><td><code>priority_queue&lt;T&gt;</code></td><td>Max-heap by default — the opposite of Python!</td></tr>
+        <tr><td><code>deque</code></td><td><code>deque&lt;T&gt;</code></td><td>Same idea, O(1) both ends.</td></tr>
+        <tr><td><code>int</code> (unbounded)</td><td><code>long long</code> (bounded)</td><td><b>Overflow is your problem now.</b> Use <code>__int128</code> rarely.</td></tr>
+        <tr><td><code>s[::-1]</code></td><td><code>string(s.rbegin(), s.rend())</code></td><td>Or <code>reverse(s.begin(), s.end())</code>.</td></tr>
+        <tr><td><code>s[i:j]</code></td><td><code>s.substr(i, j - i)</code></td><td>Second argument is a <b>length</b>, not an end index.</td></tr>
+        <tr><td><code>for i, x in enumerate(a)</code></td><td><code>for (int i = 0; i &lt; n; ++i)</code></td><td>Or iterate <code>for (int x : a)</code>.</td></tr>
+        <tr><td><code>a.sort(key=...)</code></td><td><code>sort(a.begin(), a.end(), cmp)</code></td><td>Comparator returns <code>bool</code> “a before b”.</td></tr>
+        <tr><td><code>len(s)</code></td><td><code>(int)s.size()</code></td><td>Cast to int to avoid unsigned comparisons.</td></tr>
+        <tr><td><code>float('inf')</code></td><td><code>INT_MAX</code> / <code>1e18</code></td><td>Watch for <code>INF + 1</code> overflow in relaxations.</td></tr>
+        <tr><td><code>sum(a)</code></td><td><code>accumulate(a.begin(), a.end(), 0LL)</code></td><td>Type of the initial value decides the arithmetic!</td></tr>
+        <tr><td><code>min(a, b)</code> / <code>a in b</code></td><td><code>min(a,b)</code> / <code>b.count(x)</code></td><td><code>count</code> on map/set returns 0/1; on multiset returns how many.</td></tr>
+        <tr><td><code>max(a, key=f)</code></td><td><code>*max_element(a.begin(), a.end(), cmp)</code></td><td>Dereference! <code>max_element</code> returns an iterator.</td></tr>
+      </tbody>
+    </table>
+  </section>
+</section>
+<section class="chapter" id="ch3">
+  <h2><span class="num">3</span> Strings and characters</h2>
+  <p class="tagline">C++ strings are mutable, indexable byte arrays with a rich API — much closer to Python lists than Python strings.</p>
+
+  <section class="sub">
+    <h3>3.1 The operations you will type most</h3>
+    <pre><code>string s = "hello world";
+int n = (int)s.size();                 // 11  — cast to int, size() is unsigned
+
+// Access and mutation (C++ strings ARE mutable)
+char c = s[0];                         // 'h'  — no bounds check
+s[0] = 'H';                            // "Hello world"
+char last = s.back();                  // 'd'
+s.front(); s.at(1);                    // 'e' (at() checks range, throws)
+
+// Slicing: substr(start, LENGTH)
+s.substr(0, 5)                         // "Hello"
+s.substr(6)                            // "world"   (to the end)
+s.substr(6, 3)                         // "wor"
+
+// Searching
+s.find("world")                        // 6        ; npos if absent
+s.find('o', 5)                         // start searching from index 5
+s.rfind('o')                           // 7        ; reverse search
+s.find_first_of("aeiou")               // 1
+s.find_last_not_of('d')                // 9
+if (s.find("xyz") == string::npos) /* not found */;
+
+// Modifying
+s += "!";  s.append("?");  s.push_back('.');
+s.insert(0, "&gt;&gt; ");                     // insert at position
+s.erase(0, 3);                          // erase 3 chars from index 0
+s.erase(s.begin());                     // erase first char (iterator form)
+s.pop_back();
+s.replace(0, 5, "Howdy");               // replace 5 chars at 0
+s.clear();
+
+// Comparisons and conversion
+string a = "abc", b = "abd";
+a == b; a &lt; b;                          // lexicographic, like Python
+s.compare("Hello") == 0;                // 0 = equal
+int   num = stoi("42");                 // 42      ; stoll, stod, stof
+long long big = stoll("9000000000");
+string str = to_string(3.14);           // "3.140000"
+string sv = to_string(255);             // "255"
+
+// Reverse, sort, unique characters
+reverse(s.begin(), s.end());
+sort(s.begin(), s.end());               // in-place character sort
+s.erase(unique(s.begin(), s.end()), s.end());   // dedupe SORTED string
+
+// Iterate
+for (char ch : s) { }
+for (int i = 0; i &lt; (int)s.size(); ++i) { }
+for (auto it = s.begin(); it != s.end(); ++it) { }</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Task</th><th>Idiom</th></tr></thead>
+      <tbody>
+        <tr><td>Build a string in a loop</td><td><code>string res; res += x; res.push_back(ch);</code> — amortised O(1), unlike Python-style <code>res = res + x</code></td></tr>
+        <tr><td>Split on a delimiter</td><td><code>stringstream ss(s); string tok; while (getline(ss, tok, ',')) {...}</code></td></tr>
+        <tr><td>Join a vector of strings</td><td>loop with <code>if (i) res += sep;</code> or accumulate</td></tr>
+        <tr><td>Lowercase / uppercase</td><td><code>ch = tolower(ch);</code> (returns int!) or <code>c | 32</code> / <code>c &amp; ~32</code></td></tr>
+        <tr><td>Digit ↔ value</td><td><code>ch - '0'</code>, <code>'0' + d</code>, <code>isdigit(ch)</code>, <code>isalpha(ch)</code>, <code>isalnum(ch)</code></td></tr>
+        <tr><td>Count characters</td><td><code>int cnt[26] = {};</code> then <code>cnt[c - 'a']++</code> — an array beats a map for lowercase letters</td></tr>
+        <tr><td>Compare ignoring case</td><td>lowercase both, or <code>lexicographical_compare</code> with a lambda</td></tr>
+        <tr><td>Palindrome check</td><td>two pointers <code>while (l &lt; r) if (s[l++] != s[r--]) return false;</code></td></tr>
+        <tr><td>Hash a string</td><td><code>unordered_map&lt;string, int&gt;</code> works out of the box (std::hash is specialised)</td></tr>
+        <tr><td>Rolling hash / prefix hashes</td><td>precompute <code>h[i] = h[i-1]*B + s[i]</code> with modular arithmetic (ch. 10)</td></tr>
+      </tbody>
+    </table>
+    <div class="trap"><b>Three classic string traps:</b>
+    <b>(1)</b> <code>s.substr(i, len)</code> — the second parameter is a length; <code>s.substr(i, j-i)</code> for [i, j).
+    <b>(2)</b> <code>s.find(c)</code> returns <code>string::npos</code> (a huge unsigned value), not −1 — always compare
+    against <code>npos</code>; and never write <code>if (s.find(c) &gt;= 0)</code> (always true, unsigned).
+    <b>(3)</b> <code>tolower()</code>/<code>toupper()</code> take and return <code>int</code>: assign back as
+    <code>char</code>, and pass <code>unsigned char</code> for safety with negative <code>char</code> values.</div>
+  </section>
+
+  <section class="sub">
+    <h3>3.2 string_view and char arrays — when to use them</h3>
+    <pre><code>// string_view (C++17): a non-owning pointer+length — zero-copy substrings
+string_view sv = "abcdef";
+string_view part = sv.substr(1, 3);      // "bcd" — NO allocation
+// DANGER: it does not own the data. Never return a view of a local string.
+// LeetCode: use sparingly (substr is usually fine at n ≤ 10^5).
+
+// char arrays (C strings) appear in signatures like char* argv[], and in grid problems
+char grid[100][100];
+strlen("abc");                            // 3
+strcmp("a", "b");                         // &lt;0
+memset(grid, 0, sizeof(grid));            // fast initialisation (bytes only!)
+// Prefer std::string / std::vector&lt;char&gt; in solutions; know C strings for legacy APIs.
+
+// Getting a char buffer from a string that gets modified in place
+string s = "abcde";
+s[2] = 'X';                               // fine — strings are mutable</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>3.3 Character classification and conversion cheats</h3>
+    <table class="tbl">
+      <thead><tr><th>Need</th><th>Code</th><th>Watch out</th></tr></thead>
+      <tbody>
+        <tr><td>is digit / letter</td><td><code>isdigit(c)</code>, <code>isalpha(c)</code>, <code>isalnum(c)</code>, <code>isspace(c)</code></td><td>Return <code>int</code>; cast argument to <code>unsigned char</code>.</td></tr>
+        <tr><td>digit → int</td><td><code>c - '0'</code></td><td><code>(int)c</code> gives the ASCII code (55), not 7.</td></tr>
+        <tr><td>int → digit</td><td><code>char('0' + d)</code> for 0–9</td><td>For d &gt; 9, use <code>to_string</code> or manual division.</td></tr>
+        <tr><td>case fold</td><td><code>c | 32</code>, <code>c &amp; 95</code>, or <code>tolower</code>/<code>toupper</code></td><td>Bit tricks only for ASCII letters.</td></tr>
+        <tr><td>letter index 0–25</td><td><code>c - 'a'</code> (lowercase), <code>c - 'A'</code> (uppercase)</td><td>Check the range first if input can be mixed.</td></tr>
+        <tr><td>hex</td><td><code>stoi("ff", nullptr, 16)</code>, <code>to_string(255)</code> + manual</td><td>No <code>to_hex</code>; use <code>ostringstream</code> with <code>std::hex</code> if you must.</td></tr>
+        <tr><td>string → number (whole string)</td><td><code>stoi</code>, <code>stoll</code>, <code>stod</code></td><td>Throws on bad input; leading spaces allowed; trailing garbage is silently ignored.</td></tr>
+        <tr><td>number → string fast</td><td><code>to_string(x)</code></td><td>Allocates; for hot loops append digits manually or use <code>charconv</code> (C++17).</td></tr>
+      </tbody>
+    </table>
+    <pre><code>// Parsing a sentence into words without stringstream (faster, no allocation of the stream)
+vector&lt;string&gt; words;
+string cur;
+for (char c : s + ' ') {          // sentinel space flushes the last word
+    if (c == ' ') { if (!cur.empty()) words.push_back(cur); cur.clear(); }
+    else cur.push_back(c);
+}
+
+// Splitting with stringstream (simpler, slightly slower)
+#include &lt;sstream&gt;
+stringstream ss("a,b,,c");
+string tok;
+while (getline(ss, tok, ',')) { /* tok = "a", "b", "", "c" */ }</code></pre>
+  </section>
+</section>
+
+<section class="chapter" id="ch4">
+  <h2><span class="num">4</span> vector, arrays and grids</h2>
+  <p class="tagline">The workhorse container: growth rules, reserve, 2D grids, and the iterator model you must understand.</p>
+
+  <section class="sub">
+    <h3>4.1 Creating and using a vector</h3>
+    <pre><code>#include &lt;bits/stdc++.h&gt;
+using namespace std;
+
+vector&lt;int&gt; v;                        // empty
+vector&lt;int&gt; a(5);                     // 5 zeros:      {0,0,0,0,0}
+vector&lt;int&gt; b(5, -1);                 // 5 copies of -1
+vector&lt;int&gt; c{1, 2, 3};               // initialiser list
+vector&lt;int&gt; d(c);                     // copy (O(n))
+vector&lt;int&gt; e(c.begin(), c.end());    // from iterators
+int arr[] = {1,2,3};
+vector&lt;int&gt; f(arr, arr + 3);          // from a C array
+
+// Sizing and capacity
+v.size(); v.empty(); v.capacity();
+v.resize(10);                         // grow (zero-fills) or shrink
+v.resize(10, 7);                      // fill new slots with 7
+v.reserve(1000);                      // preallocate: avoids repeated reallocation
+v.shrink_to_fit();                    // release spare capacity (rarely needed)
+
+// Access
+v[0]; v.at(0); v.front(); v.back();
+int* p = v.data();                    // raw pointer to the buffer
+
+// Add / remove
+v.push_back(9);                       // amortised O(1)
+v.pop_back();                         // O(1)
+v.insert(v.begin() + 1, 42);          // O(n) — shifts the tail
+v.insert(v.end(), 3, 5);              // insert 3 copies of 5 at the end
+v.erase(v.begin());                   // O(n)
+v.erase(v.begin() + 1, v.begin() + 3); // erase a range [1,3)
+v.assign(4, 0);                       // replace contents with four 0s
+v.clear();                            // size 0, capacity kept
+
+// Iterators (the general way to talk about positions)
+v.begin(); v.end();                   // [begin, end) — half-open
+v.rbegin(); v.rend();                 // reverse
+for (auto it = v.begin(); it != v.end(); ++it) cout &lt;&lt; *it;
+int pos = lower_bound(v.begin(), v.end(), 5) - v.begin();   // index from iterator</code></pre>
+    <figure class="dg">
+      <svg viewBox="0 0 900 260" role="img" aria-label="Vector memory: length, capacity, growth, iterator invalidation">
+        <text class="tt" x="20" y="26">A vector is a contiguous buffer with size ≤ capacity</text>
+        <rect x="40" y="50" width="640" height="46" class="bx"/>
+        <rect x="40" y="50" width="440" height="46" class="bc"/>
+        <text class="mono" x="60" y="79">10 | 20 | 30 | 40 | 50 | 60 | 70 | 80</text>
+        <text class="sm" x="500" y="79">size = 8</text>
+        <text class="sm" x="560" y="79">capacity = 12 (spare slots)</text>
+        <rect x="480" y="50" width="200" height="46" class="bb" opacity="0.35"/>
+        <text class="sm" x="40" y="120">push_back → fills spare slots, O(1). When full, the buffer is reallocated (2×) and every element is MOVED: O(n) for that call, amortised O(1).</text>
+        <text class="sm" x="40" y="142">That reallocation is why <tspan class="mono">reserve(n)</tspan> matters when you know the final size — and why pointers/iterators into the vector can be invalidated.</text>
+
+        <rect x="40" y="166" width="420" height="80" class="bd"/>
+        <text class="t" x="250" y="190" text-anchor="middle">Iterator invalidation (UB!)</text>
+        <text class="mono sm" x="60" y="212">auto it = v.begin(); v.push_back(x);  // it may dangle</text>
+        <text class="mono sm" x="60" y="232">for (auto it=v.begin(); it!=v.end(); ) it = v.erase(it); // correct erase loop</text>
+        <rect x="480" y="166" width="380" height="80" class="bp"/>
+        <text class="t" x="670" y="190" text-anchor="middle">vector&lt;bool&gt; is a bitset</text>
+        <text class="sm" x="500" y="212">It packs bits — <tspan class="mono">v[i]</tspan> is not a real reference,</text>
+        <text class="sm" x="500" y="232">so <tspan class="mono">&amp;v[i]</tspan> and some algorithms misbehave. Use <tspan class="mono">deque&lt;bool&gt;</tspan> or <tspan class="mono">bitset</tspan>.</text>
+      </svg>
+      <figcaption>Fig 4.1 — Contiguous memory is why <code>vector</code> beats <code>list</code> in practice, even for middle inserts, on modern CPUs.</figcaption>
+    </figure>
+  </section>
+
+  <section class="sub">
+    <h3>4.2 2D vectors and grids — the LeetCode staple</h3>
+    <pre><code>// ---- construction -------------------------------------------------------
+int m = 3, n = 4;
+vector&lt;vector&lt;int&gt;&gt; g(m, vector&lt;int&gt;(n, 0));      // 3×4 of zeros  ★ the standard form
+vector&lt;vector&lt;int&gt;&gt; g2(m);                          // 3 empty rows
+for (auto&amp; row : g2) row.assign(n, 0);              // then fill
+
+// from an initialiser list
+vector&lt;vector&lt;int&gt;&gt; grid = {{1,2,3},{4,5,6},{7,8,9}};
+
+// ---- traversal ----------------------------------------------------------
+int R = grid.size(), C = grid[0].size();
+for (int i = 0; i &lt; R; ++i)
+    for (int j = 0; j &lt; C; ++j)
+        /* grid[i][j] */;
+
+// ---- neighbour moves: two idioms ---------------------------------------
+const int di[4] = {-1, 1, 0, 0};       // up, down, left, right
+const int dj[4] = {0, 0, -1, 1};
+for (int d = 0; d &lt; 4; ++d) {
+    int ni = i + di[d], nj = j + dj[d];
+    if (ni &lt; 0 || ni &gt;= R || nj &lt; 0 || nj &gt;= C) continue;   // bounds check FIRST
+    /* visit grid[ni][nj] */
+}
+// 8-directional (king moves)
+const int dx8[8] = {-1,-1,-1, 0, 0, 1, 1, 1};
+const int dy8[8] = {-1, 0, 1,-1, 1,-1, 0, 1};
+
+// ---- in-place 90° rotation of an n×n matrix ----------------------------
+for (int i = 0; i &lt; n; ++i)
+    for (int j = i + 1; j &lt; n; ++j)
+        swap(g[i][j], g[j][i]);          // transpose
+for (auto&amp; row : g) reverse(row.begin(), row.end());   // then mirror → rotated clockwise
+
+// ---- spiral traversal skeleton -----------------------------------------
+int top = 0, bottom = R - 1, left = 0, right = C - 1;
+while (top &lt;= bottom &amp;&amp; left &lt;= right) {
+    for (int j = left; j &lt;= right; ++j) visit(g[top][j]);      ++top;
+    for (int i = top; i &lt;= bottom; ++i) visit(g[i][right]);    --right;
+    if (top &lt;= bottom) { for (int j = right; j &gt;= left; --j) visit(g[bottom][j]); --bottom; }
+    if (left &lt;= right) { for (int i = bottom; i &gt;= top; --i) visit(g[i][left]);  ++left;  }
+}
+
+// ---- flattening a grid into 1D (useful for DSU/visited arrays) ---------
+int id = i * C + j;          int i2 = id / C, j2 = id % C;</code></pre>
+    <div class="tip"><b>Grid checklist:</b> always compute <code>R</code>/<code>C</code> once; guard
+    <code>grid.empty()</code> before <code>grid[0]</code>; do bounds checks <i>before</i> indexing; prefer
+    <code>vector&lt;vector&lt;int&gt;&gt;</code> for clarity and a flat <code>vector&lt;int&gt;</code> of size R·C when you need
+    speed (better cache locality). For <code>visited</code>, a 2D <code>vector&lt;char&gt;</code> is often faster to
+    initialise than <code>vector&lt;bool&gt;</code>.</div>
+  </section>
+
+  <section class="sub">
+    <h3>4.3 array, static arrays, and when they win</h3>
+    <pre><code>// Fixed-size arrays: no allocation, stack storage, fastest, no size tracking
+int freq[26] = {};                       // zero-initialised ({} matters!)
+for (char c : s) freq[c - 'a']++;
+int dayCount[7] = {31, 28, 31, 30, 31, 30, 31};
+
+// std::array: a real container around a fixed array (knows its size, copyable)
+array&lt;int, 3&gt; a{1, 2, 3};
+a.size(); a.fill(0); a.front(); a.back();
+sort(a.begin(), a.end());
+
+// 2D static
+int dp[1005][1005];                      // ~4 MB — fine on the stack? risky; prefer global/static or vector
+static int dp2[1005][1005];              // global/static: zero-initialised, lives in BSS
+
+// Fixed-size bit/flag arrays
+bitset&lt;64&gt; bs;                          // fast bit ops: bs.count(), bs[i], bs &amp; bs2
+
+// Speed comparison for a 10^6-element task, typical order:
+//   int arr[1000000]   ~ fastest (contiguous, no indirection)
+//   array&lt;int,1e6&gt;     ~ same
+//   vector&lt;int&gt;        ~ same after reserve (one pointer indirection)
+//   deque / list       ~ slower (non-contiguous)
+//   unordered_map      ~ 10-50× slower per access than an array</code></pre>
+  </section>
+</section>
+
+<section class="chapter" id="ch5">
+  <h2><span class="num">5</span> The STL containers that solve problems</h2>
+  <p class="tagline">Six containers do 95% of the work: vector, string, unordered_map, set, priority_queue, deque. Know their costs cold.</p>
+
+  <section class="sub">
+    <h3>5.1 The container selection map</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 430" role="img" aria-label="STL container selection decision map">
+        <text class="tt" x="20" y="26">Pick the container in ten seconds</text>
+
+        <rect x="30" y="46" width="250" height="54" class="ba"/>
+        <text class="sm" x="155" y="66" text-anchor="middle">Need indexed, ordered data</text>
+        <text class="sm" x="155" y="86" text-anchor="middle">that grows (append/remove)?</text>
+        <path class="ar" d="M155 100 V126"/>
+        <rect x="30" y="126" width="250" height="54" class="bx"/>
+        <text class="t" x="155" y="148" text-anchor="middle">vector&lt;T&gt;</text>
+        <text class="sm" x="155" y="168" text-anchor="middle">O(1) index/append · O(n) middle insert</text>
+
+        <rect x="320" y="46" width="250" height="54" class="bb"/>
+        <text class="sm" x="445" y="66" text-anchor="middle">Look up / count by key</text>
+        <text class="sm" x="445" y="86" text-anchor="middle">(order irrelevant)?</text>
+        <path class="ar" d="M445 100 V126"/>
+        <rect x="320" y="126" width="250" height="54" class="bx"/>
+        <text class="t" x="445" y="148" text-anchor="middle">unordered_map / set</text>
+        <text class="sm" x="445" y="168" text-anchor="middle">O(1) avg · needs a hashable key</text>
+
+        <rect x="610" y="46" width="260" height="54" class="bc"/>
+        <text class="sm" x="740" y="66" text-anchor="middle">Need keys sorted, predecessor/</text>
+        <text class="sm" x="740" y="86" text-anchor="middle">successor, or range queries?</text>
+        <path class="ar" d="M740 100 V126"/>
+        <rect x="610" y="126" width="260" height="54" class="bx"/>
+        <text class="t" x="740" y="148" text-anchor="middle">map / set / multiset</text>
+        <text class="sm" x="740" y="168" text-anchor="middle">O(log n) all ops · sorted iteration</text>
+
+        <rect x="30" y="212" width="250" height="54" class="bp"/>
+        <text class="sm" x="155" y="232" text-anchor="middle">Need max/min quickly</text>
+        <text class="sm" x="155" y="252" text-anchor="middle">(top-K, Dijkstra, scheduling)?</text>
+        <path class="ar" d="M155 266 V292"/>
+        <rect x="30" y="292" width="250" height="54" class="bx"/>
+        <text class="t" x="155" y="314" text-anchor="middle">priority_queue&lt;T&gt;</text>
+        <text class="sm" x="155" y="334" text-anchor="middle">O(log n) push/pop · O(1) top</text>
+
+        <rect x="320" y="212" width="250" height="54" class="bd"/>
+        <text class="sm" x="445" y="232" text-anchor="middle">Push/pop at BOTH ends,</text>
+        <text class="sm" x="445" y="252" text-anchor="middle">BFS queue, sliding window?</text>
+        <path class="ar" d="M445 266 V292"/>
+        <rect x="320" y="292" width="250" height="54" class="bx"/>
+        <text class="t" x="445" y="314" text-anchor="middle">deque&lt;T&gt; / queue&lt;T&gt;</text>
+        <text class="sm" x="445" y="334" text-anchor="middle">O(1) both ends · monotonic windows</text>
+
+        <rect x="610" y="212" width="260" height="54" class="ba"/>
+        <text class="sm" x="740" y="232" text-anchor="middle">Last-in-first-out, or a stack</text>
+        <text class="sm" x="740" y="252" text-anchor="middle">of pending work (DFS, parsing)?</text>
+        <path class="ar" d="M740 266 V292"/>
+        <rect x="610" y="292" width="260" height="54" class="bx"/>
+        <text class="t" x="740" y="314" text-anchor="middle">stack&lt;T&gt; / vector as stack</text>
+        <text class="sm" x="740" y="334" text-anchor="middle">O(1) push/pop/top · vector is faster</text>
+
+        <rect x="30" y="366" width="840" height="48" class="bb"/>
+        <text class="sm" x="50" y="386">Almost never in interviews: <tspan class="mono">list</tspan> (linked list, terrible cache) · <tspan class="mono">forward_list</tspan> · <tspan class="mono">multimap</tspan> · <tspan class="mono">valarray</tspan>.</text>
+        <text class="sm" x="50" y="406">Use them only when the PROBLEM is about a linked list (then you get <tspan class="mono">ListNode*</tspan> from LeetCode anyway).</text>
+      </svg>
+      <figcaption>Fig 5.1 — The container decision map. When two fit, prefer <code>vector</code> and <code>unordered_*</code> — they are the fastest in practice.</figcaption>
+    </figure>
+  </section>
+
+  <section class="sub">
+    <h3>5.2 Complexity cheat sheet</h3>
+    <table class="tbl">
+      <thead><tr><th>Operation</th><th>vector</th><th>deque</th><th>unordered_map</th><th>map / set</th><th>priority_queue</th><th>stack/queue</th></tr></thead>
+      <tbody>
+        <tr><td>Index / top / front</td><td>O(1)</td><td>O(1)</td><td>–</td><td>–</td><td>O(1) top</td><td>O(1)</td></tr>
+        <tr><td>Find key</td><td>O(n)</td><td>O(n)</td><td><b>O(1)</b> avg</td><td>O(log n)</td><td>–</td><td>–</td></tr>
+        <tr><td>Insert / erase at end</td><td>O(1)*</td><td>O(1)</td><td>O(1) avg</td><td>O(log n)</td><td>O(log n) push</td><td>O(1)</td></tr>
+        <tr><td>Insert / erase at front</td><td>O(n)</td><td>O(1)</td><td>–</td><td>–</td><td>–</td><td>O(1)</td></tr>
+        <tr><td>Insert / erase middle</td><td>O(n)</td><td>O(n)</td><td>O(1) avg</td><td>O(log n)</td><td>–</td><td>–</td></tr>
+        <tr><td>Min / max</td><td>O(n)</td><td>O(n)</td><td>O(n)</td><td>O(1) via begin/rbegin</td><td><b>O(1)</b></td><td>–</td></tr>
+        <tr><td>Ordered iteration</td><td>insertion</td><td>insertion</td><td>arbitrary</td><td><b>sorted</b></td><td>heap order</td><td>LIFO/FIFO</td></tr>
+        <tr><td>Memory overhead</td><td>lowest</td><td>low</td><td>high (buckets)</td><td>high (nodes)</td><td>low</td><td>low</td></tr>
+      </tbody>
+    </table>
+    <p class="small muted">* amortised. Hash containers give <b>average</b> O(1); an adversarial hash can degrade them to
+    O(n) per op — LeetCode’s anti-hash tests target <code>unordered_set&lt;int&gt;</code> with values like 10⁷ (see ch. 12.4
+    for the custom-hash fix).</p>
+  </section>
+
+  <section class="sub">
+    <h3>5.3 unordered_map / unordered_set in practice</h3>
+    <pre><code>unordered_map&lt;string, int&gt; cnt;              // hash table, O(1) average
+unordered_map&lt;int, vector&lt;int&gt;&gt; groups;      // adjacency / grouping
+unordered_set&lt;int&gt; seen;
+
+// Insert / access
+cnt["apple"]++;                              // default-constructs 0 then increments ★
+cnt.insert({"banana", 3});                   // does NOT overwrite an existing key
+cnt.emplace("cherry", 5);                    // constructs in place (faster)
+cnt["date"] = 7;                             // insert-or-assign
+
+// Lookup — three ways, know the difference
+if (cnt.count("apple")) { }                  // 1 = present, 0 = absent
+auto it = cnt.find("apple");
+if (it != cnt.end()) cout &lt;&lt; it-&gt;second;     // ★ no double lookup
+int v = cnt.at("apple");                     // throws std::out_of_range if absent
+int safe = cnt["missing"];                   // ⚠ INSERTS a 0 and returns it
+
+// Iterate (order is arbitrary — do not rely on it)
+for (const auto&amp; [key, value] : cnt) { }
+for (auto it = cnt.begin(); it != cnt.end(); ++it) { it-&gt;first; it-&gt;second; }
+
+// Erase — the safe loop
+for (auto it = cnt.begin(); it != cnt.end(); ) {
+    if (it-&gt;second == 0) it = cnt.erase(it);   // erase returns the next iterator
+    else ++it;
+}
+cnt.erase("apple");                            // by key, returns count erased
+
+// Size, reserve, clear
+cnt.size(); cnt.empty(); cnt.clear();
+cnt.reserve(10000);                            // pre-size buckets: avoids rehashing
+cnt.max_load_factor(0.7);                      // tune if you see rehash spikes
+
+// Sets (same API minus values)
+seen.insert(5); seen.count(5); seen.erase(5);
+seen.find(5) != seen.end();</code></pre>
+    <div class="trap"><b>The <code>operator[]</code> trap:</b> <code>m[key]</code> inserts a default value if the key is
+    missing. Accidentally using it in a read path grows your map (and is a common source of wrong answers in loops).
+    Use <code>find()</code>/<code>count()</code>/<code>at()</code> to read, and reserve <code>[]</code> for writing.</div>
+  </section>
+
+  <section class="sub">
+    <h3>5.4 Ordered map / set / multiset — the secret weapon</h3>
+    <pre><code>map&lt;string, int&gt; m;        // sorted by key, O(log n)
+set&lt;int&gt; s;                // sorted unique keys
+multiset&lt;int&gt; ms;          // sorted, duplicates allowed
+
+// Ordered containers keep the keys sorted → these idioms win problems
+*s.begin();                 // minimum key            (O(1) via cached begin)
+*prev(s.end());             // maximum key             (O(log n) or O(1) for map)
+auto it = s.lower_bound(5);  // first element >= 5
+auto it2 = s.upper_bound(5); // first element >  5
+s.count(5);  ms.count(5);    // set: 0/1 · multiset: number of copies
+
+// Predecessor / successor — the reason to choose ordered containers
+auto it3 = s.lower_bound(x);
+if (it3 != s.begin()) { auto pred = prev(it3); /* largest &lt; x */ }
+if (it3 != s.end())   { /* smallest >= x */ }
+
+// Iterate in sorted order
+for (int v : s) cout &lt;&lt; v &lt;&lt; ' ';
+for (const auto&amp; [k, v] : m) cout &lt;&lt; k &lt;&lt; ":" &lt;&lt; v &lt;&lt; ' ';
+
+// Multiset erase carefully
+ms.erase(3);                       // ⚠ erases ALL copies
+ms.erase(ms.find(3));              // erases ONE copy ← the usual intent
+
+// Sliding-window median with two multisets (classic hard problem)
+multiset&lt;int&gt; low, high;           // low: lower half (max at rbegin), high: upper half
+// maintain low.size() == high.size() or low.size() == high.size()+1
+// median = *low.rbegin()  (odd)  or (*low.rbegin() + *high.begin()) / 2.0  (even)
+
+// Ordered map as an LRU/cheapest-first structure
+map&lt;int, int&gt; idxToVal;            // also: count of distinct keys in a range, etc.</code></pre>
+    <div class="tip"><b>Price/performance rule:</b> <code>unordered_set</code> is ~3–5× faster than <code>set</code> in
+    wall-clock time, but <code>set</code> unlocks <code>lower_bound</code>, sorted iteration, min/max and
+    predecessor/successor in O(log n). When the problem needs “next greater / nearest value / ordered sweep”, the ordered
+    container is not a luxury — it is the algorithm.</div>
+  </section>
+
+  <section class="sub">
+    <h3>5.5 stack, queue, deque</h3>
+    <pre><code>// ---- stack (LIFO) -------------------------------------------------------
+stack&lt;int&gt; st;                  // adapters over deque by default
+st.push(1); st.top(); st.pop(); st.size(); st.empty();
+// Faster alternative: vector as a stack (better cache locality)
+vector&lt;int&gt; st2; st2.push_back(1); st2.back(); st2.pop_back();
+
+// ---- queue (FIFO) — the BFS container -----------------------------------
+queue&lt;int&gt; q;
+q.push(1); q.front(); q.back(); q.pop(); q.size(); q.empty();
+
+// ---- deque: O(1) at both ends, random access ----------------------------
+deque&lt;int&gt; dq{1,2,3};
+dq.push_front(0); dq.push_back(4);
+dq.pop_front(); dq.pop_back();
+dq[0]; dq.front(); dq.back();
+
+// ★ Monotonic deque — sliding window maximum in O(n) (ch. 11 pattern)
+vector&lt;int&gt; maxSlidingWindow(const vector&lt;int&gt;&amp; a, int k) {
+    deque&lt;int&gt; idx;                                  // indices, values DECREASING
+    vector&lt;int&gt; res;
+    for (int i = 0; i &lt; (int)a.size(); ++i) {
+        while (!idx.empty() &amp;&amp; idx.front() &lt;= i - k) idx.pop_front();   // drop expired
+        while (!idx.empty() &amp;&amp; a[idx.back()] &lt;= a[i]) idx.pop_back();   // keep monotonic
+        idx.push_back(i);
+        if (i &gt;= k - 1) res.push_back(a[idx.front()]);                  // window max
+    }
+    return res;
+}
+
+// Monotonic stack — next greater element in O(n)
+vector&lt;int&gt; nextGreater(const vector&lt;int&gt;&amp; a) {
+    int n = a.size();
+    vector&lt;int&gt; res(n, -1);
+    stack&lt;int&gt; st;                                    // indices, decreasing values
+    for (int i = 0; i &lt; n; ++i) {
+        while (!st.empty() &amp;&amp; a[st.top()] &lt; a[i]) { res[st.top()] = a[i]; st.pop(); }
+        st.push(i);
+    }
+    return res;
+}</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>5.6 priority_queue — the heap</h3>
+    <pre><code>// ⚠ Default is a MAX-heap (Python's heapq is a min-heap — the opposite!)
+priority_queue&lt;int&gt; pq;                       // top() = largest
+priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt; minpq;   // top() = smallest
+
+pq.push(3); pq.push(1); pq.push(4);
+pq.top();      // 4
+pq.pop();      // removes the top
+pq.size(); pq.empty();
+
+// Custom comparator: "greater" means the SMALLER element has higher priority
+auto cmp = [](const pair&lt;int,int&gt;&amp; a, const pair&lt;int,int&gt;&amp; b) {
+    return a.second &gt; b.second;               // min-heap by .second
+};
+priority_queue&lt;pair&lt;int,int&gt;, vector&lt;pair&lt;int,int&gt;&gt;, decltype(cmp)&gt; pq2(cmp);
+
+// Pairs: comparison is lexicographic (first, then second) — no comparator needed
+priority_queue&lt;pair&lt;int,int&gt;&gt; p;              // max by first, then second
+
+// Dijkstra with a priority queue (lazy-deletion style)
+vector&lt;long long&gt; dist(n, LLONG_MAX);
+priority_queue&lt;pair&lt;long long,int&gt;, vector&lt;pair&lt;long long,int&gt;&gt;, greater&lt;&gt;&gt; heap;
+dist[src] = 0; heap.push({0, src});
+while (!heap.empty()) {
+    auto [d, u] = heap.top(); heap.pop();
+    if (d &gt; dist[u]) continue;                // stale entry — skip
+    for (auto [v, w] : adj[u])
+        if (d + w &lt; dist[v]) { dist[v] = d + w; heap.push({dist[v], v}); }
+}
+
+// Top-K pattern: keep a MIN-heap of size k → O(n log k) time, O(k) memory
+priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt; top;   // smallest of the current k on top
+for (int x : nums) {
+    top.push(x);
+    if ((int)top.size() &gt; k) top.pop();
+}   // top now holds the k largest values</code></pre>
+    <div class="trap"><b>The comparator trap that costs the most submissions.</b> In <code>priority_queue</code>, the
+    comparator answers “should <i>a</i> come <b>after</b> <i>b</i>?” — the element the comparator calls “less” ends up on
+    top. So <code>greater&lt;int&gt;</code> gives a min-heap and <code>less&lt;int&gt;</code> a max-heap. Also, a custom
+    comparator must be a <b>strict weak ordering</b> (irreflexive, transitive): writing <code>&gt;=</code> instead of
+    <code>&gt;</code> can make the heap corrupt the array with no error message.</div>
+  </section>
+</section>
+<section class="chapter" id="ch6">
+  <h2><span class="num">6</span> Algorithms: sort, binary search, and the rest of &lt;algorithm&gt;</h2>
+  <p class="tagline">Fifteen standard algorithms replace a hundred lines of hand-written loops — and they are faster and already correct.</p>
+
+  <section class="sub">
+    <h3>6.1 Sorting and friends</h3>
+    <pre><code>#include &lt;bits/stdc++.h&gt;
+using namespace std;
+
+vector&lt;int&gt; a{3, 1, 4, 1, 5, 9};
+
+sort(a.begin(), a.end());                     // ascending,  O(n log n), NOT stable
+sort(a.begin(), a.end(), greater&lt;int&gt;());     // descending
+stable_sort(a.begin(), a.end());              // preserves equal-element order
+sort(a.begin(), a.end(), [](int x, int y){ return abs(x) &lt; abs(y); });
+
+partial_sort(a.begin(), a.begin()+3, a.end());        // smallest 3, sorted — O(n log k)
+nth_element(a.begin(), a.begin()+2, a.end());         // a[2] is in final sorted position — O(n) avg
+is_sorted(a.begin(), a.end());                        // bool
+
+reverse(a.begin(), a.end());                          // O(n)
+rotate(a.begin(), a.begin()+1, a.end());              // left-rotate by 1
+// shuffle(a.begin(), a.end(), mt19937{42});          // C++11+ (random_shuffle is removed)
+
+// Deduplicate: requires SORTED input
+sort(a.begin(), a.end());
+a.erase(unique(a.begin(), a.end()), a.end());         // ★ the two-line idiom
+
+// min/max
+min(3, 5);  max(3, 5);  min({3, 5, 1});               // min of an initialiser list
+*min_element(a.begin(), a.end());                     // returns an ITERATOR → dereference
+*max_element(a.begin(), a.end());
+auto [mn, mx] = minmax_element(a.begin(), a.end());   // pair of iterators
+count(a.begin(), a.end(), 1);                         // occurrences of a value
+count_if(a.begin(), a.end(), [](int x){ return x &gt; 2; });
+
+// Filling and transforming
+fill(a.begin(), a.end(), 7);                          // overwrite
+iota(a.begin(), a.end(), 0);                          // 0,1,2,3,...  (needs &lt;numeric&gt;)
+replace(a.begin(), a.end(), 1, 100);
+transform(a.begin(), a.end(), a.begin(), [](int x){ return x*x; });
+for_each(a.begin(), a.end(), [](int x){ cout &lt;&lt; x &lt;&lt; ' '; });
+
+// Set operations on SORTED ranges (write to a new vector)
+vector&lt;int&gt; x{1,2,3,4}, y{3,4,5}, out;
+set_intersection(x.begin(), x.end(), y.begin(), y.end(), back_inserter(out));
+out.clear();
+set_union(x.begin(), x.end(), y.begin(), y.end(), back_inserter(out));
+out.clear();
+set_difference(x.begin(), x.end(), y.begin(), y.end(), back_inserter(out));
+
+// Merge two sorted vectors into one sorted vector
+merge(x.begin(), x.end(), y.begin(), y.end(), back_inserter(out));
+
+// next/prev permutation (needs sorted start for full enumeration)
+sort(a.begin(), a.end());
+do { /* use a */ } while (next_permutation(a.begin(), a.end()));
+
+// Remove-erase idiom for a CONDITION (not for value+unique)
+a.erase(remove_if(a.begin(), a.end(), [](int x){ return x % 2 == 0; }), a.end());</code></pre>
+    <div class="note"><b>Predicates and comparators return <code>bool</code>:</b> “is <i>x</i> before <i>y</i>?”. Returning
+    anything that is not a strict weak ordering (for example <code>x &lt;= y</code>) is undefined behaviour inside
+    <code>sort</code> — it can even crash with an out-of-bounds write, because the algorithm relies on the ordering to
+    bound itself.</div>
+  </section>
+
+  <section class="sub">
+    <h3>6.2 Binary search: three functions and one template</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 300" role="img" aria-label="lower_bound, upper_bound and binary search on answer">
+        <text class="tt" x="20" y="26">lower_bound vs upper_bound on a sorted array with duplicates</text>
+        <g class="mono">
+          <text x="60" y="60" class="sm">index</text>
+          <text x="60" y="82">  0    1    2    3    4    5    6    7</text>
+          <text x="60" y="108">value</text>
+          <text x="60" y="134">  1    2    4    4    4    7    9   10</text>
+        </g>
+        <rect x="150" y="112" width="102" height="26" class="bb"/>
+        <rect x="150" y="86" width="34" height="26" class="bc"/>
+        <text class="sm" x="167" y="76" text-anchor="middle">lb(4)=2</text>
+        <text class="sm" x="270" y="76" text-anchor="middle">first ≥ 4</text>
+        <text class="sm" x="150" y="164">upper_bound(4) = 5  → first element &gt; 4</text>
+        <text class="sm" x="150" y="186">binary_search(4) → true ; binary_search(5) → false</text>
+        <text class="sm" x="150" y="208">equal_range(4) → {iterator lb, iterator ub} — the count is ub − lb</text>
+
+        <rect x="480" y="52" width="400" height="150" class="bx"/>
+        <text class="t" x="680" y="76" text-anchor="middle">On a vector of size n</text>
+        <text class="mono sm" x="500" y="102">int i = lower_bound(a.begin(), a.end(), x) - a.begin();</text>
+        <text class="mono sm" x="500" y="126">bool found = binary_search(a.begin(), a.end(), x);</text>
+        <text class="mono sm" x="500" y="150">auto [lo, hi] = equal_range(a.begin(), a.end(), x);</text>
+        <text class="sm" x="500" y="174">All O(log n) — 20 steps for 10⁶, 30 for 10⁹. Requires a SORTED range.</text>
+        <text class="sm" x="500" y="194">For descending data use a comparator: lower_bound(..., greater&lt;int&gt;())</text>
+
+        <rect x="30" y="228" width="850" height="58" class="bb"/>
+        <text class="t" x="455" y="250" text-anchor="middle">Custom binary search over an abstract predicate (the general form)</text>
+        <text class="mono sm" x="50" y="272">lo=0, hi=n-1; while (lo &lt; hi) { int mid = lo + (hi-lo)/2; if (ok(mid)) hi = mid; else lo = mid+1; }  // first true</text>
+      </svg>
+      <figcaption>Fig 6.1 — <code>lower_bound</code> = first element not less than x; <code>upper_bound</code> = first element greater than x. Their difference is the number of copies.</figcaption>
+    </figure>
+    <pre><code>// ---- lower_bound / upper_bound on sorted containers ---------------------
+vector&lt;int&gt; a{1, 2, 4, 4, 4, 7, 9, 10};
+int lb = lower_bound(a.begin(), a.end(), 4) - a.begin();     // 2
+int ub = upper_bound(a.begin(), a.end(), 4) - a.begin();     // 5
+int copies = ub - lb;                                        // 3
+bool has5 = binary_search(a.begin(), a.end(), 5);            // false
+
+// set / map have their own member versions (O(log n), no linear iterator math)
+set&lt;int&gt; s{1, 4, 9};
+auto it = s.lower_bound(4);          // member: same name, faster than std::lower_bound on a set
+
+// ---- BINARY SEARCH ON THE ANSWER (the highest-value pattern) ------------
+// Use when: "minimise the maximum", "maximise the minimum", "find the smallest
+// value such that a monotonic condition holds". Write the feasibility check first!
+//
+// Example shape: split array into m parts minimising the largest sum.
+bool feasible(const vector&lt;int&gt;&amp; a, int m, long long cap) {
+    int parts = 1; long long cur = 0;
+    for (int x : a) {
+        if (cur + x &gt; cap) { ++parts; cur = 0; }
+        cur += x;
+    }
+    return parts &lt;= m;
+}
+long long minLargestSum(vector&lt;int&gt;&amp; a, int m) {
+    long long lo = *max_element(a.begin(), a.end());     // feasibility bound
+    long long hi = accumulate(a.begin(), a.end(), 0LL);
+    while (lo &lt; hi) {
+        long long mid = lo + (hi - lo) / 2;              // ← never (lo+hi)/2 (overflow)
+        if (feasible(a, m, mid)) hi = mid; else lo = mid + 1;
+    }
+    return lo;
+}
+
+// ---- Binary search over reals (fixed 60–100 iterations, no epsilon loop) --
+double solve(double lo, double hi) {
+    for (int iter = 0; iter &lt; 80; ++iter) {
+        double mid = (lo + hi) / 2;
+        if (ok(mid)) hi = mid; else lo = mid;
+    }
+    return lo;
+}
+
+// ---- Searching in a rotated sorted array (classic twist) -----------------
+int searchRotated(vector&lt;int&gt;&amp; a, int target) {
+    int lo = 0, hi = a.size() - 1;
+    while (lo &lt;= hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (a[mid] == target) return mid;
+        if (a[lo] &lt;= a[mid]) {                            // left half sorted
+            if (a[lo] &lt;= target &amp;&amp; target &lt; a[mid]) hi = mid - 1; else lo = mid + 1;
+        } else {                                          // right half sorted
+            if (a[mid] &lt; target &amp;&amp; target &lt;= a[hi]) lo = mid + 1; else hi = mid - 1;
+        }
+    }
+    return -1;
+}</code></pre>
+    <div class="tip"><b>Overflow in binary search:</b> <code>(lo + hi) / 2</code> overflows when both are near 10¹⁸.
+    Always write <code>lo + (hi - lo) / 2</code>. And use <code>long long</code> for the bounds in answer-search problems
+    even when the array is <code>int</code> — caps are usually sums.</div>
+  </section>
+
+  <section class="sub">
+    <h3>6.3 &lt;numeric&gt; and math helpers</h3>
+    <pre><code>#include &lt;numeric&gt;
+accumulate(v.begin(), v.end(), 0LL);                       // ★ 0LL, not 0, for 64-bit
+accumulate(v.begin(), v.end(), 0LL, [](long long s, int x){ return s + 1LL*x*x; });
+partial_sum(v.begin(), v.end(), out.begin());              // prefix sums
+adjacent_difference(v.begin(), v.end(), out.begin());      // differences
+inner_product(a.begin(), a.end(), b.begin(), 0LL);         // dot product
+gcd(12, 18);  lcm(4, 6);  gcd(0, 5);                       // C++17
+iota(v.begin(), v.end(), 0);                               // 0,1,2,...
+
+// Prefix sums and 2D prefix sums — turn O(n) range queries into O(1)
+vector&lt;long long&gt; pre(n + 1, 0);
+for (int i = 0; i &lt; n; ++i) pre[i+1] = pre[i] + a[i];
+long long rangeSum = pre[r+1] - pre[l];                   // sum of a[l..r]
+
+vector&lt;vector&lt;long long&gt;&gt; P(R + 1, vector&lt;long long&gt;(C + 1, 0));
+for (int i = 1; i &lt;= R; ++i)
+    for (int j = 1; j &lt;= C; ++j)
+        P[i][j] = g[i-1][j-1] + P[i-1][j] + P[i][j-1] - P[i-1][j-1];
+long long rectSum = P[r2+1][c2+1] - P[r1][c2+1] - P[r2+1][c1] + P[r1][c1];
+
+// Fast exponentiation + modular arithmetic
+long long mpow(long long b, long long e, long long m) {
+    long long r = 1; b %= m;
+    while (e) { if (e &amp; 1) r = r * b % m; b = b * b % m; e &gt;&gt;= 1; }
+    return r;
+}
+const long long MOD = 1'000'000'007;
+long long inv(long long x) { return mpow(x, MOD - 2, MOD); }   // Fermat inverse (prime modulus)</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Task</th><th>Standard solution</th></tr></thead>
+      <tbody>
+        <tr><td>Sum / product of a range</td><td><code>accumulate</code> (with the right initial type)</td></tr>
+        <tr><td>Prefix sums, range sum queries</td><td><code>partial_sum</code> or a manual prefix array</td></tr>
+        <tr><td>gcd / lcm</td><td><code>std::gcd</code>, <code>std::lcm</code> (C++17); lcm overflows — divide first: <code>a/gcd(a,b)*b</code></td></tr>
+        <tr><td>Modular power</td><td>binary exponentiation (above)</td></tr>
+        <tr><td>Primes up to n</td><td>sieve of Eratosthenes with <code>vector&lt;bool&gt;</code>/bitset, O(n log log n)</td></tr>
+        <tr><td>Integer square root</td><td><code>int r = sqrt((double)x); while (1LL*r*r &gt; x) --r; while (1LL*(r+1)*(r+1) &lt;= x) ++r;</code></td></tr>
+        <tr><td>nCr mod p for small n</td><td>Pascal triangle <code>vector&lt;vector&lt;long long&gt;&gt;</code>, or factorials + Fermat inverse</td></tr>
+      </tbody>
+    </table>
+  </section>
+</section>
+
+<section class="chapter" id="ch7">
+  <h2><span class="num">7</span> Lambdas, comparators and templates</h2>
+  <p class="tagline">The idioms that make C++ solutions short, expressive and fast — and the comparator rules that prevent silent corruption.</p>
+
+  <section class="sub">
+    <h3>7.1 Lambdas</h3>
+    <pre><code>// [capture](parameters) -> return_type { body }
+auto add = [](int a, int b) { return a + b; };            // return type deduced
+auto sq  = [](int x) -&gt; long long { return 1LL * x * x; };
+
+// Captures
+int k = 3;
+auto byValue   = [k](int x) { return x + k; };            // copy of k (const inside)
+auto byRef     = [&amp;k](int x) { k += x; return k; };       // reference — mutations visible
+auto init      = [n = (int)v.size()](int i) { return i &lt; n; };   // init-capture (C++14)
+auto everything= [=]() { /* copies all used variables */ };
+auto refs      = [&amp;]() { /* references all used variables */ };
+auto selfRef   = [&amp;, k]() { /* careful: dangling references if the lambda outlives scope */ };
+
+// The recursive lambda idiom (DFS in 4 lines, no helper function needed)
+auto dfs = [&amp;](auto&amp;&amp; self, int u, int parent) -&gt; void {
+    visited[u] = true;
+    for (int v : adj[u]) if (v != parent) self(self, v, u);
+};
+dfs(dfs, 0, -1);                                   // C++14 generic lambda + explicit self
+
+// Alternative for recursion when you want the classic signature:
+function&lt;void(int,int)&gt; dfs2 = [&amp;](int u, int p) {
+    for (int v : adj[u]) if (v != p) dfs2(v, u);
+};
+dfs2(0, -1);                                       // std::function: convenient, slower
+
+// Immediately-invoked lambda for scoping
+int answer = [&amp;] { /* compute */ return 42; }();</code></pre>
+    <div class="note"><b>Which recursion style for interviews?</b> Use the <code>auto&amp;&amp; self</code> generic lambda (zero
+    overhead) or plain member functions of <code>Solution</code> (what most published solutions use).
+    <code>std::function</code> is the readable but slowest option — it type-erases and blocks inlining; at depth 10⁵ it
+    can be 3–10× slower.</div>
+  </section>
+
+  <section class="sub">
+    <h3>7.2 Comparators — the rules, and the patterns</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 250" role="img" aria-label="Comparator semantics: strict weak ordering">
+        <text class="tt" x="20" y="26">A comparator answers one question: “must <tspan class="mono">a</tspan> come before <tspan class="mono">b</tspan>?”</text>
+        <rect x="30" y="56" width="400" height="76" class="bc"/>
+        <text class="t" x="230" y="80" text-anchor="middle">Valid: strict weak ordering</text>
+        <text class="mono sm" x="50" y="104">[](const T&amp; a, const T&amp; b){ return a.x &lt; b.x; }</text>
+        <text class="sm" x="50" y="124">irreflexive (cmp(a,a)==false), transitive, and equals</text>
+        <text class="sm" x="50" y="122">  </text>
+        <rect x="470" y="56" width="400" height="76" class="bd"/>
+        <text class="t" x="670" y="80" text-anchor="middle">Invalid → UB (crashes / corruption)</text>
+        <text class="mono sm" x="490" y="104">[](int a, int b){ return a &lt;= b; }   // ✗</text>
+        <text class="mono sm" x="490" y="124">[](int a, int b){ return true; }      // ✗</text>
+        <rect x="30" y="150" width="840" height="84" class="bx"/>
+        <text class="t" x="450" y="172" text-anchor="middle">Multi-key sorting: write the comparison in priority order</text>
+        <text class="mono sm" x="50" y="196">sort(v, [](const P&amp;a,const P&amp;b){ if (a.x!=b.x) return a.x&lt;b.x; if (a.y!=b.y) return a.y&gt;b.y; return a.z&lt;b.z; });</text>
+        <text class="sm" x="50" y="220">Shortcut with tuples/pairs: <tspan class="mono">return tie(a.x,a.y,a.z) &lt; tie(b.x,b.y,b.z);</tspan> — but “descending” fields need care (negate or use a custom comparator).</text>
+      </svg>
+      <figcaption>Fig 7.1 — Comparators are contracts. Violating strict weak ordering is UB — the judge may give you a TLE or a crash with no explanation.</figcaption>
+    </figure>
+    <pre><code>struct Point { int x, y; };
+
+// 1 · sort by one field
+sort(v.begin(), v.end(), [](const Point&amp; a, const Point&amp; b){ return a.x &lt; b.x; });
+
+// 2 · multi-key: x ascending, then y descending
+sort(v.begin(), v.end(), [](const Point&amp; a, const Point&amp; b){
+    if (a.x != b.x) return a.x &lt; b.x;      // primary key
+    return a.y &gt; b.y;                      // secondary key
+});
+
+// 3 · pairs sort lexicographically for free — pack keys into a pair/tuple
+vector&lt;pair&lt;int,int&gt;&gt; p;                  // sorts by .first, then .second
+vector&lt;tuple&lt;int,int,int&gt;&gt; t;             // sorts by element order
+sort(t.begin(), t.end());                  // works out of the box
+// To sort by (score desc, index asc) without a comparator:
+vector&lt;pair&lt;int,int&gt;&gt; keys;               // {-score, index}
+sort(keys.begin(), keys.end());
+
+// 4 · sort indices instead of values (keeps the original array intact)
+vector&lt;int&gt; idx(n); iota(idx.begin(), idx.end(), 0);
+sort(idx.begin(), idx.end(), [&amp;a](int i, int j){ return a[i] &lt; a[j]; });
+
+// 5 · min-heap / max-heap comparators
+priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt; minHeap;
+auto cmp = [](const Point&amp; a, const Point&amp; b){ return a.x &gt; b.x; };   // min by x on top
+priority_queue&lt;Point, vector&lt;Point&gt;, decltype(cmp)&gt; pq(cmp);
+
+// 6 · sorting structs with operator&lt; defined (no comparator needed anywhere)
+struct Task {
+    int priority, id;
+    bool operator&lt;(const Task&amp; o) const { return priority &lt; o.priority; }
+};
+sort(tasks.begin(), tasks.end());          // uses operator&lt;
+// ordered containers also need equality/less ONLY (set/map do not use ==)</code></pre>
+    <div class="trap"><b>Two comparator bugs that are invisible in tests:</b>
+    <b>(1)</b> comparing floating point with <code>&lt;</code> is fine, but <code>==</code> on doubles is not — sort keys
+    should be integers or exact comparisons.
+    <b>(2)</b> a comparator that captures by reference and reads a container you then modify during the sort gives
+    non-deterministic results. Sort a copy, or precompute the keys.</div>
+  </section>
+
+  <section class="sub">
+    <h3>7.3 Templates, auto and the small conveniences</h3>
+    <pre><code>// Function template: one implementation, any type
+template &lt;class T&gt;
+T myMax(T a, T b) { return a &gt; b ? a : b; }
+
+template &lt;class T&gt;
+void printAll(const vector&lt;T&gt;&amp; v) { for (const T&amp; x : v) cout &lt;&lt; x &lt;&lt; ' '; }
+
+// Compile-time constants
+template &lt;int N&gt; struct Fixed { int a[N]; };
+constexpr int LIMIT = 100000;
+constexpr long long MOD = 1'000'000'007;
+
+// Generic lambdas (C++14) — great for comparators/dedupe
+auto cmp = [](const auto&amp; a, const auto&amp; b){ return a &lt; b; };
+
+// Structured bindings (C++17) — the readability upgrade you feel immediately
+for (auto&amp; [key, val] : mp) { }
+auto [lo, hi] = equal_range(a.begin(), a.end(), x);
+auto [dist, node] = heap.top();
+
+// auto + decltype
+auto x = 5;                       // int
+decltype(x) y = 7;                // int
+const auto&amp; row = grid[i];        // no copy
+
+// Type aliases and common shorthands used in solutions
+using ll = long long;
+using pii = pair&lt;int,int&gt;;
+using vi = vector&lt;int&gt;;
+#define all(x) (x).begin(), (x).end()          // macros still common in competitive code
+#define sz(x) ((int)(x).size())
+
+// Fast IO for competitive-style input
+ios::sync_with_stdio(false);
+cin.tie(nullptr);
+
+// Unordered containers need explicit hashing only for custom keys (ch. 8.3)</code></pre>
+  </section>
+</section>
+
+<section class="chapter" id="ch8">
+  <h2><span class="num">8</span> Structs, operators, and the LeetCode node types</h2>
+  <p class="tagline">Classes exist in interview C++ mainly for one reason: giving custom types a sorting order, a hash, or a heap priority.</p>
+
+  <section class="sub">
+    <h3>8.1 struct, operator overloading, and why it matters</h3>
+    <pre><code>struct Job {
+    int start, end, profit;
+    // Sorting: define ONE order once, use it everywhere (sort, set, priority_queue)
+    bool operator&lt;(const Job&amp; o) const {
+        if (end != o.end) return end &lt; o.end;
+        return start &lt; o.start;
+    }
+    bool operator==(const Job&amp; o) const { return start == o.start &amp;&amp; end == o.end; }
+};
+vector&lt;Job&gt; jobs;  sort(jobs.begin(), jobs.end());          // uses operator&lt;
+
+// Arithmetic-style operator for coordinates / fractions
+struct Vec {
+    long long x, y;
+    Vec operator+(const Vec&amp; o) const { return {x + o.x, y + o.y}; }
+    Vec operator-(const Vec& o) const { return {x - o.x, y - o.y}; }
+    long long dot(const Vec&amp; o) const { return x*o.x + y*o.y; }
+    long long cross(const Vec&amp; o) const { return x*o.y - y*o.x; }   // sign = turn direction
+};
+// cross &gt; 0 → counter-clockwise; == 0 → collinear. The basis of geometry problems.
+
+// Stream operator is handy for debugging (not needed on the judge)
+struct Node { int id, w; };
+ostream&amp; operator&lt;&lt;(ostream&amp; os, const Node&amp; n) { return os &lt;&lt; "(" &lt;&lt; n.id &lt;&lt; "," &lt;&lt; n.w &lt;&lt; ")"; }
+
+// Constructors, default values, methods
+struct DSU {
+    vector&lt;int&gt; p, r;
+    DSU(int n) : p(n), r(n, 0) { iota(p.begin(), p.end(), 0); }   // init list
+    int find(int x) { return p[x] == x ? x : p[x] = find(p[x]); } // path compression
+    bool unite(int a, int b) {
+        a = find(a); b = find(b);
+        if (a == b) return false;
+        if (r[a] &lt; r[b]) swap(a, b);
+        p[b] = a; if (r[a] == r[b]) ++r[a];                        // union by rank
+        return true;
+    }
+};
+// struct = class with public members by default. That is the entire difference.</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>8.2 LeetCode’s ListNode and TreeNode — the exact code you need</h3>
+    <pre><code>// Provided by LeetCode (do NOT redefine these when submitting):
+struct ListNode {
+    int val;
+    ListNode *next;
+    ListNode() : val(0), next(nullptr) {}
+    ListNode(int x) : val(x), next(nullptr) {}
+    ListNode(int x, ListNode *next) : val(x), next(next) {}
+};
+struct TreeNode {
+    int val;
+    TreeNode *left;
+    TreeNode *right;
+    TreeNode() : val(0), left(nullptr), right(nullptr) {}
+    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+    TreeNode(int x, TreeNode *l, TreeNode *r) : val(x), left(l), right(r) {}
+};
+
+// ---------- linked list: reverse (iterative) ----------
+ListNode* reverseList(ListNode* head) {
+    ListNode* prev = nullptr;
+    while (head) {
+        ListNode* nxt = head-&gt;next;      // save
+        head-&gt;next = prev;               // flip
+        prev = head;                     // advance
+        head = nxt;
+    }
+    return prev;                         // new head
+}
+// ---------- linked list: reverse (recursive) ----------
+ListNode* reverseRec(ListNode* head) {
+    if (!head || !head-&gt;next) return head;
+    ListNode* newHead = reverseRec(head-&gt;next);
+    head-&gt;next-&gt;next = head;
+    head-&gt;next = nullptr;
+    return newHead;
+}
+// ---------- cycle detection: Floyd (two pointers) ----------
+bool hasCycle(ListNode* head) {
+    ListNode *slow = head, *fast = head;
+    while (fast &amp;&amp; fast-&gt;next) {
+        slow = slow-&gt;next;
+        fast = fast-&gt;next-&gt;next;
+        if (slow == fast) return true;
+    }
+    return false;
+}
+// ---------- find middle (slow/fast) ----------
+ListNode* middle(ListNode* head) {
+    ListNode *slow = head, *fast = head;
+    while (fast &amp;&amp; fast-&gt;next) { slow = slow-&gt;next; fast = fast-&gt;next-&gt;next; }
+    return slow;
+}
+// ---------- dummy-head merging (never special-case the first node) --------
+ListNode* mergeTwo(ListNode* a, ListNode* b) {
+    ListNode dummy(0), *tail = &amp;dummy;          // stack dummy: fine, return dummy.next
+    while (a &amp;&amp; b) {
+        if (a-&gt;val &lt;= b-&gt;val) { tail-&gt;next = a; a = a-&gt;next; }
+        else                 { tail-&gt;next = b; b = b-&gt;next; }
+        tail = tail-&gt;next;
+    }
+    tail-&gt;next = a ? a : b;
+    return dummy.next;
+}
+
+// ---------- tree traversals ----------
+void preorder(TreeNode* r, vector&lt;int&gt;&amp; out)  { if (!r) return; out.push_back(r-&gt;val); preorder(r-&gt;left,out); preorder(r-&gt;right,out); }
+void inorder(TreeNode* r, vector&lt;int&gt;&amp; out)   { if (!r) return; inorder(r-&gt;left,out); out.push_back(r-&gt;val); inorder(r-&gt;right,out); }
+void postorder(TreeNode* r, vector&lt;int&gt;&amp; out) { if (!r) return; postorder(r-&gt;left,out); postorder(r-&gt;right,out); out.push_back(r-&gt;val); }
+
+// Iterative inorder (needed when recursion depth is a problem)
+vector&lt;int&gt; inorderIt(TreeNode* root) {
+    vector&lt;int&gt; out; stack&lt;TreeNode*&gt; st; TreeNode* cur = root;
+    while (cur || !st.empty()) {
+        while (cur) { st.push(cur); cur = cur-&gt;left; }
+        cur = st.top(); st.pop();
+        out.push_back(cur-&gt;val);
+        cur = cur-&gt;right;
+    }
+    return out;
+}
+
+// Level-order with a queue, level by level
+vector&lt;vector&lt;int&gt;&gt; levelOrder(TreeNode* root) {
+    vector&lt;vector&lt;int&gt;&gt; res; if (!root) return res;
+    queue&lt;TreeNode*&gt; q; q.push(root);
+    while (!q.empty()) {
+        int sz = q.size(); vector&lt;int&gt; level;
+        while (sz--) {
+            TreeNode* n = q.front(); q.pop();
+            level.push_back(n-&gt;val);
+            if (n-&gt;left)  q.push(n-&gt;left);
+            if (n-&gt;right) q.push(n-&gt;right);
+        }
+        res.push_back(level);
+    }
+    return res;
+}
+// Depth / height, and validating a BST
+int depth(TreeNode* r) { return r ? 1 + max(depth(r-&gt;left), depth(r-&gt;right)) : 0; }
+bool isBST(TreeNode* r, long long lo = LLONG_MIN, long long hi = LLONG_MAX) {
+    if (!r) return true;
+    if (r-&gt;val &lt;= lo || r-&gt;val &gt;= hi) return false;      // long long bounds avoid INT_ edge cases
+    return isBST(r-&gt;left, lo, r-&gt;val) &amp;&amp; isBST(r-&gt;right, r-&gt;val, hi);
+}</code></pre>
+    <div class="tip"><b>Pointer habits for tree/list problems:</b> check <code>nullptr</code> before dereferencing
+    (<code>if (!node) return ...</code>); use a local <code>long long</code> range when validating BSTs to dodge
+    <code>INT_MIN</code>/<code>INT_MAX</code> edge cases; prefer a stack-based traversal if depth may exceed ~10⁴ (no C++
+    recursion limit, but the C stack can still overflow); and remember LeetCode nodes are heap-allocated — never
+    <code>delete</code> them, and never return a pointer to a local.</div>
+  </section>
+
+  <section class="sub">
+    <h3>8.3 Custom hash for unordered containers (anti-hack)</h3>
+    <pre><code>// The problem: unordered_set&lt;int&gt; with keys like 107897 hashes poorly and degrades to O(n)
+// per operation → TLE on LeetCode's anti-hash tests. Fix: a randomized 64-bit mixer.
+
+struct custom_hash {
+    static uint64_t splitmix64(uint64_t x) {
+        x += 0x9e3779b97f4a7c15ULL;
+        x = (x ^ (x &gt;&gt; 30)) * 0xbf58476d1ce4e5b9ULL;
+        x = (x ^ (x &gt;&gt; 27)) * 0x94d049bb133111ebULL;
+        return x ^ (x &gt;&gt; 31);
+    }
+    size_t operator()(uint64_t x) const {
+        static const uint64_t FIXED_RANDOM =
+            chrono::steady_clock::now().time_since_epoch().count();
+        return splitmix64(x + FIXED_RANDOM);
+    }
+};
+
+unordered_map&lt;long long, int, custom_hash&gt; safe;
+unordered_set&lt;long long, custom_hash&gt; safeSet;
+// Use this whenever keys are adversarial-looking (10^7 ranges, multiples of large primes)
+// or when you are close to the time limit. It costs the same but removes the worst case.</code></pre>
+    <h4>Custom key hashing (pairs, tuples, custom structs)</h4>
+    <pre><code>// unordered_map needs hash + equality for a custom key:
+struct PairHash {
+    size_t operator()(const pair&lt;int,int&gt;&amp; p) const {
+        return hash&lt;long long&gt;()((long long)p.first &lt;&lt; 32 ^ (unsigned)p.second);
+    }
+};
+unordered_map&lt;pair&lt;int,int&gt;, int, PairHash&gt; dist;   // works with the C++20 == for pairs
+
+// Key into a single 64-bit integer instead — often simpler and faster
+auto key64 = [](int a, int b) { return ( (long long)a &lt;&lt; 32 ) ^ (unsigned)b; };
+unordered_map&lt;long long, int&gt; mp;
+mp[key64(3, 4)] = 1;
+// Or pack small ranges: (a * 1000 + b) when both &lt; 1000, (a &lt;&lt; 20) | b for values &lt; 2^20
+
+// For sets/maps with a struct key, ORDERED containers only need operator&lt; </code></pre>
+  </section>
+</section>
+<section class="chapter" id="ch9">
+  <h2><span class="num">9</span> Memory, undefined behaviour and speed</h2>
+  <p class="tagline">What actually makes C++ fast, what makes it dangerous, and the handful of habits that keep solutions safe on the judge.</p>
+
+  <section class="sub">
+    <h3>9.1 Where objects live</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 330" role="img" aria-label="Memory layout: stack, heap, static, and typical limits">
+        <text class="tt" x="20" y="26">Stack vs heap vs static — and the limits that decide your data structure</text>
+        <rect x="30" y="50" width="330" height="252" class="bx"/>
+        <text class="t" x="195" y="72" text-anchor="middle">Process memory</text>
+        <rect x="50" y="84" width="290" height="52" class="bc"/>
+        <text class="sm" x="66" y="104">stack — local variables, frames</text>
+        <text class="sm" x="66" y="124">grows DOWN · ~1–8 MB total · fast (pointer bump)</text>
+        <rect x="50" y="146" width="290" height="52" class="bb"/>
+        <text class="sm" x="66" y="166">heap — <tspan class="mono">new</tspan>, <tspan class="mono">vector</tspan> buffers, <tspan class="mono">ptr = new TreeNode()</tspan></text>
+        <text class="sm" x="66" y="186">grows UP · GBs available · allocation costs ~100 ns</text>
+        <rect x="50" y="208" width="290" height="40" class="ba"/>
+        <text class="sm" x="66" y="232">static / global — zero-initialised, whole program</text>
+        <rect x="50" y="254" width="290" height="38" class="bp"/>
+        <text class="sm" x="66" y="278">code (text) — binary, read-only</text>
+
+        <rect x="390" y="50" width="480" height="122" class="bd"/>
+        <text class="t" x="630" y="72" text-anchor="middle">Common crashes in contest code</text>
+        <text class="sm" x="410" y="96">✗ <tspan class="mono">int a[1000000];</tspan> inside a function → stack overflow (silent SIGSEGV)</text>
+        <text class="sm" x="410" y="118">✓ make it <tspan class="mono">static</tspan>, global, or a <tspan class="mono">vector</tspan> (heap) instead</text>
+        <text class="sm" x="410" y="140">✗ recursion deeper than ~10⁴–10⁵ frames → stack overflow</text>
+        <text class="sm" x="410" y="162">✓ convert to an explicit stack, or keep depth in check (DFS on 2·10⁵ nodes is risky)</text>
+
+        <rect x="390" y="184" width="480" height="118" class="bc"/>
+        <text class="t" x="630" y="206" text-anchor="middle">LeetCode limits to keep in mind</text>
+        <text class="sm" x="410" y="230">Memory limit is typically 256 MB. A <tspan class="mono">vector&lt;int&gt;</tspan> of 10⁷ ints = 40 MB.</text>
+        <text class="sm" x="410" y="252">A 2000×2000 int grid = 16 MB; the same grid of <tspan class="mono">bool</tspan> is ~0.25 MB.</text>
+        <text class="sm" x="410" y="272">Time limit is typically 1–3 s; a 10⁸-op loop in C++ usually runs in ~0.2–0.6 s.</text>
+        <text class="sm" x="410" y="292">Prefer <tspan class="mono">vector&lt;char&gt;</tspan>/<tspan class="mono">bitset</tspan> for visited flags, flat arrays for hot loops.</text>
+      </svg>
+      <figcaption>Fig 9.1 — Most “mysterious crashes” are one of the two red lines above: stack overflow, or reading past the end.</figcaption>
+    </figure>
+  </section>
+
+  <section class="sub">
+    <h3>9.2 Undefined behaviour checklist</h3>
+    <table class="tbl">
+      <thead><tr><th>UB</th><th>Example</th><th>Symptom on the judge</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td>Out-of-bounds read/write</td><td><code>v[i]</code>, <code>v[v.size()]</code>, <code>a[i+1]</code></td><td>Wrong answer, crash, or “works” locally</td><td>Check bounds; use <code>.at()</code> while debugging; ASan</td></tr>
+        <tr><td>Signed integer overflow</td><td><code>int x = 1e9; x + x</code></td><td>Wrong answer (wraps), unpredictable</td><td><code>long long</code>; promote with <code>1LL *</code></td></tr>
+        <tr><td>Iterator invalidation</td><td><code>push_back</code> while iterating a vector</td><td>Garbage values / crash</td><td>Copy, or use indices; <code>reserve</code> first</td></tr>
+        <tr><td>Dangling reference</td><td>returning a reference to a local; <code>string_view</code> to a temporary</td><td>Random wrong results</td><td>Return by value, or keep the owner alive</td></tr>
+        <tr><td>Null dereference</td><td><code>node-&gt;val</code> when <code>node == nullptr</code></td><td>Runtime error</td><td>Early return / guard clauses</td></tr>
+        <tr><td>Uninitialised variables</td><td><code>int x; cout &lt;&lt; x;</code></td><td>Random on every run</td><td><code>{} </code>, <code>vector(n, 0)</code></td></tr>
+        <tr><td>Invalid comparator</td><td><code>a &lt;= b</code> in <code>sort</code></td><td>Crash or scrambled output</td><td>Use strict <code>&lt;</code></td></tr>
+        <tr><td>Modifying while iterating</td><td><code>for (auto&amp; x : v) v.push_back(...)</code></td><td>Crash / infinite loop</td><td>Iterate over indices, or collect then apply</td></tr>
+        <tr><td>Use after free</td><td><code>delete p; p-&gt;x;</code></td><td>Random crash</td><td>Set <code>nullptr</code>; prefer no manual <code>new</code></td></tr>
+        <tr><td>Division by zero</td><td><code>x % 0</code></td><td>Runtime error / SIGFPE</td><td>Guard the modulus</td></tr>
+      </tbody>
+    </table>
+    <pre><code>// Turn silent UB into a loud, catchable exit during local testing:
+//   g++ -std=c++20 -g -fsanitize=address,undefined -fno-omit-frame-pointer sol.cpp
+//   ASan reports: "heap-buffer-overflow … READ of size 4 at 0x…" with the exact line.
+// Then recompile WITHOUT sanitizers for the judge (they cost 2× time).
+// On LeetCode you never see sanitizer output — so these bugs must be found locally.</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>9.3 Performance habits that move the needle</h3>
+    <pre><code>// 1 · Compile-level (judge already uses -O2; know why it matters)
+//    -O2 typically gives 5–20× over -O0. Inline small functions, mark hot lambdas
+//    with [](...) rather than std::function.
+
+// 2 · IO: the single biggest win for input-heavy problems
+ios::sync_with_stdio(false);     // stop syncing C++ streams with C stdio
+cin.tie(nullptr);                // stop flushing cout before every cin
+
+// 3 · Reserve and avoid copies
+vector&lt;int&gt; res; res.reserve(n);
+for (const auto&amp; x : big) { }     // const&amp;: no copy per element
+auto byValue = bigVector;          // ✗ O(n) copy
+const auto&amp; ref = bigVector;      // ✓
+
+// 4 · Choose the right container (the algorithmic win)
+//    membership: unordered_set O(1)  vs  vector O(n)
+//    ordered queries: set/map O(log n)
+//    top-K: priority_queue O(n log k) vs sort O(n log n)
+//    prefix sums: O(1) range queries
+
+// 5 · Cache friendliness (why vector beats list by 10× on real hardware)
+//    contiguous memory → prefetcher works; pointer chasing → cache misses
+
+// 6 · Avoid needless work in loops
+int n = (int)v.size();                       // hoist
+for (int i = 0; i &lt; n; ++i) { ... }          // not v.size() each time
+// compute prefix sums once instead of summing inside a loop (O(n²) → O(n))
+
+// 7 · Recursion overhead: iterative DFS/BFS over recursion when depth is large
+// 8 · Bitset tricks for set operations on 64/1024-bit sets (ch. 10)
+// 9 · Move semantics: std::move on containers you will not use again
+res.push_back(std::move(temp));              // avoid copying the buffer
+vector&lt;int&gt; steal = std::move(bigVec);       // bigVec becomes empty
+
+// 10 · Measure, do not guess
+//   chrono::steady_clock around suspect blocks; count operations; try small→large input sizes.</code></pre>
+    <div class="tip"><b>Practical time budget for C++ on LeetCode</b> (there is no fixed instruction count, but these are
+    the orders of magnitude that decide pass/TLE with a 1–2 s limit): 10⁸ simple operations ≈ 0.2–0.5 s ·
+    10⁷ <code>unordered_map</code> ops ≈ 0.5–1 s · 10⁷ <code>map</code>/<code>set</code> ops ≈ 2–5 s (too slow) ·
+    recursion on 10⁵ nodes is fine if depth stays O(log n) · O(n²) with n = 10⁴ is 10⁸ → borderline; with n = 10⁵ it never
+    passes.</div>
+  </section>
+</section>
+
+<section class="chapter" id="ch10">
+  <h2><span class="num">10</span> Bit manipulation and number theory</h2>
+  <p class="tagline">The tools for subset-enumeration, XOR puzzles, modular arithmetic and “O(1) math” questions.</p>
+
+  <section class="sub">
+    <h3>10.1 Bit operations</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 300" role="img" aria-label="Bit manipulation operations">
+        <text class="tt" x="20" y="26">The six operations that answer most bit questions</text>
+        <rect x="30" y="50" width="410" height="106" class="bx"/>
+        <text class="mono sm" x="50" y="74">x &amp; (1 &lt;&lt; k)        // test bit k</text>
+        <text class="mono sm" x="50" y="96">x |= (1 &lt;&lt; k)       // set bit k</text>
+        <text class="mono sm" x="50" y="118">x &amp;= ~(1 &lt;&lt; k)      // clear bit k</text>
+        <text class="mono sm" x="50" y="140">x ^= (1 &lt;&lt; k)       // toggle bit k</text>
+        <rect x="470" y="50" width="400" height="106" class="bx"/>
+        <text class="mono sm" x="490" y="74">x &amp; (x - 1)         // clear the LOWEST set bit</text>
+        <text class="mono sm" x="490" y="96">x &amp; -x              // isolate the lowest set bit</text>
+        <text class="mono sm" x="490" y="118">x &gt;&gt;&gt;/&lt;&lt;&gt;             // logical shift (use unsigned)</text>
+        <text class="mono sm" x="490" y="140">__builtin_popcount(x)  // count set bits (GCC/Clang)</text>
+
+        <rect x="30" y="176" width="270" height="104" class="bc"/>
+        <text class="t" x="165" y="198" text-anchor="middle">Bit identities worth memorising</text>
+        <text class="sm" x="50" y="222">x ^ x = 0 · x ^ 0 = x · a ^ b = b ^ a</text>
+        <text class="sm" x="50" y="244">x &amp; (x-1) == 0  ⇔  x is a power of two</text>
+        <text class="sm" x="50" y="266">n &amp; 1 → odd/even · n &gt;&gt; 1 → n/2</text>
+        <rect x="320" y="176" width="270" height="104" class="bb"/>
+        <text class="t" x="455" y="198" text-anchor="middle">Builtins (GCC/Clang, O(1))</text>
+        <text class="mono sm" x="340" y="222">__builtin_popcountll(x)</text>
+        <text class="mono sm" x="340" y="244">__builtin_ctz(x)   // trailing zeros</text>
+        <text class="mono sm" x="340" y="266">__builtin_clz(x) · __lg(x)</text>
+        <rect x="610" y="176" width="260" height="104" class="bp"/>
+        <text class="t" x="740" y="198" text-anchor="middle">Subset enumeration</text>
+        <text class="mono sm" x="630" y="222">for (int m = 0; m &lt; (1&lt;&lt;n); ++m)</text>
+        <text class="mono sm" x="630" y="244">  if (m &gt;&gt; i &amp; 1) /* i in subset */</text>
+        <text class="mono sm" x="630" y="266">// all submasks of S:</text>
+        <text class="mono sm" x="630" y="284">for (int sub=S; sub; sub=(sub-1)&amp;S)</text>
+      </svg>
+      <figcaption>Fig 10.1 — Bit tricks turn many “hard” problems into three lines: XOR cancellation, submask enumeration and popcount DP.</figcaption>
+    </figure>
+    <pre><code>// ---- the classic XOR problems -------------------------------------------
+int singleNumber(const vector&lt;int&gt;&amp; a) {           // every element twice, one once
+    int x = 0; for (int v : a) x ^= v; return x;    // O(1) space, no hashing
+}
+pair&lt;int,int&gt; twoSingles(const vector&lt;int&gt;&amp; a) {    // two elements appear once
+    int xr = 0; for (int v : a) xr ^= v;
+    int low = xr &amp; -xr;                             // isolate a differing bit
+    int g1 = 0, g2 = 0;
+    for (int v : a) (v &amp; low ? g1 : g2) ^= v;
+    return {g1, g2};
+}
+
+// ---- counts and powers ---------------------------------------------------
+__builtin_popcount(255);                            // 8
+__builtin_popcountll(1ULL &lt;&lt; 40);                   // 1
+bool isPow2(long long x) { return x &gt; 0 &amp;&amp; (x &amp; (x - 1)) == 0; }
+int lowbit(int x) { return x &amp; -x; }               // value of the lowest set bit
+
+// ---- subset DP (bitmask over n ≤ 20 elements) ----------------------------
+// dp[mask] = best value using exactly the elements in mask
+int n = (int)cost.size();                           // problem input
+vector&lt;long long&gt; dp(1 &lt;&lt; n, 0);
+for (int mask = 1; mask &lt; (1 &lt;&lt; n); ++mask) {
+    int i = __builtin_ctz(mask);                    // lowest set index
+    dp[mask] = dp[mask ^ (1 &lt;&lt; i)] + cost[i];       // adapt this recurrence per problem
+}
+// Enumerate all submasks of a mask (total work is 3^n)
+void enumerateSubmasks(int mask) {
+    for (int sub = mask; sub; sub = (sub - 1) &amp; mask) { /* use sub */ }
+}
+
+// ---- bitmask as a set, with bitset for larger universes ------------------
+bitset&lt;1000&gt; reachable;                             // fast shifts/AND/OR/count
+reachable |= (reachable &lt;&lt; x);                      // subset-sum reachability
+reachable.count();                                  // number of reachable sums
+
+// ---- Gray code, parity, reversing ---------------------------------------
+int gray = i ^ (i &gt;&gt; 1);                            // i-th Gray code
+bool oddParity = __builtin_parity(x);
+// (no standard __builtin_bitreverse32 — reverse with a loop or std::bitset&lt;32&gt;)</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>10.2 Number theory essentials</h3>
+    <pre><code>// ---- gcd / lcm -----------------------------------------------------------
+long long gcdll(long long a, long long b) { return b ? gcdll(b, a % b) : a; }
+long long lcmll(long long a, long long b) { return a / gcdll(a, b) * b; }   // divide FIRST
+
+// ---- sieve of Eratosthenes: all primes up to n in O(n log log n) ----------
+vector&lt;int&gt; primes;
+vector&lt;bool&gt; isComposite(n + 1, false);
+for (long long i = 2; i &lt;= n; ++i) {
+    if (!isComposite[i]) {
+        primes.push_back((int)i);
+        for (long long j = i * i; j &lt;= n; j += i) isComposite[j] = true;    // i*i can overflow int!
+    }
+}
+// O(n) linear sieve variant tracks the smallest prime factor (SPF) for factorisation:
+vector&lt;int&gt; spf(n + 1);
+for (int i = 2; i &lt;= n; ++i) {
+    if (!spf[i]) { spf[i] = i; primes.push_back(i); }
+    for (int p : primes) { if (p &gt; spf[i] || 1LL * i * p &gt; n) break; spf[i * p] = p; }
+}
+// factorise x using spf
+vector&lt;pair&lt;int,int&gt;&gt; factorise(int x, const vector&lt;int&gt;&amp; spf) {
+    vector&lt;pair&lt;int,int&gt;&gt; f;
+    while (x &gt; 1) { int p = spf[x], c = 0; while (x % p == 0) { x /= p; ++c; } f.push_back({p, c}); }
+    return f;
+}
+
+// ---- modular arithmetic -------------------------------------------------
+const long long MOD = 1'000'000'007;                 // prime
+long long add(long long a, long long b) { return (a + b) % MOD; }
+long long mul(long long a, long long b) { return a * b % MOD; }         // a,b &lt; 1e9 → fits
+long long mpow(long long b, long long e) { long long r = 1; b %= MOD;
+    while (e) { if (e &amp; 1) r = r * b % MOD; b = b * b % MOD; e &gt;&gt;= 1; } return r; }
+long long inv(long long a) { return mpow(a, MOD - 2); }                 // Fermat
+long long sub(long long a, long long b) { return ((a - b) % MOD + MOD) % MOD; }
+
+// ---- combinatorics ------------------------------------------------------
+// factorials + inverse factorials for O(1) nCr mod p (p prime)
+vector&lt;long long&gt; fact(N + 1), invFact(N + 1);
+fact[0] = 1;
+for (int i = 1; i &lt;= N; ++i) fact[i] = fact[i-1] * i % MOD;
+invFact[N] = inv(fact[N]);
+for (int i = N; i &gt; 0; --i) invFact[i-1] = invFact[i] * i % MOD;
+auto C = [&amp;](int n, int k) {
+    if (k &lt; 0 || k &gt; n) return 0LL;
+    return fact[n] * invFact[k] % MOD * invFact[n-k] % MOD;
+};
+
+// ---- geometry / precision -------------------------------------------------
+struct Pt { long long x, y; };
+long long cross(const Pt&amp; a, const Pt&amp; b, const Pt&amp; c) {   // >0: left turn (ccw)
+    return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+}
+bool onSegment(const Pt&amp; a, const Pt&amp; b, const Pt&amp; p) {  // collinear + within bbox
+    return cross(a, b, p) == 0 &amp;&amp; min(a.x,b.x) &lt;= p.x &amp;&amp; p.x &lt;= max(a.x,b.x)
+                              &amp;&amp; min(a.y,b.y) &lt;= p.y &amp;&amp; p.y &lt;= max(a.y,b.y);
+}
+double dist(const Pt&amp; a, const Pt&amp; b) { return hypot((double)(a.x-b.x), (double)(a.y-b.y)); }</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Question type</th><th>Tool</th><th>Complexity</th></tr></thead>
+      <tbody>
+        <tr><td>“element appearing once, others twice”</td><td>XOR fold</td><td>O(n) time, O(1) space</td></tr>
+        <tr><td>“count set bits / power of two / lowest bit”</td><td><code>__builtin_*</code>, <code>x &amp; -x</code></td><td>O(1)</td></tr>
+        <tr><td>“all subsets of ≤20 elements”</td><td>bitmask enumeration <code>1&lt;&lt;n</code></td><td>O(2ⁿ · n)</td></tr>
+        <tr><td>“sum over submasks”</td><td>submask loop <code>(sub-1)&amp;mask</code></td><td>O(3ⁿ)</td></tr>
+        <tr><td>“primes up to n”, “prime factorisation”</td><td>sieve / SPF sieve</td><td>O(n log log n) / O(log x)</td></tr>
+        <tr><td>“count ways mod 1e9+7”</td><td>DP + Fermat inverse</td><td>O(n) precompute</td></tr>
+        <tr><td>“which side of a line / collinear points”</td><td>cross product</td><td>O(1)</td></tr>
+      </tbody>
+    </table>
+    <div class="warn"><b>Precision rule:</b> never compare floating-point results for equality on geometry problems if
+    coordinates are integers — do the geometry in <code>long long</code> with cross products, and only convert to
+    <code>double</code> at the very end (preferably with <code>sqrt</code> applied last).</div>
+  </section>
+</section>
+
+<section class="chapter" id="ch11">
+  <h2><span class="num">11</span> Pattern → STL map</h2>
+  <p class="tagline">Twenty interview patterns, the C++ construct that implements each, and the complexity you should claim out loud.</p>
+  <table class="tbl">
+    <thead><tr><th>Pattern</th><th>C++ implementation</th><th>Key line</th><th>Complexity</th></tr></thead>
+    <tbody>
+      <tr><td>Frequency counting</td><td><code>unordered_map&lt;T,int&gt;</code> or <code>int cnt[26]</code></td><td><code>cnt[x]++</code></td><td>O(n) / O(1) per op</td></tr>
+      <tr><td>Seen / dedupe</td><td><code>unordered_set&lt;T&gt;</code></td><td><code>if (seen.count(x)) …; seen.insert(x);</code></td><td>O(1) avg</td></tr>
+      <tr><td>Two pointers (sorted)</td><td>indices <code>l, r</code></td><td><code>while (l &lt; r) { if (…) ++l; else --r; }</code></td><td>O(n)</td></tr>
+      <tr><td>Sliding window (fixed k)</td><td>running sum + add/remove</td><td><code>sum += a[i]; if (i &gt;= k) sum -= a[i-k];</code></td><td>O(n)</td></tr>
+      <tr><td>Sliding window (variable)</td><td><code>l</code> + count map</td><td><code>while (bad) remove a[l++];</code></td><td>O(n)</td></tr>
+      <tr><td>Prefix sums</td><td><code>vector&lt;long long&gt; pre(n+1)</code></td><td><code>pre[r+1]-pre[l]</code></td><td>O(1) query</td></tr>
+      <tr><td>Prefix sums + hash (subarray sum = k)</td><td><code>unordered_map&lt;ll,int&gt;</code> of prefix counts</td><td><code>ans += mp[pre - k]; mp[pre]++;</code></td><td>O(n)</td></tr>
+      <tr><td>Difference array (range updates)</td><td><code>vector&lt;ll&gt; d(n+1)</code></td><td><code>d[l]+=v; d[r+1]-=v;</code> then prefix</td><td>O(1) update</td></tr>
+      <tr><td>Binary search (value / answer)</td><td><code>lower_bound</code> or lo/hi loop</td><td><code>lo + (hi-lo)/2</code></td><td>O(log n)</td></tr>
+      <tr><td>Monotonic stack</td><td><code>stack&lt;int&gt;</code> of indices</td><td><code>while (!st.empty() &amp;&amp; a[st.top()] &lt; a[i]) …</code></td><td>O(n)</td></tr>
+      <tr><td>Monotonic deque (window max/min)</td><td><code>deque&lt;int&gt;</code> of indices</td><td>see ch. 5.5</td><td>O(n)</td></tr>
+      <tr><td>Top-K / k-th largest</td><td><code>priority_queue</code></td><td>min-heap of size k</td><td>O(n log k)</td></tr>
+      <tr><td>Merge k sorted lists</td><td><code>priority_queue&lt;T, vector&lt;T&gt;, cmp&gt;</code></td><td>push heads, pop min, push next</td><td>O(N log k)</td></tr>
+      <tr><td>BFS shortest path (unweighted)</td><td><code>queue&lt;int&gt;</code> + <code>dist</code></td><td><code>dist[v] = dist[u] + 1</code></td><td>O(V+E)</td></tr>
+      <tr><td>DFS / flood fill / components</td><td>recursive lambda or <code>stack</code></td><td><code>visited[u] = true; for (v : adj[u]) …</code></td><td>O(V+E)</td></tr>
+      <tr><td>Topological sort</td><td><code>queue</code> + <code>indegree</code> (Kahn) or DFS post-order</td><td><code>if (--indeg[v] == 0) q.push(v);</code></td><td>O(V+E)</td></tr>
+      <tr><td>Shortest path, weighted (no negatives)</td><td><code>priority_queue</code> Dijkstra</td><td><code>priority_queue&lt;pair&lt;ll,int&gt;, …, greater&lt;&gt;&gt;</code></td><td>O((V+E) log V)</td></tr>
+      <tr><td>Union-Find (connectivity, Kruskal)</td><td><code>struct DSU</code> (ch. 8.1)</td><td><code>p[x]=find(p[x])</code></td><td>~O(1) amortised</td></tr>
+      <tr><td>Tree traversal (in/pre/post/level)</td><td>recursion / <code>queue</code></td><td>see ch. 8.2</td><td>O(n)</td></tr>
+      <tr><td>BST ordered queries</td><td><code>set</code>/<code>map</code> with <code>lower_bound</code></td><td><code>s.lower_bound(x)</code></td><td>O(log n)</td></tr>
+      <tr><td>Ordered sweep / intervals</td><td><code>sort</code> + <code>multiset</code>/<code>priority_queue</code></td><td>sort by start, keep active ends</td><td>O(n log n)</td></tr>
+      <tr><td>DP (1D/2D/knapsack/LIS/intervals)</td><td><code>vector</code> grids, <code>long long</code> state</td><td>iterate states in dependency order</td><td>states × transitions</td></tr>
+      <tr><td>Interval DP</td><td><code>dp[l][r]</code> by increasing length</td><td><code>for (len=1…) for (l…) r=l+len-1</code></td><td>O(n³)</td></tr>
+      <tr><td>Bitmask DP (n ≤ 20)</td><td><code>dp[1&lt;&lt;n]</code></td><td><code>mask ^ (1&lt;&lt;i)</code></td><td>O(2ⁿ · n)</td></tr>
+      <tr><td>Backtracking (permutations/subsets/N-queens)</td><td>recursive <code>vector&lt;bool&gt;</code> used-flags</td><td>choose → recurse → un-choose</td><td>output-sensitive</td></tr>
+      <tr><td>Greedy (intervals, scheduling, jumps)</td><td><code>sort</code> + single pass</td><td>sort by end time</td><td>O(n log n)</td></tr>
+      <tr><td>Trie (prefix search)</td><td><code>struct</code> with <code>array&lt;int,26&gt;</code> children</td><td><code>nxt[c-'a']</code></td><td>O(len)</td></tr>
+      <tr><td>Heap of pairs (scheduling/meeting rooms)</td><td><code>priority_queue&lt;int, …, greater&lt;&gt;&gt;</code></td><td>push end, pop expired</td><td>O(n log n)</td></tr>
+      <tr><td>Median in a stream</td><td>two heaps (or two <code>multiset</code>s)</td><td>balance sizes</td><td>O(log n) per insert</td></tr>
+      <tr><td>LRU / design problems</td><td><code>unordered_map&lt;int, list&lt;int&gt;::iterator&gt;</code> + list, or <code>map</code> + <code>list</code></td><td>splice / move_to_front</td><td>O(1) per op</td></tr>
+    </tbody>
+  </table>
+  <div class="tip"><b>Say the complexity out loud.</b> Interviewers score the sentence “a hash map makes it O(n) instead of
+  O(n²)”, not just the code. For every pattern above, know (a) the complexity you achieve, (b) the naive baseline, and
+  (c) the space trade-off.</div>
+</section>
+
+<section class="chapter" id="ch12">
+  <h2><span class="num">12</span> Pitfalls that cost submissions</h2>
+  <p class="tagline">Each of these has silently failed thousands of correct-looking solutions. Read once, remember forever.</p>
+
+  <section class="sub">
+    <h3>12.1 Overflow, again (the top cause of wrong answers)</h3>
+    <pre><code>// 1. Multiplication promoted AFTER the multiply
+int a = 1e5, b = 1e5;
+long long bad = a * b;            // int*int computed in int → overflow
+long long ok  = 1LL * a * b;      // promote first
+
+// 2. accumulate's type comes from the INITIAL VALUE
+long long sum = accumulate(v.begin(), v.end(), 0);    // ✗ sums in int
+long long sum2 = accumulate(v.begin(), v.end(), 0LL); // ✓
+
+// 3. (lo + hi) / 2 overflow in binary search → lo + (hi - lo) / 2
+// 4. INT_MAX + something in relaxations → use a large but safe INF
+const long long INF = 1e18;                 // adding two INF = 2e18 &lt; 9.2e18 (max ll)
+// ✗ if (dist[u] + w &lt; dist[v]) with dist[u] == INT_MAX → overflow, WAs
+// ✓ either check dist[u] != INF first, or use ll with INF = 4e18 and never overflow by capping
+
+// 5. Counting: n(n-1)/2 for n = 1e5 is 5e9 → int is destroyed, ll is fine.
+// 6. Modular multiplication of two values near 1e9: a*b ≈ 1e18 → needs ll (fits), but
+//    squaring near 1e18 wraps — use __int128 for modular products when MOD &gt; 2^31.
+__int128 prod = (__int128)a * b % MOD;      // GCC/Clang extension, fine on the judge</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>12.2 The container traps</h3>
+    <table class="tbl">
+      <thead><tr><th>Trap</th><th>What happens</th><th>Correct version</th></tr></thead>
+      <tbody>
+        <tr><td><code>m[key]</code> to read</td><td>Inserts a default entry → wrong answers, memory growth</td><td><code>find()</code>/<code>count()</code>/<code>at()</code></td></tr>
+        <tr><td><code>unordered_map</code> iteration order</td><td>Non-deterministic → flaky tests</td><td>Sort keys, or use <code>map</code></td></tr>
+        <tr><td><code>set</code>, <code>unordered_set</code> with a mutable key</td><td>Lookups break after mutation</td><td>Erase, modify, re-insert</td></tr>
+        <tr><td><code>ms.erase(3)</code> on a multiset</td><td>Removes <b>all</b> copies</td><td><code>ms.erase(ms.find(3))</code></td></tr>
+        <tr><td><code>size() - 1</code> on an empty vector</td><td>Underflow to a huge unsigned value</td><td><code>v.empty() ? 0 : (int)v.size()-1</code></td></tr>
+        <tr><td>Looping <code>int i &lt; v.size()</code></td><td>Signed/unsigned comparison; UB when i goes negative</td><td><code>i &lt; (int)v.size()</code></td></tr>
+        <tr><td><code>vector&lt;bool&gt;</code></td><td>Packed bits: no <code>bool&amp;</code>, surprises with templates</td><td><code>vector&lt;char&gt;</code> or <code>bitset</code></td></tr>
+        <tr><td>Reference to a map value</td><td>Invalidated by rehash on insert</td><td>Do not hold <code>Value&amp;</code> across inserts</td></tr>
+        <tr><td>Sorting a set/priority_queue directly</td><td>Not allowed — they are already ordered</td><td>Copy to vector if you must sort differently</td></tr>
+        <tr><td><code>unordered_map</code> rehash cost</td><td>Spikes → TLE at n = 10⁶</td><td><code>reserve()</code> before the loop</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>12.3 Recursion, strings, and off-by-one</h3>
+    <pre><code>// Off-by-one idioms you must get right
+for (int i = 0; i + k &lt;= n; ++i)                    // window [i, i+k)
+for (int i = 0; i + 1 &lt; n; ++i)                     // pair (i, i+1)
+for (int len = 1; len &lt;= n; ++len)                  // interval DP: by length
+    for (int l = 0; l + len - 1 &lt; n; ++l) { int r = l + len - 1; }
+int mid = lo + (hi - lo) / 2;                       // never (lo+hi)/2
+while (lo &lt;= hi) { ... }                            // inclusive bounds
+while (lo &lt; hi)  { ... }                            // half-open: converge on one answer
+
+// Recursion: the three questions to answer before coding
+// 1) What is the base case?            (nullptr / l >= r / index == n)
+// 2) What does the recursive call return? (an ANSWER, not a side effect if possible)
+// 3) Is depth a risk?                  (10^5-deep DFS on a chain → stack overflow)
+
+// Deep recursion fix: explicit stack
+void dfsIter(int src) {
+    vector&lt;int&gt; st{src};
+    while (!st.empty()) {
+        int u = st.back(); st.pop_back();
+        if (visited[u]) continue;
+        visited[u] = true;
+        for (int v : adj[u]) if (!visited[v]) st.push_back(v);
+    }
+}
+
+// String edge cases that fail tests
+"".substr(0, 1);                    // throws std::out_of_range → guard empty input
+s.size() - 1  where s is empty      // huge unsigned → guard first
+toupper(s[0]) assigned to char      // returns int: char c = toupper(s[0]);
+string::npos comparisons            // always compare against npos, never &gt;= 0
+
+// Empty-input checklist: vector empty? string empty? single element? all equal?
+// all negative? maximum values (overflow)? duplicates? k &gt; n? target absent?</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>12.4 Hash-degradation (anti-hash tests) and other judge-specific traps</h3>
+    <pre><code>// LeetCode and other judges include tests designed to break std::unordered_set&lt;int&gt;
+// with many values from the same hash bucket. Symptoms: correct solution TLEs.
+// Fixes, in order of preference:
+//   1) use a custom hash (custom_hash from ch. 8.3)
+//   2) use set&lt;int&gt;/map (O(log n), immune, but 3-5× slower on average)
+//   3) use a sorted vector + binary search when the data is static
+//   4) reserve() + max_load_factor(0.25) to reduce collisions
+
+// Other judge traps:
+// ✓ Recursion + deep trees: prefer iterative when the tree can be a line of 10^5 nodes.
+// ✓ Cin/cout without sync disabled: 10^5+ numbers → possible TLE.
+// ✓ std::endl flushes every time — use '\n'.
+// ✓ Nested vectors in hot loops: allocate the grid once, reuse it.
+// ✓ Global/static state persisting between test cases! LeetCode creates a new Solution
+//   object per test, but GLOBALS persist if you define them at file scope. Reset them.
+// ✓ Returning references/pointers to locals.
+// ✓ Modifying the input array when the problem forbids it.</code></pre>
+  </section>
+</section>
+<section class="chapter" id="ch13">
+  <h2><span class="num">13</span> Paste-ready templates</h2>
+  <p class="tagline">Nine templates that cover the heavy patterns. Copy, rename, adapt the marked lines — every one is compiled and tested.</p>
+
+  <section class="sub">
+    <h3>13.1 Graph traversal: adjacency list, BFS, DFS, components</h3>
+    <pre><code>#include &lt;bits/stdc++.h&gt;
+using namespace std;
+
+int n;                                   // number of nodes
+vector&lt;vector&lt;int&gt;&gt; adj;                 // adj[u] = neighbours of u
+
+void buildGraph(int n_, const vector&lt;pair&lt;int,int&gt;&gt;&amp; edges, bool undirected = true) {
+    n = n_;
+    adj.assign(n, {});
+    for (auto [u, v] : edges) { adj[u].push_back(v); if (undirected) adj[v].push_back(u); }
+}
+
+// ---- BFS: shortest path in an unweighted graph --------------------------
+vector&lt;int&gt; bfs(int src) {
+    vector&lt;int&gt; dist(n, -1);
+    queue&lt;int&gt; q;
+    dist[src] = 0; q.push(src);
+    while (!q.empty()) {
+        int u = q.front(); q.pop();
+        for (int v : adj[u])
+            if (dist[v] == -1) { dist[v] = dist[u] + 1; q.push(v); }
+    }
+    return dist;                          // dist[v] == -1 ⇒ unreachable
+}
+
+// ---- Multi-source BFS (rotten oranges, walls and gates) -----------------
+vector&lt;int&gt; bfsMulti(const vector&lt;int&gt;&amp; sources) {
+    vector&lt;int&gt; dist(n, -1);
+    queue&lt;int&gt; q;
+    for (int s : sources) { dist[s] = 0; q.push(s); }
+    while (!q.empty()) {
+        int u = q.front(); q.pop();
+        for (int v : adj[u]) if (dist[v] == -1) { dist[v] = dist[u] + 1; q.push(v); }
+    }
+    return dist;
+}
+
+// ---- DFS with a recursive lambda (C++14 generic lambda) -----------------
+int countComponents() {
+    vector&lt;char&gt; seen(n, 0);
+    int comps = 0;
+    auto dfs = [&amp;](auto&amp;&amp; self, int u) -&gt; void {
+        seen[u] = 1;
+        for (int v : adj[u]) if (!seen[v]) self(self, v);
+    };
+    for (int u = 0; u &lt; n; ++u) if (!seen[u]) { ++comps; dfs(dfs, u); }
+    return comps;
+}
+
+// ---- Cycle detection (undirected: DFS with parent; directed: colours) ----
+bool hasCycleDirected() {
+    vector&lt;int&gt; color(n, 0);                        // 0 = white, 1 = grey, 2 = black
+    auto dfs = [&amp;](auto&amp;&amp; self, int u) -&gt; bool {
+        color[u] = 1;
+        for (int v : adj[u]) {
+            if (color[v] == 1) return true;         // back edge → cycle
+            if (color[v] == 0 &amp;&amp; self(self, v)) return true;
+        }
+        color[u] = 2;
+        return false;
+    };
+    for (int u = 0; u &lt; n; ++u) if (color[u] == 0 &amp;&amp; dfs(dfs, u)) return true;
+    return false;
+}
+
+// ---- Topological sort: Kahn's algorithm (also detects cycles) ----------
+vector&lt;int&gt; topoSort() {
+    vector&lt;int&gt; indeg(n, 0);
+    for (int u = 0; u &lt; n; ++u) for (int v : adj[u]) ++indeg[v];
+    queue&lt;int&gt; q;
+    for (int u = 0; u &lt; n; ++u) if (indeg[u] == 0) q.push(u);
+    vector&lt;int&gt; order;
+    while (!q.empty()) {
+        int u = q.front(); q.pop();
+        order.push_back(u);
+        for (int v : adj[u]) if (--indeg[v] == 0) q.push(v);
+    }
+    if ((int)order.size() != n) return {};           // cycle: no valid order
+    return order;
+}
+
+// ---- Dijkstra: weighted shortest path, non-negative weights ------------
+vector&lt;long long&gt; dijkstra(int src, const vector&lt;vector&lt;pair&lt;int,int&gt;&gt;&gt;&amp; wadj) {
+    const long long INF = LLONG_MAX / 4;
+    vector&lt;long long&gt; dist(n, INF);
+    priority_queue&lt;pair&lt;long long,int&gt;, vector&lt;pair&lt;long long,int&gt;&gt;, greater&lt;&gt;&gt; pq;
+    dist[src] = 0; pq.push({0, src});
+    while (!pq.empty()) {
+        auto [d, u] = pq.top(); pq.pop();
+        if (d &gt; dist[u]) continue;                   // stale entry
+        for (auto [v, w] : wadj[u])
+            if (d + w &lt; dist[v]) { dist[v] = d + w; pq.push({dist[v], v}); }
+    }
+    return dist;
+}
+
+// ---- Grid BFS (no adjacency list needed) -------------------------------
+int shortestPathGrid(const vector&lt;string&gt;&amp; g, pair&lt;int,int&gt; s, pair&lt;int,int&gt; t) {
+    int R = g.size(), C = g[0].size();
+    vector&lt;vector&lt;int&gt;&gt; dist(R, vector&lt;int&gt;(C, -1));
+    const int di[4] = {-1,1,0,0}, dj[4] = {0,0,-1,1};
+    queue&lt;pair&lt;int,int&gt;&gt; q;
+    dist[s.first][s.second] = 0; q.push(s);
+    while (!q.empty()) {
+        auto [i, j] = q.front(); q.pop();
+        if (i == t.first &amp;&amp; j == t.second) return dist[i][j];
+        for (int d = 0; d &lt; 4; ++d) {
+            int ni = i + di[d], nj = j + dj[d];
+            if (ni &lt; 0 || ni &gt;= R || nj &lt; 0 || nj &gt;= C) continue;
+            if (g[ni][nj] == '#' || dist[ni][nj] != -1) continue;   // wall / visited
+            dist[ni][nj] = dist[i][j] + 1; q.push({ni, nj});
+        }
+    }
+    return -1;
+}</code></pre>
+    <div class="note"><b>Which traversal?</b> Unweighted shortest path → BFS. Any reachability/ordering → DFS. Weighted
+    non-negative → Dijkstra. Negative edges → Bellman-Ford (V−1 relaxations). All-pairs, small n → Floyd-Warshall.
+    Ordering with prerequisites → topological sort (and a cycle means “impossible”).</div>
+  </section>
+
+  <section class="sub">
+    <h3>13.2 Union-Find (DSU) — connectivity made trivial</h3>
+    <pre><code>struct DSU {
+    vector&lt;int&gt; parent, rank_, size_;
+    explicit DSU(int n) : parent(n), rank_(n, 0), size_(n, 1) {
+        iota(parent.begin(), parent.end(), 0);          // each node is its own set
+    }
+    int find(int x) {                                   // path compression
+        return parent[x] == x ? x : parent[x] = find(parent[x]);
+    }
+    bool unite(int a, int b) {                          // union by rank
+        a = find(a); b = find(b);
+        if (a == b) return false;                       // already connected
+        if (rank_[a] &lt; rank_[b]) swap(a, b);
+        parent[b] = a;
+        size_[a] += size_[b];
+        if (rank_[a] == rank_[b]) ++rank_[a];
+        return true;
+    }
+    bool connected(int a, int b) { return find(a) == find(b); }
+    int componentSize(int x) { return size_[find(x)]; }
+    int countComponents(int n) {                        // O(n) call, not O(1)
+        int c = 0; for (int i = 0; i &lt; n; ++i) if (find(i) == i) ++c; return c;
+    }
+};
+
+// Usage patterns
+// • Kruskal MST: sort edges by weight, unite, keep edges that merged two sets
+// • Number of provinces / friend circles: union all edges, count distinct roots
+// • Redundant connection: the first edge whose endpoints are already connected
+// • Accounts merge / email grouping: union by shared email, then bucket by root
+// • Grid islands (dynamic): id = i*C + j, union with right/down neighbours</code></pre>
+    <p class="small muted">With path compression + union by rank, the amortised cost per operation is O(α(n)) — effectively
+    constant (α is the inverse Ackermann function, &lt; 5 for any n you will ever see). Say “near-O(1) amortised” in interviews.</p>
+  </section>
+
+  <section class="sub">
+    <h3>13.3 Binary search on the answer — the universal frame</h3>
+    <pre><code>// Use when the answer is monotone: "if capacity C works, any C' &gt; C also works".
+// Steps: (1) state the predicate, (2) find the safe bounds, (3) binary search the bounds.
+
+// Template A — integer answer, find the SMALLEST feasible value
+long long solve(long long lo, long long hi, const function&lt;bool(long long)&gt;&amp; ok) {
+    while (lo &lt; hi) {
+        long long mid = lo + (hi - lo) / 2;
+        if (ok(mid)) hi = mid;            // feasible → try smaller
+        else         lo = mid + 1;        // infeasible → must go bigger
+    }
+    return lo;                            // lo == hi == answer
+}
+
+// Template B — integer answer, find the LARGEST feasible value
+long long solveMax(long long lo, long long hi, const function&lt;bool(long long)&gt;&amp; ok) {
+    while (lo &lt; hi) {
+        long long mid = lo + (hi - lo + 1) / 2;   // ↑ bias up to avoid an infinite loop
+        if (ok(mid)) lo = mid;
+        else         hi = mid - 1;
+    }
+    return lo;
+}
+
+// Template C — floating point answer (never loop on epsilon; fix the iteration count)
+double solveReal(double lo, double hi, const function&lt;bool(double)&gt;&amp; ok) {
+    for (int iter = 0; iter &lt; 100; ++iter) {
+        double mid = lo + (hi - lo) / 2;
+        if (ok(mid)) hi = mid; else lo = mid;
+    }
+    return lo;                            // ~1e-30 precision after 100 halvings
+}
+
+// Worked example: minimum days to ship within D days (capacity search)
+bool canShip(const vector&lt;int&gt;&amp; w, int days, long long cap) {
+    long long cur = 0; int used = 1;
+    for (int x : w) {
+        if (x &gt; cap) return false;                 // single item too big
+        if (cur + x &gt; cap) { ++used; cur = 0; }
+        cur += x;
+    }
+    return used &lt;= days;
+}
+int shipWithinDays(vector&lt;int&gt;&amp; weights, int days) {
+    long long lo = *max_element(weights.begin(), weights.end());
+    long long hi = accumulate(weights.begin(), weights.end(), 0LL);
+    return (int) solve(lo, hi, [&amp;](long long c){ return canShip(weights, days, c); });
+}</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Problem shape</th><th>Predicate</th><th>Bounds</th></tr></thead>
+      <tbody>
+        <tr><td>Minimise the largest sum/load</td><td><code>canSplit(cap)</code></td><td>[max element, total sum]</td></tr>
+        <tr><td>Maximise the minimum distance</td><td><code>canPlace(d)</code></td><td>[1, max gap]</td></tr>
+        <tr><td>Smallest divisor given a threshold</td><td><code>sum(ceil(x/d)) &lt;= t</code></td><td>[1, max element]</td></tr>
+        <tr><td>Min days / min speed / min time</td><td>feasibility simulation</td><td>[1, worst case]</td></tr>
+        <tr><td>K-th smallest in a matrix / value space</td><td><code>count(&lt;= x) &gt;= k</code></td><td>[min, max]</td></tr>
+        <tr><td>Real-valued answer (probability, ratio)</td><td>feasibility check</td><td>[0, bound] + 100 iterations</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>13.4 Dynamic programming — the four shapes</h3>
+    <pre><code>// DP = (1) define the state, (2) write the transition, (3) set the base case,
+//      (4) choose the iteration order (or memoise).
+
+// ---- Shape 1: 1D DP (linear recurrences) --------------------------------
+int climbStairs(int n) {
+    if (n &lt;= 2) return n;
+    int a = 1, b = 2;                         // rolling variables instead of an array
+    for (int i = 3; i &lt;= n; ++i) { int c = a + b; a = b; b = c; }
+    return b;
+}
+
+// ---- Shape 2: 1D DP over a sequence (LIS, house robber) -----------------
+int rob(const vector&lt;int&gt;&amp; nums) {            // no two adjacent
+    int take = 0, skip = 0;
+    for (int x : nums) { int nt = skip + x; skip = max(skip, take); take = nt; }
+    return max(take, skip);
+}
+int lisLength(const vector&lt;int&gt;&amp; a) {          // O(n log n) patience sorting
+    vector&lt;int&gt; tails;
+    for (int x : a) {
+        auto it = lower_bound(tails.begin(), tails.end(), x);
+        if (it == tails.end()) tails.push_back(x);
+        else *it = x;
+    }
+    return (int)tails.size();
+}
+
+// ---- Shape 3: 2D DP (grids, edit distance, knapsack) --------------------
+int editDistance(const string&amp; a, const string&amp; b) {
+    int n = a.size(), m = b.size();
+    vector&lt;vector&lt;int&gt;&gt; dp(n + 1, vector&lt;int&gt;(m + 1, 0));
+    for (int i = 0; i &lt;= n; ++i) dp[i][0] = i;          // base cases
+    for (int j = 0; j &lt;= m; ++j) dp[0][j] = j;
+    for (int i = 1; i &lt;= n; ++i)
+        for (int j = 1; j &lt;= m; ++j)
+            dp[i][j] = (a[i-1] == b[j-1])
+                ? dp[i-1][j-1]
+                : 1 + min({dp[i-1][j], dp[i][j-1], dp[i-1][j-1]});   // delete, insert, replace
+    return dp[n][m];
+}
+
+// 0/1 knapsack, 1D rolling array (capacity iterated DOWNWARD)
+int knapsack(const vector&lt;int&gt;&amp; wt, const vector&lt;int&gt;&amp; val, int cap) {
+    vector&lt;int&gt; dp(cap + 1, 0);
+    for (int i = 0; i &lt; (int)wt.size(); ++i)
+        for (int c = cap; c &gt;= wt[i]; --c)                 // ← downward: each item once
+            dp[c] = max(dp[c], dp[c - wt[i]] + val[i]);
+    return dp[cap];
+}
+// Unbounded knapsack / coin change (fewest coins): iterate capacity UPWARD
+int coinChange(const vector&lt;int&gt;&amp; coins, int amount) {
+    const int INF = 1e9;
+    vector&lt;int&gt; dp(amount + 1, INF);
+    dp[0] = 0;
+    for (int c = 1; c &lt;= amount; ++c)
+        for (int coin : coins) if (coin &lt;= c) dp[c] = min(dp[c], dp[c - coin] + 1);
+    return dp[amount] == INF ? -1 : dp[amount];
+}
+
+// ---- Shape 4: interval DP (palindromes, matrix chain, burst balloons) ---
+int longestPalindromeSubseq(const string&amp; s) {              // O(n²)
+    int n = s.size();
+    vector&lt;vector&lt;int&gt;&gt; dp(n, vector&lt;int&gt;(n, 0));
+    for (int i = 0; i &lt; n; ++i) dp[i][i] = 1;
+    for (int len = 2; len &lt;= n; ++len)
+        for (int l = 0; l + len - 1 &lt; n; ++l) {
+            int r = l + len - 1;
+            dp[l][r] = (s[l] == s[r]) ? dp[l+1][r-1] + 2
+                                      : max(dp[l+1][r], dp[l][r-1]);
+        }
+    return dp[0][n-1];
+}
+
+// ---- Recursion + memoisation (equivalent, often easier to write) --------
+unordered_map&lt;long long,long long&gt; memo;
+long long f(int i, int j) {
+    long long key = ((long long)i &lt;&lt; 32) ^ (unsigned)j;
+    if (memo.count(key)) return memo[key];
+    long long res = /* transition using f(i-1, j), f(i, j-1), … */ 0;
+    return memo[key] = res;
+}</code></pre>
+    <div class="tip"><b>DP checklist:</b> (1) write the brute-force recursion first; (2) identify the state (what does the
+    recursion depend on?); (3) memoise it — if memoisation alone passes, ship it; (4) convert to a table only if you need
+    the speed or the interviewer asks; (5) check the iteration direction (knapsack down, unbounded up); (6) watch
+    overflow — DP answers are often sums, so use <code>long long</code>.</div>
+  </section>
+
+  <section class="sub">
+    <h3>13.5 Trees, tries, heaps and backtracking</h3>
+    <pre><code>// ---- Trie (prefix tree) -------------------------------------------------
+struct Trie {
+    struct Node { int nxt[26]; bool isWord = false; Node() { fill(nxt, nxt + 26, -1); } };
+    vector&lt;Node&gt; t{Node{}};                       // t[0] is the root
+    void insert(const string&amp; w) {
+        int cur = 0;
+        for (char ch : w) {
+            int c = ch - 'a';
+            if (t[cur].nxt[c] == -1) { t[cur].nxt[c] = t.size(); t.push_back(Node{}); }
+            cur = t[cur].nxt[c];
+        }
+        t[cur].isWord = true;
+    }
+    bool contains(const string&amp; w) {
+        int cur = 0;
+        for (char ch : w) { cur = t[cur].nxt[ch - 'a']; if (cur == -1) return false; }
+        return t[cur].isWord;
+    }
+    bool startsWith(const string&amp; p) {
+        int cur = 0;
+        for (char ch : p) { cur = t[cur].nxt[ch - 'a']; if (cur == -1) return false; }
+        return true;
+    }
+};
+
+// ---- Backtracking: subsets, permutations, combinations, N-Queens --------
+void subsets(const vector&lt;int&gt;&amp; a, int i, vector&lt;int&gt;&amp; cur, vector&lt;vector&lt;int&gt;&gt;&amp; out) {
+    if (i == (int)a.size()) { out.push_back(cur); return; }
+    subsets(a, i + 1, cur, out);                 // exclude a[i]
+    cur.push_back(a[i]);
+    subsets(a, i + 1, cur, out);                 // include a[i]
+    cur.pop_back();                              // ← always undo
+}
+void permutations(vector&lt;int&gt;&amp; a, int k, vector&lt;vector&lt;int&gt;&gt;&amp; out) {
+    if (k == (int)a.size()) { out.push_back(a); return; }
+    for (int i = k; i &lt; (int)a.size(); ++i) {
+        swap(a[k], a[i]);
+        permutations(a, k + 1, out);
+        swap(a[k], a[i]);                        // restore
+    }
+}
+void combinations(int n, int k, int start, vector&lt;int&gt;&amp; cur, vector&lt;vector&lt;int&gt;&gt;&amp; out) {
+    if ((int)cur.size() == k) { out.push_back(cur); return; }
+    for (int v = start; v &lt;= n; ++v) {
+        cur.push_back(v);
+        combinations(n, k, v + 1, cur, out);     // v+1 ⇒ no reuse, no duplicates
+        cur.pop_back();
+    }
+}
+// Pruning is what makes backtracking fast: sort the input, skip equal siblings,
+// track running sums to stop early. Without pruning, “hard” backtracking TLEs.
+
+// ---- Merge K sorted lists with a heap ----------------------------------
+// priority_queue&lt;pair&lt;int,ListNode*&gt;, vector&lt;pair&lt;int,ListNode*&gt;&gt;, greater&lt;&gt;&gt; pq;
+// push each head; pop min, append to result, push node-&gt;next.
+
+// ---- Two heaps for a streaming median ---------------------------------
+// low: max-heap of the smaller half; high: min-heap of the larger half
+// invariant: low.size() == high.size() or low.size() == high.size() + 1
+void addNum(int x, priority_queue&lt;int&gt;&amp; low, priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt;&amp; high) {
+    if (low.empty() || x &lt;= low.top()) low.push(x); else high.push(x);
+    if (low.size() &gt; high.size() + 1) { high.push(low.top()); low.pop(); }
+    else if (high.size() &gt; low.size()) { low.push(high.top()); high.pop(); }
+}
+double median(const priority_queue&lt;int&gt;&amp; low, const priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt;&amp; high) {
+    if (low.size() == high.size()) return (low.top() + high.top()) / 2.0;
+    return low.top();
+}</code></pre>
+  </section>
+</section>
+
+<section class="chapter" id="ch14">
+  <h2><span class="num">14</span> Complexity, judging and interview signal</h2>
+  <p class="tagline">Read the constraints, guess the intended complexity, pick the pattern — then explain it in one sentence.</p>
+
+  <section class="sub">
+    <h3>14.1 Read the constraints, reverse-engineer the solution</h3>
+    <table class="tbl">
+      <thead><tr><th>Constraint on n</th><th>Intended complexity</th><th>Typical solution family</th></tr></thead>
+      <tbody>
+        <tr><td>n ≤ 10</td><td>O(n!), O(2ⁿ · n²)</td><td>brute force, permutations, bitmask DP</td></tr>
+        <tr><td>n ≤ 20</td><td>O(2ⁿ), O(2ⁿ · n)</td><td>bitmask / subset DP, meet-in-the-middle</td></tr>
+        <tr><td>n ≤ 100</td><td>O(n³)</td><td>Floyd-Warshall, interval DP, triple loops</td></tr>
+        <tr><td>n ≤ 500</td><td>O(n³) tight or O(n² · log)</td><td>DP with n² states, matrix chain</td></tr>
+        <tr><td>n ≤ 5·10³</td><td>O(n²)</td><td>2D DP, all-pairs, naive pair loops</td></tr>
+        <tr><td>n ≤ 10⁵</td><td>O(n log n)</td><td>sorting, heap, binary search, sweep, hash map</td></tr>
+        <tr><td>n ≤ 10⁵–10⁶</td><td>O(n) / O(n log n)</td><td>two pointers, prefix sums, monotonic stack, BFS/DFS</td></tr>
+        <tr><td>n ≤ 10⁶–10⁷</td><td>O(n), tight constant</td><td>linear scans, arrays not maps, fast IO</td></tr>
+        <tr><td>n ≤ 10⁹ (values, not size)</td><td>O(log n), O(√n)</td><td>binary search, matrix power, number theory</td></tr>
+      </tbody>
+    </table>
+    <div class="tip"><b>The 2-second rule of thumb for C++:</b> with a 1 s limit you can afford roughly <b>10⁸ simple
+    operations</b> (or 10⁷ hash-map operations, or 3·10⁶ heavy operations like recursion with allocations). Halve that for
+    a 500 ms limit, double it for 2 s. If your planned complexity exceeds the budget, change the pattern — not the
+    micro-details.</div>
+  </section>
+
+  <section class="sub">
+    <h3>14.2 The interview sentence that gets you the offer</h3>
+    <div class="grid2">
+      <div class="card"><h4>Structure your answer in four sentences</h4>
+        <ol>
+          <li><b>Restate + edge cases:</b> “Given …, I return …. Edge cases: empty input, single element, k &gt; n, duplicates.”</li>
+          <li><b>Brute force:</b> “The straightforward approach is …, which is O(n²).”</li>
+          <li><b>Insight:</b> “Since X, a hash map / two pointers / monotonic stack lets me ….”</li>
+          <li><b>Complexity + trade-off:</b> “O(n) time, O(k) space; if memory mattered more than time, I could sort instead.”</li>
+        </ol>
+      </div>
+      <div class="card"><h4>Signals interviewers actually score</h4>
+        <ul>
+          <li>Naming the pattern before typing (<i>“this is a sliding window with a count map”</i>).</li>
+          <li>Stating complexity without being asked.</li>
+          <li>Checking the input contract: can it be empty? are values bounded? can sums overflow int?</li>
+          <li>Writing compilable code: <code>const&amp;</code>, <code>(int)v.size()</code>, no uninitialised variables.</li>
+          <li>Testing with a specific example, out loud, including one edge case.</li>
+          <li>Refactoring after it works, and knowing what you would do at 100× the scale.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</section>
+
+<section class="chapter" id="ch15">
+  <h2><span class="num">15</span> Interview questions with answers</h2>
+  <p class="tagline">The C++ questions that come up in interviews and screens, answered the way you should say them out loud.</p>
+  <div class="grid2">
+    <div class="card"><h4>Language &amp; semantics</h4>
+      <ol class="small">
+        <li><b>What is the difference between a pointer and a reference?</b> A pointer is an object holding an address (nullable, reassignable, arithmetic); a reference is an alias bound at creation (not null, not rebindable, no arithmetic).</li>
+        <li><b>Why <code>const T&amp;</code> as the parameter default?</b> No copy (O(1) for containers), no accidental mutation, and it binds temporaries.</li>
+        <li><b>What is a dangling reference/pointer?</b> A reference to an object whose lifetime ended — reading it is UB. Common sources: returning a local by reference, storing <code>string_view</code>/<code>const char*</code> to a temporary.</li>
+        <li><b>What is the difference between <code>struct</code> and <code>class</code>?</b> Only default access (public vs private) and default inheritance. Everything else is identical.</li>
+        <li><b>What does <code>static</code> mean in different places?</b> Inside a function: one instance for the program’s lifetime. At file scope: internal linkage. For a class member: shared by all instances, no <code>this</code>.</li>
+        <li><b>RAII in one sentence.</b> Bind a resource’s lifetime to an object’s lifetime: acquire in the constructor, release in the destructor, so <code>vector</code>/<code>string</code>/<code>unique_ptr</code> free memory automatically — even on exceptions.</li>
+        <li><b><code>move</code> vs <code>copy</code>?</b> A copy duplicates the buffer; a move steals the pointer and leaves the source empty. Use <code>std::move</code> when you will not touch the source again.</li>
+        <li><b>Why is <code>vector&lt;bool&gt;</code> special?</b> It is a bitset optimisation: <code>v[i]</code> returns a proxy, not <code>bool&amp;</code>. Prefer <code>vector&lt;char&gt;</code> or <code>bitset</code> when that matters.</li>
+      </ol>
+    </div>
+    <div class="card"><h4>Containers, algorithms, complexity</h4>
+      <ol class="small" start="9">
+        <li><b><code>vector</code> vs <code>list</code>?</b> <code>vector</code> is contiguous: O(1) indexing, cache-friendly, but O(n) middle insert. <code>list</code> has O(1) middle insert/erase but pointer-chasing, no indexing. In practice <code>vector</code> usually wins because memory bandwidth dominates.</li>
+        <li><b><code>map</code> vs <code>unordered_map</code>?</b> Tree vs hash: O(log n) with ordering/lower_bound vs O(1) average with no order and possible degradation. Reserve/normalise keys to keep hashes healthy.</li>
+        <li><b>What does sort guarantee?</b> O(n log n) comparisons (introsort), not stable. Use <code>stable_sort</code> when equal elements must keep their relative order.</li>
+        <li><b>What is a strict weak ordering?</b> A comparator where <code>cmp(a,a)</code> is false and the relation is transitive. Violating it (e.g. <code>&lt;=</code>) is UB inside <code>sort</code>.</li>
+        <li><b>How do you find the k-th largest?</b> <code>nth_element</code> (O(n) average), a min-heap of size k (O(n log k)), or quickselect. For a stream, min-heap of size k is the answer.</li>
+        <li><b><code>lower_bound</code> vs <code>upper_bound</code>?</b> First ≥ x vs first &gt; x — the pair gives the count of equal elements and the insertion range.</li>
+        <li><b>Why <code>reserve()</code>?</b> Avoids reallocation/rehashing: O(n) pushes become truly O(1) amortised without data movement, and iterators/pointers stay valid.</li>
+        <li><b>What is iterator invalidation?</b> Operations that move the underlying storage (reallocation, erase/insert in vectors, rehash) invalidate iterators/pointers/references into it — using them is UB.</li>
+        <li><b>When can you not use <code>binary_search</code>?</b> When the range is unsorted, or when the predicate is not monotone. For “binary search on the answer” the sequence is implicit, so you write the lo/hi loop yourself.</li>
+        <li><b>Top-K in a stream?</b> Min-heap capped at k: O(n log k) time, O(k) space.</li>
+      </ol>
+    </div>
+    <div class="card"><h4>Pitfalls &amp; performance</h4>
+      <ol class="small" start="19">
+        <li><b>Where does signed overflow bite?</b> Sums/products that exceed 2·10⁹, <code>(lo+hi)/2</code>, <code>accumulate(…, 0)</code>, counting pairs n(n−1)/2, <code>i*i</code> in sieves.</li>
+        <li><b>How do you debug a wrong answer fast?</b> Print inputs at the failing size; compare with brute force on random small cases; compile with <code>-fsanitize=address,undefined</code>; check overflow first, then off-by-one, then container assumptions.</li>
+        <li><b>Why might a correct solution TLE?</b> Hash degradation, <code>endl</code> flushing, no <code>sync_with_stdio(false)</code>, O(n²) in a hidden case, <code>std::function</code> in deep recursion, copying containers per call.</li>
+        <li><b>How do you allocate a 10⁷-element array safely?</b> Heap (<code>vector</code>) or <code>static</code>/global — never a plain local array (stack overflow).</li>
+        <li><b>What is cache locality and why care?</b> Sequential access is 10–100× faster than random access at scale; it is why contiguous <code>vector</code> and flat arrays beat pointer structures.</li>
+        <li><b>Fixed-size vs dynamic arrays for speed?</b> Stack <code>int a[N]</code> or <code>array&lt;int,N&gt;</code> avoids allocation entirely; use them when N is known and small enough for the stack (≲ a few MB).</li>
+      </ol>
+    </div>
+    <div class="card"><h4>Coding-round warm-ups (write from memory)</h4>
+      <pre><code>// 1 Two-sum with a hash map — O(n)
+vector&lt;int&gt; twoSum(vector&lt;int&gt;&amp; a, int t) {
+    unordered_map&lt;int,int&gt; seen;
+    for (int i = 0; i &lt; (int)a.size(); ++i) {
+        auto it = seen.find(t - a[i]);
+        if (it != seen.end()) return {it-&gt;second, i};
+        seen[a[i]] = i;
+    }
+    return {};
+}
+// 2 Reverse a string in place — two pointers
+void rev(string&amp; s) { for (int l = 0, r = s.size()-1; l &lt; r; ++l, --r) swap(s[l], s[r]); }
+// 3 Max subarray (Kadane) — O(n)
+int maxSub(const vector&lt;int&gt;&amp; a) {
+    int best = a[0], cur = a[0];
+    for (int i = 1; i &lt; (int)a.size(); ++i) { cur = max(a[i], cur + a[i]); best = max(best, cur); }
+    return best;
+}
+// 4 Valid parentheses — stack
+bool valid(const string&amp; s) {
+    stack&lt;char&gt; st;
+    for (char c : s) {
+        if (c == '(' || c == '[' || c == '{') st.push(c);
+        else {
+            if (st.empty()) return false;
+            char t = st.top(); st.pop();
+            if ((c == ')' &amp;&amp; t != '(') || (c == ']' &amp;&amp; t != '[') || (c == '}' &amp;&amp; t != '{')) return false;
+        }
+    }
+    return st.empty();
+}
+// 5 Binary search in a sorted array — O(log n)
+int bs(const vector&lt;int&gt;&amp; a, int x) {
+    int lo = 0, hi = a.size() - 1;
+    while (lo &lt;= hi) { int m = lo + (hi - lo) / 2;
+        if (a[m] == x) return m; if (a[m] &lt; x) lo = m + 1; else hi = m - 1; }
+    return -1;
+}
+// 6 Merge two sorted arrays in place (from the back)
+void merge(vector&lt;int&gt;&amp; a, int m, vector&lt;int&gt;&amp; b, int n) {
+    int i = m - 1, j = n - 1, k = m + n - 1;
+    while (j &gt;= 0) a[k--] = (i &gt;= 0 &amp;&amp; a[i] &gt; b[j]) ? a[i--] : b[j--];
+}</code></pre>
+    </div>
+  </div>
+  <section class="sub">
+    <h3>15.1 One-page cheat sheet</h3>
+    <pre><code>// ---------- includes &amp; shorthands ---------------------------------------
+#include &lt;bits/stdc++.h&gt;              // contest convenience
+using namespace std;
+using ll = long long;  using pii = pair&lt;int,int&gt;;  using vi = vector&lt;int&gt;;
+#define all(x) (x).begin(), (x).end()
+const int INF = 1e9;  const ll LINF = 4e18;  const ll MOD = 1'000'000'007;
+
+// ---------- io ----------------------------------------------------------
+ios::sync_with_stdio(false); cin.tie(nullptr);
+cin &gt;&gt; n;  getline(cin, line);
+cout &lt;&lt; x &lt;&lt; '\n';                    // '\n' not endl
+
+// ---------- vector ------------------------------------------------------
+vector&lt;int&gt; v(n, 0); v.reserve(n); v.push_back(x); v.pop_back();
+v.size(); v.empty(); v.front(); v.back(); v[i]; *max_element(all(v)); *min_element(all(v));
+sort(all(v)); sort(all(v), greater&lt;int&gt;());
+sort(all(v), [](int a, int b){ return a &lt; b; });
+reverse(all(v)); v.erase(unique(all(v)), v.end());
+accumulate(all(v), 0LL);
+
+// ---------- strings -----------------------------------------------------
+string s; s.substr(i, len); s.find(t); s.rfind(t); s.size();
+s += c; s.push_back(c); s.pop_back();
+stoi(s); stoll(s); to_string(x); sort(all(s)); reverse(all(s));
+for (char c : s) cnt[c - 'a']++;
+// split: stringstream ss(s); string tok; while (getline(ss, tok, ',')) …
+
+// ---------- maps / sets -------------------------------------------------
+unordered_map&lt;int,int&gt; mp;  mp[k]++;  mp.count(k);  mp.find(k) != mp.end();
+mp.erase(k);  mp.reserve(n);
+unordered_set&lt;int&gt; st;  st.insert(x);  st.count(x);  st.erase(x);
+map&lt;int,int&gt; om;  om.lower_bound(k);   set&lt;int&gt; os;  *os.begin();  *os.rbegin();
+multiset&lt;int&gt; ms;  ms.erase(ms.find(x));            // erase ONE copy
+
+// ---------- stack / queue / heap ---------------------------------------
+stack&lt;int&gt; stk; stk.push(x); stk.top(); stk.pop();
+queue&lt;int&gt; q;   q.push(x);   q.front(); q.pop();
+deque&lt;int&gt; dq;  dq.push_front(x); dq.pop_back(); dq.front(); dq.back();
+priority_queue&lt;int&gt; maxh;                               // top = max
+priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt; minh;    // top = min
+priority_queue&lt;pair&lt;int,int&gt;&gt; ph;                       // lexicographic
+
+// ---------- algorithms --------------------------------------------------
+sort · stable_sort · partial_sort · nth_element · unique · reverse · rotate
+lower_bound(all(v), x) - v.begin();     upper_bound(all(v), x) - v.begin();
+binary_search(all(v), x);  count(all(v), x);  count_if(all(v), pred);
+min({a,b,c});  max({a,b,c});  swap(a,b);  next_permutation(all(v));
+iota(all(v), 0);  fill(all(v), 0);  merge(all(a), all(b), back_inserter(c));
+set_intersection / set_union / set_difference (sorted inputs, output iterator)
+gcd(a,b); lcm(a,b); __builtin_popcount(x); __lg(x);
+
+// ---------- binary search on answer ------------------------------------
+while (lo &lt; hi) { ll mid = lo + (hi - lo) / 2; if (ok(mid)) hi = mid; else lo = mid + 1; }   // smallest
+while (lo &lt; hi) { ll mid = lo + (hi - lo + 1) / 2; if (ok(mid)) lo = mid; else hi = mid - 1; } // largest
+
+// ---------- graph -------------------------------------------------------
+vector&lt;vector&lt;int&gt;&gt; adj(n);
+adj[u].push_back(v); adj[v].push_back(u);
+vector&lt;int&gt; dist(n, -1); queue&lt;int&gt; bq; dist[s] = 0; bq.push(s);              // BFS
+vector&lt;char&gt; seen(n, 0);                                                       // DFS
+vector&lt;int&gt; indeg(n); /* Kahn: pop indeg-0, decrement neighbours */            // topo sort
+priority_queue&lt;pair&lt;ll,int&gt;, vector&lt;pair&lt;ll,int&gt;&gt;, greater&lt;&gt;&gt; pq;              // Dijkstra
+struct DSU { vector&lt;int&gt; p, r; /* find with path compression, unite by rank */ };  // ch. 8.1
+
+// ---------- DP ----------------------------------------------------------
+vector&lt;ll&gt; dp(n + 1, 0);  vector&lt;vector&lt;ll&gt;&gt; dp2(n + 1, vector&lt;ll&gt;(m + 1, 0));
+// knapsack: capacity downward (0/1) · upward (unbounded) · intervals by length
+
+// ---------- bits --------------------------------------------------------
+x &amp; (1 &lt;&lt; k)   x |= (1 &lt;&lt; k)   x &amp;= ~(1 &lt;&lt; k)   x ^= (1 &lt;&lt; k)
+x &amp; (x - 1)     x &amp; -x         __builtin_popcountll(x)   __builtin_ctz(x)
+for (int m = 0; m &lt; (1 &lt;&lt; n); ++m)  for (int sub = m; sub; sub = (sub - 1) &amp; m)
+
+// ---------- compile -----------------------------------------------------
+g++ -std=c++20 -O2 -Wall -Wextra sol.cpp -o sol &amp;&amp; ./sol
+g++ -std=c++20 -g -fsanitize=address,undefined sol.cpp -o sol_dbg &amp;&amp; ./sol_dbg</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>15.2 Index</h3>
+    <div class="grid3">
+      <a href="#ch1">setup, flags, sanitizers, headers</a>
+      <a href="#ch2">types, overflow, references, Python table</a>
+      <a href="#ch3">strings, chars, splitting, char classification</a>
+      <a href="#ch4">vector, grids, neighbours, in-place rotation</a>
+      <a href="#ch5">containers, complexity, unordered [], ordered secrets, heap</a>
+      <a href="#ch6">sort/search, binary search on answer, numeric</a>
+      <a href="#ch7">lambdas, comparators, templates, auto</a>
+      <a href="#ch8">structs, operators, ListNode/TreeNode, custom hash</a>
+      <a href="#ch9">memory, UB, performance</a>
+      <a href="#ch10">bits, subsets, sieve, modular math</a>
+      <a href="#ch11">pattern → STL map (30 patterns)</a>
+      <a href="#ch12">pitfalls that cost submissions</a>
+      <a href="#ch13">templates: graphs, DSU, binary search, DP, trie</a>
+      <a href="#ch14">complexity from constraints, interview signal</a>
+      <a href="#ch15">interview Q&amp;A + cheat sheet</a>
+    </div>
+  </section>
+
+  <section class="sub">
+    <h3>15.3 What to do next</h3>
+    <div class="grid3">
+      <div class="card"><h4>1 · Drill the bank</h4>Work the <a href="cpp-leetcode.html">C++ LeetCode question bank</a>: 6 easy → 12 medium → 12 hard per topic, each with a complete compiled solution.</div>
+      <div class="card"><h4>2 · Build a snippet file</h4>Keep a <code>template.cpp</code> with your fast-IO header, DSU, Dijkstra and the binary-search-on-answer frame. Re-read it before every contest or interview.</div>
+      <div class="card"><h4>3 · Practise the loop</h4>Timed sessions: 25 min easy, 40 min medium, 60 min hard — then read the editorial and re-implement from memory the next day.</div>
+    </div>
+  </section>
+</section>
+
+  </main>
+</div>
+
+<footer>
+  <p><b>C++ for LeetCode</b> — part of the Code Guides collection: C++, Java and Python references with matching LeetCode question banks.</p>
+  <p class="small">All diagrams are inline SVG · no external requests · works offline · every code block has a copy button.<br>
+  Standard: C++17/20/23 on GCC 14 / Clang. Templates in chapter 13 are compiled and tested locally.</p>
+  <p class="small"><a href="index.html">← All guides</a> · <a href="cpp-leetcode.html">C++ question bank</a> · <a href="java-guide.html">Java guide</a> · <a href="python-guide.html">Python guide</a></p>
+</footer>
+
+<button id="top" class="btn" title="Back to top">↑ Top</button>
+
+<style>
+.indexgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;margin:.8rem 0}
+.indexgrid a{display:block;border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:13.3px;background:var(--card);color:var(--fg)}
+.indexgrid a:hover{border-color:var(--accent);background:var(--accent-soft);text-decoration:none}
+</style>
+
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement, stored = null;
+  try { stored = localStorage.getItem("cppg-theme"); } catch (e) {}
+  if (!stored && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) stored = "dark";
+  if (stored) root.setAttribute("data-theme", stored);
+  var themeBtn = document.getElementById("theme");
+  function label(){ themeBtn.textContent = root.getAttribute("data-theme") === "dark" ? "☀️" : "🌙"; }
+  label();
+  themeBtn.addEventListener("click", function(){
+    var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("cppg-theme", next); } catch(e){}
+    label();
+  });
+  document.getElementById("print").addEventListener("click", function(){ window.print(); });
+
+  var KEYWORDS = ["alignas","alignof","asm","auto","bool","break","case","catch","char","class","concept","const","consteval","constexpr","constinit","const_cast","continue","co_await","co_return","co_yield","decltype","default","delete","do","double","dynamic_cast","else","enum","explicit","export","extern","false","float","for","friend","goto","if","inline","int","long","mutable","namespace","new","noexcept","nullptr","operator","private","protected","public","register","reinterpret_cast","requires","return","short","signed","sizeof","static","static_assert","static_cast","struct","switch","template","this","throw","true","try","typedef","typeid","typename","union","unsigned","using","virtual","void","volatile","while","override","final","not","and","or","xor","int8_t","uint64_t","size_t"];
+  var BUILTINS = ["vector","string","map","set","unordered_map","unordered_set","multiset","multimap","queue","deque","stack","priority_queue","pair","tuple","array","bitset","sort","stable_sort","partial_sort","nth_element","reverse","rotate","unique","lower_bound","upper_bound","binary_search","equal_range","min_element","max_element","minmax_element","count","count_if","find","fill","iota","accumulate","partial_sum","inner_product","gcd","lcm","abs","max","min","swap","next_permutation","prev_permutation","transform","for_each","merge","set_intersection","set_union","set_difference","make_pair","tie","move","begin","end","rbegin","rend","push_back","pop_back","emplace_back","reserve","resize","insert","erase","clear","empty","size","front","back","top","push","pop","emplace","find_if","remove_if","all_of","any_of","none_of","cout","cin","cerr","endl","getline","to_string","stoi","stoll","stod","hypot","sqrt","pow","log","ceil","floor","exp","swap_ranges","includes","_GLIBCXX_DEBUG"];
+  var esc = function(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); };
+  var RE = new RegExp(
+    "(\\/\\/[^\\n]*|\\/\\*[\\s\\S]*?\\*\\/)" +
+    "|(R\"\\([\\s\\S]*?\\)\"|\"(?:\\\\.|[^\"\\\\\\n])*\"|'(?:\\\\.|[^'\\\\\\n])*')" +
+    "|\\b(" + KEYWORDS.join("|") + ")\\b" +
+    "|\\b(0[xX][0-9a-fA-F']+|0[bB][01']+|\\d[\\d']*\\.?[\\d']*(?:[eE][-+]?\\d+)?)(?:[uUlLfF]{0,4})\\b" +
+    "|\\b(" + BUILTINS.join("|") + ")(?=\\s*[(<;:]|\\s*\\()" +
+    "|\\b([A-Z][A-Za-z0-9_]*)\\b" +
+    "|\\b([a-z_][A-Za-z0-9_]*)(?=\\s*\\()",
+    "g");
+  function highlight(code){
+    return code.replace(RE, function(m, c, s, k, num, b, cls, fn){
+      if (c) return '<span class="tok-c">' + c + '</span>';
+      if (s) return '<span class="tok-s">' + s + '</span>';
+      if (k) return '<span class="tok-k">' + k + '</span>';
+      if (num) return '<span class="tok-n">' + num + '</span>';
+      if (b) return '<span class="tok-b">' + b + '</span>';
+      if (cls) return '<span class="tok-t">' + cls + '</span>';
+      if (fn) return '<span class="tok-f">' + fn + '</span>';
+      return m;
+    });
+  }
+  var blocks = document.querySelectorAll("pre > code");
+  Array.prototype.forEach.call(blocks, function(code){
+    if (code.dataset.hl) return;
+    var text = code.textContent;
+    code.innerHTML = highlight(esc(text));
+    code.dataset.hl = "1";
+    var pre = code.parentNode;
+    if (getComputedStyle(pre).position === "static") pre.style.position = "relative";
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "copy";
+    btn.addEventListener("click", function(){
+      var done = function(){ btn.textContent = "copied ✓"; setTimeout(function(){ btn.textContent = "copy"; }, 1400); };
+      var fallback = function(){
+        var ta = document.createElement("textarea");
+        ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); done(); } catch(e){ btn.textContent = "⌘C"; }
+        document.body.removeChild(ta);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
+      else fallback();
+    });
+    pre.appendChild(btn);
+  });
+
+  var chapters = document.querySelectorAll("section.chapter");
+  var toc = document.getElementById("toc");
+  var slugOf = function(s){ return s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,48); };
+  var html = ['<div class="navhead">Contents</div>'];
+  Array.prototype.forEach.call(chapters, function(ch){
+    var h2 = ch.querySelector("h2");
+    var num = h2.querySelector(".num") ? h2.querySelector(".num").textContent : "";
+    var title = h2.textContent.replace(/^\s*\d+\s*/, "").trim();
+    html.push('<div class="navch" data-ch="' + ch.id + '"><a href="#' + ch.id + '"><span style="opacity:.6">' + num + '</span> ' + title + "</a>");
+    var subs = ch.querySelectorAll("h3");
+    if (subs.length) {
+      html.push("<ul>");
+      Array.prototype.forEach.call(subs, function(h3){
+        if (!h3.parentNode.id) h3.parentNode.id = ch.id + "-" + slugOf(h3.textContent);
+        html.push('<li><a href="#' + h3.parentNode.id + '">' + h3.textContent + "</a></li>");
+      });
+      html.push("</ul>");
+    }
+    html.push("</div>");
+  });
+  toc.innerHTML = html.join("");
+
+  var INDEX = [];
+  Array.prototype.forEach.call(chapters, function(ch){
+    var chtitle = ch.querySelector("h2").textContent.replace(/^\s*\d+\s*/,"").trim();
+    var source = ch.querySelectorAll(".sub");
+    var list = source.length ? source : [ch];
+    Array.prototype.forEach.call(list, function(blk){
+      var heading = blk.querySelector("h3");
+      var title = heading ? heading.textContent.trim() : chtitle;
+      var id = blk.id || ch.id;
+      var text = blk.textContent.replace(/\s+/g," ").trim();
+      INDEX.push({ id: id, title: title, ch: chtitle, text: text, lower: (title + " " + text).toLowerCase() });
+    });
+  });
+
+  var q = document.getElementById("q"), res = document.getElementById("results"), sel = -1;
+  function snippet(text, term){
+    var i = text.toLowerCase().indexOf(term), raw;
+    if (i < 0) raw = text.slice(0,130) + "…";
+    else { var start = Math.max(0, i-60); raw = (start?"…":"") + text.slice(start, start+170) + "…"; }
+    var safe = esc(raw);
+    var rxTerm = esc(term).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    try { return safe.replace(new RegExp("(" + rxTerm + ")", "ig"), "<mark>$1</mark>"); }
+    catch(e){ return safe; }
+  }
+  function render(){
+    var term = q.value.trim().toLowerCase();
+    if (term.length < 2) { res.classList.remove("on"); res.innerHTML = ""; sel = -1; return; }
+    var scored = [];
+    for (var i = 0; i < INDEX.length; i++) {
+      var e = INDEX[i], pos = e.lower.indexOf(term);
+      if (pos < 0) continue;
+      scored.push({ e: e, score: (e.title.toLowerCase().indexOf(term) >= 0 ? 0 : 1000) + pos });
+    }
+    scored.sort(function(a,b){ return a.score - b.score; });
+    var top = scored.slice(0, 25);
+    if (!top.length) { res.innerHTML = '<div style="padding:10px 12px;color:var(--muted)">No match for “' + esc(term) + '”.</div>'; res.classList.add("on"); return; }
+    res.innerHTML = top.map(function(t){
+      return '<a href="#' + t.e.id + '"><b>' + esc(t.e.title) + '</b><div class="rp">' + esc(t.e.ch) + " · " + snippet(t.e.text, term) + "</div></a>";
+    }).join("");
+    res.classList.add("on"); sel = -1;
+  }
+  q.addEventListener("input", render);
+  q.addEventListener("focus", function(){ if (q.value.trim().length >= 2) render(); });
+  q.addEventListener("keydown", function(ev){
+    var links = res.querySelectorAll("a");
+    if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+      if (!links.length) return; ev.preventDefault();
+      sel += ev.key === "ArrowDown" ? 1 : -1;
+      if (sel < 0) sel = links.length - 1;
+      if (sel >= links.length) sel = 0;
+      Array.prototype.forEach.call(links, function(a,i){ a.classList.toggle("sel", i === sel); });
+      links[sel].scrollIntoView({block:"nearest"});
+    } else if (ev.key === "Enter") {
+      var t = links[sel >= 0 ? sel : 0];
+      if (t) { window.location.hash = t.getAttribute("href"); res.classList.remove("on"); q.blur(); }
+    }
+  });
+  document.addEventListener("click", function(ev){
+    if (!res.contains(ev.target) && ev.target !== q) res.classList.remove("on");
+    if (ev.target.closest && ev.target.closest("#results a")) res.classList.remove("on");
+  });
+  document.addEventListener("keydown", function(ev){
+    var typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+    if (ev.key === "/" && !typing) { ev.preventDefault(); q.focus(); q.select(); }
+    if (ev.key === "Escape") { res.classList.remove("on"); q.blur(); }
+  });
+
+  var progress = document.getElementById("progress"), topBtn = document.getElementById("top");
+  function onScroll(){
+    var h = document.documentElement, max = h.scrollHeight - h.clientHeight;
+    progress.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%";
+    topBtn.classList.toggle("on", h.scrollTop > 800);
+    var best = null, bestTop = -Infinity;
+    Array.prototype.forEach.call(chapters, function(ch){
+      var t = ch.getBoundingClientRect().top;
+      if (t < 140 && t > bestTop) { bestTop = t; best = ch; }
+    });
+    if (best) Array.prototype.forEach.call(toc.querySelectorAll(".navch"), function(n){
+      var on = n.getAttribute("data-ch") === best.id;
+      n.classList.toggle("active", on);
+    });
+  }
+  var ticking = false;
+  window.addEventListener("scroll", function(){
+    if (ticking) return; ticking = true;
+    requestAnimationFrame(function(){ onScroll(); ticking = false; });
+  }, { passive: true });
+  topBtn.addEventListener("click", function(){ window.scrollTo({top:0, behavior:"smooth"}); });
+
+  var stats = document.getElementById("stats");
+  if (stats) {
+    var boxes = stats.querySelectorAll(".stat b");
+    if (boxes.length >= 4) {
+      boxes[0].textContent = String(chapters.length);
+      boxes[1].textContent = String(document.querySelectorAll(".sub").length);
+      boxes[2].textContent = String(blocks.length);
+      boxes[3].textContent = String(document.querySelectorAll("svg[role=img]").length);
+    }
+    var vt = document.getElementById("versions");
+    if (vt) vt.textContent = "C++17 / 20 / 23 · " + chapters.length + " chapters · " + blocks.length + " snippets";
+  }
+  onScroll();
+})();
+</script>
+</body>
+</html>

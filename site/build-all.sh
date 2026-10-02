@@ -35,3 +35,24 @@ for page in pathlib.Path(".").glob("*.html"):
 print("   missing links:", missing if missing else "none")
 PY
 echo "done."
+
+echo "→ docs/ mirror (branch-deployable copy of the site, for Pages from a branch)"
+python3 - <<'PY'
+import pathlib, re, shutil
+site = pathlib.Path(".")                 # build-all.sh runs inside site/
+docs = pathlib.Path("../docs")           # docs/ must sit at the repository root
+docs.mkdir(exist_ok=True)
+names = ["index.html", "cpp-guide.html", "java-guide.html", "python-guide.html",
+         "cpp-leetcode.html", "java-leetcode.html", "python-leetcode.html", ".nojekyll"]
+for n in names:
+    shutil.copy2(site / n, docs / n)
+for f in docs.glob("*.html"):
+    f.write_text(f.read_text().replace('href="../', 'href="'))
+missing = []
+for f in docs.glob("*.html"):
+    for m in re.finditer(r'href="(?!https?:|#|mailto:)([^"#]+)', f.read_text()):
+        if not (docs / m.group(1)).exists():
+            missing.append(f"{f.name} -> {m.group(1)}")
+print("   docs/ updated:", len(names), "files · missing links:", missing or "none")
+PY
+echo "done."
