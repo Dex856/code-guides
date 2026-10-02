@@ -4037,12 +4037,887 @@ long long maxRunTime(int n, vector&lt;int&gt;&amp; batteries) {
     <p class="cx"><b>Complexity:</b> O(len(batteries) · log(sum / n)) time · O(1) space.</p>
   </section>
 </section>
+<section class="chapter" id="t06">
+  <h2><span class="num">6</span> Linked Lists</h2>
+  <p class="tagline">Pointer surgery: dummy heads, fast/slow runners, in-place reversal — the three moves that solve almost every list question.</p>
+  <div class="card"><p><b>What this topic trains.</b> Handling pointers without losing nodes: a dummy head removes every 'is this the first node?' special case, a slow/fast pair finds middles and cycles, and local reversal is the building block for reordering, palindromes and k-group problems. The hard end adds design questions (LRU/LFU/text editor) where a hash map and a doubly linked list must be kept in sync.</p>
+<p class="small muted">Ordering: easy 1–6 are reversal, merging, duplicate removal and the two-pointer basics; medium 1–4 are dummy-head surgery, 5–8 are reordering by combining reversal with splitting, 9–12 are copies, cycles and multi-list splitting; hard 1–4 are k-way merging and k-group reversal, 5–8 are cache/editor designs, 9–12 are the O(1)-space variants of the medium problems.</p></div>
+  <section class="sub" id="reverse-linked-list">
+    <h3><span class="pn">E1</span> Reverse a Linked List <span class="pill">Easy</span> <span class="muted small">· three pointers, walked forward</span></h3>
+    <p><b>Problem.</b> Reverse a singly linked list and return the new head.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  head = 1 -> 2 -> 3 -> 4 -> 5
+Output: 5 -> 4 -> 3 -> 2 -> 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  head = []
+Output: []</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 5000; -5000 &lt;= node values &lt;= 5000; the reversal must be in place.</p>
+    <p><b>Approach.</b> Walk the list carrying <code>prev</code> behind the current node and <code>next</code> ahead of it. Save the next node *before* overwriting the link, then flip the pointer, then advance both. Saving <code>next</code> first is the whole trick — without it the rest of the list is lost.</p>
+    <pre><code>// prev, cur, next: save next before flipping the link
+struct ListNode { int val; ListNode* next; ListNode(int v = 0) : val(v), next(nullptr) {} };
+ListNode* reverseList(ListNode* head) {
+    ListNode* prev = nullptr;
+    while (head) {
+        ListNode* nxt = head-&gt;next;              // save before overwriting
+        head-&gt;next = prev;                       // flip the link
+        prev = head;
+        head = nxt;
+    }
+    return prev;                                 // new head
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="merge-two-sorted-lists">
+    <h3><span class="pn">E2</span> Merge Two Sorted Lists <span class="pill">Easy</span> <span class="muted small">· dummy head + tail</span></h3>
+    <p><b>Problem.</b> Merge two sorted linked lists into one sorted list by splicing the existing nodes, and return its head.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  l1 = 1 -> 2 -> 4, l2 = 1 -> 3 -> 4
+Output: 1 -> 1 -> 2 -> 3 -> 4 -> 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  l1 = [], l2 = []
+Output: []</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= nodes per list &lt;= 50; -100 &lt;= node values &lt;= 100; both inputs are sorted ascending.</p>
+    <p><b>Approach.</b> A dummy head plus a moving tail removes the 'what if the result is still empty?' branch entirely: always append to tail.next and advance the tail. When one list runs out, splice the remainder in one step instead of copying node by node.</p>
+    <pre><code>// Dummy head: no special case for the first node
+struct ListNode { int val; ListNode* next; ListNode(int v = 0) : val(v), next(nullptr) {} };
+ListNode* mergeTwoLists(ListNode* a, ListNode* b) {
+    ListNode dummy(0), *tail = &amp;dummy;           // tail always points at the last node
+    while (a &amp;&amp; b) {
+        if (a-&gt;val &lt;= b-&gt;val) { tail-&gt;next = a; a = a-&gt;next; }
+        else { tail-&gt;next = b; b = b-&gt;next; }
+        tail = tail-&gt;next;
+    }
+    tail-&gt;next = a ? a : b;                      // splice the leftover run
+    return dummy.next;
+}   // O(n + m) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n + m) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="remove-duplicates-from-sorted-list">
+    <h3><span class="pn">E3</span> Remove Duplicates From a Sorted List <span class="pill">Easy</span> <span class="muted small">· skip equal neighbours</span></h3>
+    <p><b>Problem.</b> Delete the duplicates so each value appears once, keeping the sorted order, and return the head.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  head = 1 -> 1 -> 2
+Output: 1 -> 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  head = 1 -> 1 -> 2 -> 3 -> 3
+Output: 1 -> 2 -> 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 300; -100 &lt;= node values &lt;= 100; the list is sorted ascending.</p>
+    <p><b>Approach.</b> Because the list is sorted, duplicates are always adjacent. Compare the current node with its successor and, on equality, unlink the successor; otherwise advance. Only one pointer is needed and no node is ever revisited.</p>
+    <pre><code>// Sorted input: duplicates are adjacent, so skip them in place
+struct ListNode { int val; ListNode* next; ListNode(int v = 0) : val(v), next(nullptr) {} };
+ListNode* deleteDuplicates(ListNode* head) {
+    for (ListNode* cur = head; cur &amp;&amp; cur-&gt;next; ) {
+        if (cur-&gt;val == cur-&gt;next-&gt;val) cur-&gt;next = cur-&gt;next-&gt;next;   // unlink
+        else cur = cur-&gt;next;
+    }
+    return head;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="middle-of-the-linked-list">
+    <h3><span class="pn">E4</span> Middle of the Linked List <span class="pill">Easy</span> <span class="muted small">· slow and fast pointers</span></h3>
+    <p><b>Problem.</b> Return the middle node; if there are two middles, return the second one.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  head = 1 -> 2 -> 3 -> 4 -> 5
+Output: 3 (the node itself)</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  head = 1 -> 2 -> 3 -> 4
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 100; the list is singly linked; the returned node must be the actual middle node.</p>
+    <p><b>Approach.</b> Advance one pointer by one node and another by two. When the fast pointer falls off the end, the slow one is exactly at the middle — no length pass, no array. Starting both at the head is what makes the *second* middle win for even lengths, which is the version reorder-list and palindrome checks need.</p>
+    <pre><code>// Fast moves twice as far, so slow lands on the middle
+struct ListNode { int val; ListNode* next; ListNode(int v = 0) : val(v), next(nullptr) {} };
+ListNode* middleNode(ListNode* head) {
+    ListNode* slow = head; ListNode* fast = head;
+    while (fast &amp;&amp; fast-&gt;next) {                 // second middle wins for even n
+        slow = slow-&gt;next;
+        fast = fast-&gt;next-&gt;next;
+    }
+    return slow;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="linked-list-cycle">
+    <h3><span class="pn">E5</span> Linked List Cycle <span class="pill">Easy</span> <span class="muted small">· Floyd's tortoise and hare</span></h3>
+    <p><b>Problem.</b> Return true if the list contains a cycle, following the next pointers only, using O(1) extra memory.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  3 -> 2 -> 0 -> -4 with the last node pointing back to node 2
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  1 -> 2 with no cycle
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 10^4; the list may be empty or have a cycle; extra memory must be O(1).</p>
+    <p><b>Approach.</b> If two runners start together and one moves twice as fast, inside a loop the faster one gains on the slower by one node each step, so they must eventually meet — the distance shrinks and cannot jump over zero. No set of visited nodes is needed, which is the entire point of the trick.</p>
+    <pre><code>// Tortoise and hare: inside a cycle the faster runner is always catching up
+struct ListNode { int val; ListNode* next; ListNode(int v = 0) : val(v), next(nullptr) {} };
+bool hasCycle(ListNode* head) {
+    ListNode* slow = head; ListNode* fast = head;
+    while (fast &amp;&amp; fast-&gt;next) {
+        slow = slow-&gt;next;
+        fast = fast-&gt;next-&gt;next;
+        if (slow == fast) return true;           // met inside the loop
+    }
+    return false;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="palindrome-linked-list">
+    <h3><span class="pn">E6</span> Palindrome Linked List <span class="pill">Easy</span> <span class="muted small">· middle + in-place reversal</span></h3>
+    <p><b>Problem.</b> Return true if the list reads the same forwards and backwards, using O(1) extra memory.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  head = 1 -> 2 -> 2 -> 1
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  head = 1 -> 2
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 10^5; extra memory must be O(1); values fit in a 32-bit integer.</p>
+    <p><b>Approach.</b> Split at the middle with the fast/slow pair, reverse the second half in place, then walk the two halves together comparing values. Reversing the second half is safe because the comparison destroys nothing — this 'reverse half and walk inward' idea is also the basis of reordering and twin-sum problems.</p>
+    <pre><code>// Find the middle, reverse the second half, compare outwards
+struct ListNode { int val; ListNode* next; ListNode(int v = 0) : val(v), next(nullptr) {} };
+bool isPalindrome(ListNode* head) {
+    ListNode *slow = head, *fast = head;
+    while (fast &amp;&amp; fast-&gt;next) { slow = slow-&gt;next; fast = fast-&gt;next-&gt;next; }
+    ListNode* prev = nullptr;
+    while (slow) { ListNode* nxt = slow-&gt;next; slow-&gt;next = prev; prev = slow; slow = nxt; }
+    for (ListNode *a = head, *b = prev; b; a = a-&gt;next, b = b-&gt;next)
+        if (a-&gt;val != b-&gt;val) return false;
+    return true;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="remove-nth-node-from-end-of-list">
+    <h3><span class="pn">M1</span> Remove the N-th Node From the End <span class="pill">Medium</span> <span class="muted small">· fixed-gap two pointers</span></h3>
+    <p><b>Problem.</b> Remove the n-th node counted from the end of the list in one pass, and return the head.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  head = 1 -> 2 -> 3 -> 4 -> 5, n = 2
+Output: 1 -> 2 -> 3 -> 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  head = 1, n = 1
+Output: []</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 30; 1 &lt;= n &lt;= number of nodes; one pass is expected.</p>
+    <p><b>Approach.</b> Give the fast pointer an n-node head start, then move both until fast reaches the end: slow is now just before the node to delete. A dummy head in front is essential, because removing the first node has no distinct 'previous' without it — the classic off-by-one here is a lost node, not a wrong index.</p>
+    <pre><code>// Fast gets an n-node head start; dummy handles n == length
+struct ListNode { int val; ListNode* next; ListNode(int v = 0) : val(v), next(nullptr) {} };
+ListNode* removeNthFromEnd(ListNode* head, int n) {
+    ListNode dummy(0); dummy.next = head;
+    ListNode *slow = &amp;dummy, *fast = &amp;dummy;
+    for (int i = 0; i &lt; n; i++) fast = fast-&gt;next;   // head start of n
+    while (fast-&gt;next) { slow = slow-&gt;next; fast = fast-&gt;next; }
+    slow-&gt;next = slow-&gt;next-&gt;next;                   // unlink the target
+    return dummy.next;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="intersection-of-two-linked-lists">
+    <h3><span class="pn">M2</span> Intersection of Two Linked Lists <span class="pill">Medium</span> <span class="muted small">· align by length difference</span></h3>
+    <p><b>Problem.</b> Two lists merge at some node (or not at all). Return the first shared node, comparing by identity, in O(1) extra memory.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  a = 4 -> 1 -> 8 -> 4 -> 5, b = 5 -> 6 -> 1 -> 8 -> 4 -> 5
+Output: the node with value 8</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  no shared node
+Output: null</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= nodes per list &lt;= 3 * 10^4; the lists must not be modified; extra memory must be O(1).</p>
+    <p><b>Approach.</b> The longer list has extra nodes at the front that cannot be part of the intersection, so skip the length difference first and the two pointers then advance in lockstep until they meet. Alternatively switch pointers at the ends — both encode the same idea of equalising distance.</p>
+    <pre><code>// Skip the length difference, then walk in lockstep
+struct ListNode { int val; ListNode* next; ListNode(int v = 0) : val(v), next(nullptr) {} };
+int len(ListNode* h) { int n = 0; for (; h; h = h-&gt;next) n++; return n; }
+ListNode* getIntersectionNode(ListNode* a, ListNode* b) {
+    int la = len(a), lb = len(b);
+    while (la &gt; lb) { a = a-&gt;next; la--; }       // drop the extra prefix
+    while (lb &gt; la) { b = b-&gt;next; lb--; }
+    while (a != b) { a = a-&gt;next; b = b-&gt;next; } // same remaining length
+    return a;                                    // nullptr if none
+}   // O(n + m) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n + m) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="add-two-numbers">
+    <h3><span class="pn">M3</span> Add Two Numbers <span class="pill">Medium</span> <span class="muted small">· digit-by-digit with carry</span></h3>
+    <p><b>Problem.</b> Each list holds a non-negative integer in reverse digit order. Return their sum in the same form.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  l1 = 2 -> 4 -> 3, l2 = 5 -> 6 -> 4
+Output: 7 -> 0 -> 8  (342 + 465 = 807)</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  l1 = 9 -> 9 -> 9, l2 = 1
+Output: 0 -> 0 -> 0 -> 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nodes per list &lt;= 100; 0 &lt;= digit &lt;= 9; no number has leading zeros except 0 itself.</p>
+    <p><b>Approach.</b> Reverse order is a gift: the least significant digits come first, so the addition proceeds with a single carry variable and no reversal. Keep looping while either list has digits *or* a carry remains — forgetting the final carry is the standard bug (999 + 1 needs a fourth node).</p>
+    <pre><code>// Digits arrive least-significant first: one carry, one dummy tail
+struct ListNode { int val; ListNode* next; ListNode(int v = 0) : val(v), next(nullptr) {} };
+ListNode* addTwoNumbers(ListNode* a, ListNode* b) {
+    ListNode dummy(0), *tail = &amp;dummy;
+    int carry = 0;
+    while (a || b || carry) {                    // carry can add one more node
+        int sum = carry;
+        if (a) { sum += a-&gt;val; a = a-&gt;next; }
+        if (b) { sum += b-&gt;val; b = b-&gt;next; }
+        carry = sum / 10;
+        tail-&gt;next = new ListNode(sum % 10);
+        tail = tail-&gt;next;
+    }
+    return dummy.next;
+}   // O(max(n, m)) time · O(1) space beyond the answer</code></pre>
+    <p class="cx"><b>Complexity:</b> O(max(n, m)) time · O(1) output space space.</p>
+  </section>
+  <section class="sub" id="odd-even-linked-list">
+    <h3><span class="pn">M4</span> Odd Even Linked List <span class="pill">Medium</span> <span class="muted small">· two chains woven apart</span></h3>
+    <p><b>Problem.</b> Group all nodes at odd indices together followed by all nodes at even indices, preserving the relative order inside each group, in O(1) extra space.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  head = 1 -> 2 -> 3 -> 4 -> 5
+Output: 1 -> 3 -> 5 -> 2 -> 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  head = 2 -> 1 -> 3 -> 5 -> 6 -> 4 -> 7
+Output: 2 -> 3 -> 6 -> 7 -> 1 -> 5 -> 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 10^4; -10^6 &lt;= node values &lt;= 10^6; extra space must be O(1).</p>
+    <p><b>Approach.</b> Build two chains simultaneously: an odd chain and an even chain, each with its own tail. Because both tails walk forward in the same loop, the original order inside each parity survives, and a single link from the odd tail to the even head finishes the job.</p>
+    <pre><code>// Two chains built in one pass, then stitched
+struct ListNode { int val; ListNode* next; ListNode(int v = 0) : val(v), next(nullptr) {} };
+ListNode* oddEvenList(ListNode* head) {
+    if (!head) return nullptr;
+    ListNode *odd = head, *even = head-&gt;next, *evenHead = even;
+    while (even &amp;&amp; even-&gt;next) {
+        odd-&gt;next = even-&gt;next; odd = odd-&gt;next;   // odd chain grows
+        even-&gt;next = odd-&gt;next; even = even-&gt;next; // even chain grows
+    }
+    odd-&gt;next = evenHead;                          // stitch the two chains
+    return head;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="reorder-list">
+    <h3><span class="pn">M5</span> Reorder List <span class="pill">Medium</span> <span class="muted small">· split, reverse, interleave</span></h3>
+    <p><b>Problem.</b> Reorder the list as first, last, second, second-last, ... in place and with O(1) extra space.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  head = 1 -> 2 -> 3 -> 4
+Output: 1 -> 4 -> 2 -> 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  head = 1 -> 2 -> 3 -> 4 -> 5
+Output: 1 -> 5 -> 2 -> 4 -> 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 5 * 10^4; the list must not be modified structurally except as described; O(1) extra space is required.</p>
+    <p><b>Approach.</b> Three familiar moves chained together: find the middle, reverse the second half, then interleave the two halves one node at a time. Each move was an easy problem on its own — this is what 'compose the patterns you already know' looks like in practice.</p>
+    <pre><code>// Middle, reverse the second half, then interleave
+struct ListNode { int val; ListNode* next; ListNode(int v = 0) : val(v), next(nullptr) {} };
+void reorderList(ListNode* head) {
+    if (!head || !head-&gt;next) return;
+    ListNode *slow = head, *fast = head;
+    while (fast-&gt;next &amp;&amp; fast-&gt;next-&gt;next) { slow = slow-&gt;next; fast = fast-&gt;next-&gt;next; }
+    ListNode *prev = nullptr, *cur = slow-&gt;next;   // 1. reverse the second half
+    slow-&gt;next = nullptr;                          // split the two halves
+    while (cur) { ListNode* nxt = cur-&gt;next; cur-&gt;next = prev; prev = cur; cur = nxt; }
+    for (ListNode *a = head, *b = prev; b; ) {     // 2. interleave
+        ListNode *an = a-&gt;next, *bn = b-&gt;next;
+        a-&gt;next = b; b-&gt;next = an;
+        a = an; b = bn;
+    }
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="rotate-list">
+    <h3><span class="pn">M6</span> Rotate List <span class="pill">Medium</span> <span class="muted small">· close the ring, cut it</span></h3>
+    <p><b>Problem.</b> Rotate the list to the right by k places and return the new head.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  head = 1 -> 2 -> 3 -> 4 -> 5, k = 2
+Output: 4 -> 5 -> 1 -> 2 -> 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  head = 0 -> 1 -> 2, k = 4
+Output: 2 -> 0 -> 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 500; -100 &lt;= node values &lt;= 100; 0 &lt;= k &lt;= 2 * 10^9 (so k may exceed the length).</p>
+    <p><b>Approach.</b> A rotation is a cut and a re-join. Measure the length, reduce k modulo it (k can be enormous), then close the list into a ring and sever it at the right place — one pass, no reversal, and no need to know the length twice.</p>
+    <pre><code>// Measure, close the ring, cut at n - (k % n)
+struct ListNode { int val; ListNode* next; ListNode(int v = 0) : val(v), next(nullptr) {} };
+ListNode* rotateRight(ListNode* head, int k) {
+    if (!head || !head-&gt;next) return head;
+    int n = 1; ListNode* tail = head;
+    while (tail-&gt;next) { tail = tail-&gt;next; n++; }
+    k %= n;                                      // k may exceed the length
+    if (k == 0) return head;
+    tail-&gt;next = head;                           // close the ring
+    ListNode* newTail = head;
+    for (int i = 0; i &lt; n - k - 1; i++) newTail = newTail-&gt;next;
+    ListNode* newHead = newTail-&gt;next;
+    newTail-&gt;next = nullptr;                     // cut the ring
+    return newHead;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="swap-nodes-in-pairs">
+    <h3><span class="pn">M7</span> Swap Nodes in Pairs <span class="pill">Medium</span> <span class="muted small">· local rewiring with a predecessor</span></h3>
+    <p><b>Problem.</b> Swap every two adjacent nodes and return the head, changing the links rather than the values.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  head = 1 -> 2 -> 3 -> 4
+Output: 2 -> 1 -> 4 -> 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  head = 1
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 100; values must not be copied between nodes; only the links may change.</p>
+    <p><b>Approach.</b> Keep a pointer to the node *before* the pair. Swapping the pair means three re-links, after which the predecessor must become the old first node of the pair — the position the next pair will start from. A dummy head makes the first pair look like every other pair.</p>
+    <pre><code>// prev -&gt; (a, b) becomes prev -&gt; (b, a), then prev advances to a
+struct ListNode { int val; ListNode* next; ListNode(int v = 0) : val(v), next(nullptr) {} };
+ListNode* swapPairs(ListNode* head) {
+    ListNode dummy(0); dummy.next = head;
+    ListNode* prev = &amp;dummy;
+    while (prev-&gt;next &amp;&amp; prev-&gt;next-&gt;next) {
+        ListNode *a = prev-&gt;next, *b = a-&gt;next;
+        a-&gt;next = b-&gt;next;                       // a now points past b
+        b-&gt;next = a;                             // b points at a
+        prev-&gt;next = b;                          // predecessor points at b
+        prev = a;                                // a is in front of the next pair
+    }
+    return dummy.next;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="partition-list">
+    <h3><span class="pn">M8</span> Partition List <span class="pill">Medium</span> <span class="muted small">· two dummy chains</span></h3>
+    <p><b>Problem.</b> Rearrange the nodes so that all values less than x come before all values greater than or equal to x, preserving the original relative order inside each group.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  head = 1 -> 4 -> 3 -> 2 -> 5 -> 2, x = 3
+Output: 1 -> 2 -> 2 -> 4 -> 3 -> 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  head = 2 -> 1, x = 2
+Output: 1 -> 2</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 200; -100 &lt;= node values &lt;= 100; relative order must be preserved.</p>
+    <p><b>Approach.</b> Two dummy heads, one collecting the small values and one collecting the rest; walk the input once and append each node to its chain. Joining the two chains at the end is the only link you have to build yourself — remember to terminate the second chain or it will still point into the old structure.</p>
+    <pre><code>// Two chains: smaller-than-x and everything else
+struct ListNode { int val; ListNode* next; ListNode(int v = 0) : val(v), next(nullptr) {} };
+ListNode* partition(ListNode* head, int x) {
+    ListNode smallDummy(0), bigDummy(0);
+    ListNode *small = &amp;smallDummy, *big = &amp;bigDummy;
+    for (; head; head = head-&gt;next) {
+        if (head-&gt;val &lt; x) { small-&gt;next = head; small = head; }   // append
+        else { big-&gt;next = head; big = head; }
+    }
+    big-&gt;next = nullptr;                          // terminate the big chain!
+    small-&gt;next = bigDummy.next;                  // join them
+    return smallDummy.next;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="copy-list-with-random-pointer">
+    <h3><span class="pn">M9</span> Copy a List With Random Pointers <span class="pill">Medium</span> <span class="muted small">· hash map old -&gt; new</span></h3>
+    <p><b>Problem.</b> Each node has a next pointer and a random pointer that may point anywhere in the list (or to null). Return a deep copy.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [[7,null],[13,0],[11,4],[10,2],[1,0]]
+Output: an identical but fully independent list</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  []
+Output: []</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 1000; random pointers may point backwards or forwards; the copy must share no nodes with the original.</p>
+    <p><b>Approach.</b> Two passes over a map from original node to its copy: the first pass creates every copy (so every target exists), the second wires next and random using the map. Creating all the nodes first is what makes a forward random pointer possible.</p>
+    <pre><code>// Pass 1 creates every copy, pass 2 wires next and random
+struct Node { int val; Node *next, *random; Node(int v) : val(v), next(nullptr), random(nullptr) {} };
+Node* copyRandomList(Node* head) {
+    unordered_map&lt;Node*, Node*&gt; copy;             // original -&gt; duplicate
+    for (Node* p = head; p; p = p-&gt;next) copy[p] = new Node(p-&gt;val);
+    for (Node* p = head; p; p = p-&gt;next) {
+        if (p-&gt;next) copy[p]-&gt;next = copy[p-&gt;next];       // target already exists
+        if (p-&gt;random) copy[p]-&gt;random = copy[p-&gt;random];
+    }
+    return head ? copy[head] : nullptr;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="flatten-multilevel-doubly-linked-list">
+    <h3><span class="pn">M10</span> Flatten a Multilevel Doubly Linked List <span class="pill">Medium</span> <span class="muted small">· stack of pending next nodes</span></h3>
+    <p><b>Problem.</b> Nodes have next, prev and child pointers. Flatten the list so that a child list is spliced in immediately after its parent, keeping the doubly linked order, and return the head.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  1 - 2 - 3 with 3 child 7 - 8 and 8 child 11
+Output: 1 - 2 - 3 - 7 - 8 - 11</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  empty list
+Output: empty list</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 1000; the structure is a valid doubly linked list; no node may appear twice in the result.</p>
+    <p><b>Approach.</b> Walk the top level and keep a stack of 'next' pointers you had to postpone. When you reach a node with a child, push the old next, then dive into the child. Popping the stack when you run out restores the postponed tail — this is depth-first traversal written without recursion.</p>
+    <pre><code>// Push the postponed 'next' and dive into the child; pop to resume
+struct Node { int val; Node *prev, *next, *child; Node(int v) : val(v), prev(nullptr), next(nullptr), child(nullptr) {} };
+Node* flatten(Node* head) {
+    vector&lt;Node*&gt; st;                            // postponed next pointers
+    for (Node* cur = head; cur; cur = cur-&gt;next) {
+        if (cur-&gt;child) {
+            if (cur-&gt;next) st.push_back(cur-&gt;next);       // remember the remainder
+            cur-&gt;next = cur-&gt;child; cur-&gt;child-&gt;prev = cur;
+            cur-&gt;child = nullptr;                         // the child is consumed
+        } else if (!cur-&gt;next &amp;&amp; !st.empty()) {           // end of a level
+            Node* nxt = st.back(); st.pop_back();
+            cur-&gt;next = nxt; nxt-&gt;prev = cur;
+        }
+    }
+    return head;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) worst case for the stack space.</p>
+  </section>
+  <section class="sub" id="linked-list-cycle-ii">
+    <h3><span class="pn">M11</span> Linked List Cycle II <span class="pill">Medium</span> <span class="muted small">· meet, then walk from the head</span></h3>
+    <p><b>Problem.</b> If the list has a cycle, return the node where the cycle begins; otherwise return null — with O(1) extra memory.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  3 -> 2 -> 0 -> -4 with -4 pointing back to the node holding 2
+Output: the node holding 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  1 -> 2 with no cycle
+Output: null</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 10^4; extra memory must be O(1); do not modify the list.</p>
+    <p><b>Approach.</b> Once the two runners meet, the distance from the head to the cycle entry equals the distance from the meeting point to the entry *measured along the cycle*. So restart one pointer at the head and advance both one step at a time; they collide exactly at the entry. Beautiful, non-obvious, and worth being able to derive rather than memorise.</p>
+    <pre><code>// After the meeting, head-to-entry equals meeting-to-entry along the cycle
+struct ListNode { int val; ListNode* next; ListNode(int v = 0) : val(v), next(nullptr) {} };
+ListNode* detectCycle(ListNode* head) {
+    ListNode *slow = head, *fast = head;
+    while (fast &amp;&amp; fast-&gt;next) {
+        slow = slow-&gt;next; fast = fast-&gt;next-&gt;next;
+        if (slow == fast) {                      // met inside the cycle
+            for (ListNode* p = head; p != slow; p = p-&gt;next, slow = slow-&gt;next) { }
+            return slow;                         // entry point
+        }
+    }
+    return nullptr;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="split-linked-list-in-parts">
+    <h3><span class="pn">M12</span> Split Linked List in Parts <span class="pill">Medium</span> <span class="muted small">· quotient and remainder</span></h3>
+    <p><b>Problem.</b> Split the list into k consecutive parts where no two part sizes differ by more than one and the earlier parts are never smaller; return the k pieces (some may be empty).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  head = 1 -> 2 -> 3, k = 5
+Output: [[1],[2],[3],[],[]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  head = 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10, k = 3
+Output: [[1,2,3,4],[5,6,7],[8,9,10]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 1000; 1 &lt;= k &lt;= 50; empty parts must be represented as an empty list, not skipped.</p>
+    <p><b>Approach.</b> Size the parts before cutting: every part gets n/k nodes and the first n%k parts get one extra. Then walk once, taking the computed number of nodes per part and severing the link at each boundary — computing the sizes first is what makes the 'earlier parts are never smaller' rule automatic.</p>
+    <pre><code>// Sizes first: n/k each, plus one extra for the first n%k parts
+struct ListNode { int val; ListNode* next; ListNode(int v = 0) : val(v), next(nullptr) {} };
+vector&lt;ListNode*&gt; splitListToParts(ListNode* head, int k) {
+    int n = 0; for (ListNode* p = head; p; p = p-&gt;next) n++;
+    int base = n / k, extra = n % k;
+    vector&lt;ListNode*&gt; parts;
+    ListNode* cur = head;
+    for (int i = 0; i &lt; k; i++) {
+        parts.push_back(cur);
+        int take = base + (i &lt; extra ? 1 : 0);
+        for (int j = 0; j &lt; take - 1 &amp;&amp; cur; j++) cur = cur-&gt;next;   // walk to the end
+        if (cur) { ListNode* nxt = cur-&gt;next; cur-&gt;next = nullptr; cur = nxt; }   // cut
+    }
+    return parts;
+}   // O(n + k) time · O(k) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n + k) time · O(k) for the output space.</p>
+  </section>
+  <section class="sub" id="merge-k-sorted-lists">
+    <h3><span class="pn">H1</span> Merge K Sorted Lists <span class="pill hot">Hard</span> <span class="muted small">· k-way merge (heap or divide and conquer)</span></h3>
+    <p><b>Problem.</b> Given k sorted linked lists, merge them into one sorted list and return its head.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  lists = [[1,4,5],[1,3,4],[2,6]]
+Output: 1 -> 1 -> 2 -> 3 -> 4 -> 4 -> 5 -> 6</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  lists = []
+Output: []</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= k &lt;= 10^4; 0 &lt;= total nodes &lt;= 10^4; -10^4 &lt;= node values &lt;= 10^4; the naive k-way scan is too slow.</p>
+    <p><b>Approach.</b> A min-heap of the k current heads always hands back the smallest remaining value; each pop pushes that list's next node, so the cost is O(total · log k). The divide-and-conquer alternative — merge lists in pairs, log k rounds — reaches the same bound with no heap and is often faster in practice. Know both; interviewers ask for the second after you write the first.</p>
+    <pre><code>// Min-heap over the k current heads
+struct ListNode { int val; ListNode* next; ListNode(int v = 0) : val(v), next(nullptr) {} };
+struct Cmp { bool operator()(ListNode* a, ListNode* b) const { return a-&gt;val &gt; b-&gt;val; } };
+ListNode* mergeKLists(vector&lt;ListNode*&gt;&amp; lists) {
+    priority_queue&lt;ListNode*, vector&lt;ListNode*&gt;, Cmp&gt; pq;
+    for (ListNode* h : lists) if (h) pq.push(h);          // seed with every head
+    ListNode dummy(0), *tail = &amp;dummy;
+    while (!pq.empty()) {
+        ListNode* node = pq.top(); pq.pop();              // smallest remaining
+        tail-&gt;next = node; tail = node;                   // append it
+        if (node-&gt;next) pq.push(node-&gt;next);              // advance that list
+    }
+    tail-&gt;next = nullptr;
+    return dummy.next;
+}   // O(N log k) time · O(k) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(N log k) time · O(k) space.</p>
+  </section>
+  <section class="sub" id="reverse-nodes-in-k-group">
+    <h3><span class="pn">H2</span> Reverse Nodes in k-Group <span class="pill hot">Hard</span> <span class="muted small">· count first, then reverse the group</span></h3>
+    <p><b>Problem.</b> Reverse the nodes of the list k at a time; if the final group has fewer than k nodes, leave it unchanged. Only the links may change.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  head = 1 -> 2 -> 3 -> 4 -> 5, k = 2
+Output: 2 -> 1 -> 4 -> 3 -> 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  head = 1 -> 2 -> 3 -> 4 -> 5, k = 3
+Output: 3 -> 2 -> 1 -> 4 -> 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 5000; 1 &lt;= k &lt;= number of nodes; node values may not be swapped.</p>
+    <p><b>Approach.</b> Two rules make this manageable: check that k nodes remain *before* touching anything (so the short tail stays intact), and reverse inside the group by inserting each node right after the group's predecessor — a head-insertion loop that never needs a second pass over the group.</p>
+    <pre><code>// If k nodes remain, head-insert each of them after 'prev'
+struct ListNode { int val; ListNode* next; ListNode(int v = 0) : val(v), next(nullptr) {} };
+ListNode* reverseKGroup(ListNode* head, int k) {
+    ListNode dummy(0); dummy.next = head;
+    ListNode* prev = &amp;dummy;
+    while (true) {
+        ListNode* probe = prev;
+        for (int i = 0; i &lt; k &amp;&amp; probe; i++) probe = probe-&gt;next;
+        if (!probe) break;                            // fewer than k left: stop
+        ListNode* cur = prev-&gt;next;
+        for (int i = 1; i &lt; k; i++) {                 // head-insert k-1 nodes
+            ListNode* nxt = cur-&gt;next;
+            cur-&gt;next = nxt-&gt;next;
+            nxt-&gt;next = prev-&gt;next;
+            prev-&gt;next = nxt;
+        }
+        for (int i = 0; i &lt; k; i++) prev = prev-&gt;next;   // prev = group's new tail
+    }
+    return dummy.next;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="lru-cache">
+    <h3><span class="pn">H3</span> LRU Cache <span class="pill hot">Hard</span> <span class="muted small">· hash map + doubly linked list</span></h3>
+    <p><b>Problem.</b> Design a cache with capacity c supporting get(key) and put(key, value) in O(1). When full, evict the least recently used key; both get and put count as uses.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  capacity 2: put(1,1), put(2,2), get(1), put(3,3)
+Output: get(1) = 1, then key 2 is evicted</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  after that, get(2)
+Output: -1 (it was evicted)</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= capacity &lt;= 3000; up to 2 * 10^5 calls; 0 &lt;= key, value &lt;= 10^4.</p>
+    <p><b>Approach.</b> Two structures with one job each: a hash map from key to node gives O(1) lookup, and a doubly linked list gives O(1) reordering. A *hit* means unlinking the node and pushing it to the front; a *put* that overflows means deleting the tail. The map must be updated in step with the list — every list operation has a matching map operation, and forgetting one is the usual bug.</p>
+    <pre><code>// map: key -&gt; node; list: most recent at the front
+struct DNode {
+    int key, val; DNode *prev, *next;
+    DNode(int k, int v) : key(k), val(v), prev(nullptr), next(nullptr) {}
+};
+class LRUCache {
+    int cap;
+    unordered_map&lt;int, DNode*&gt; mp;
+    DNode *head, *tail;                          // sentinels: no null checks
+    void unlink(DNode* n) { n-&gt;prev-&gt;next = n-&gt;next; n-&gt;next-&gt;prev = n-&gt;prev; }
+    void pushFront(DNode* n) {
+        n-&gt;next = head-&gt;next; n-&gt;prev = head;
+        head-&gt;next-&gt;prev = n; head-&gt;next = n;
+    }
+public:
+    LRUCache(int capacity) : cap(capacity) {
+        head = new DNode(0, 0); tail = new DNode(0, 0);
+        head-&gt;next = tail; tail-&gt;prev = head;
+    }
+    int get(int key) {
+        auto it = mp.find(key);
+        if (it == mp.end()) return -1;
+        unlink(it-&gt;second); pushFront(it-&gt;second);   // mark as most recent
+        return it-&gt;second-&gt;val;
+    }
+    void put(int key, int value) {
+        if (mp.count(key)) { DNode* n = mp[key]; n-&gt;val = value; unlink(n); pushFront(n); return; }
+        if ((int)mp.size() == cap) {                 // evict the least recent
+            DNode* lru = tail-&gt;prev;
+            unlink(lru); mp.erase(lru-&gt;key); delete lru;
+        }
+        DNode* n = new DNode(key, value);
+        mp[key] = n; pushFront(n);
+    }
+};   // O(1) per operation · O(capacity) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(1) per operation time · O(capacity) space.</p>
+  </section>
+  <section class="sub" id="lfu-cache">
+    <h3><span class="pn">H4</span> LFU Cache <span class="pill hot">Hard</span> <span class="muted small">· frequencies + recency buckets</span></h3>
+    <p><b>Problem.</b> Design a cache with capacity c supporting get and put in O(1). When full, evict the key with the smallest use frequency; ties are broken by least recent use, with a fresh put starting at frequency 1.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  capacity 2: put(1,1), put(2,2), get(1), put(3,3)
+Output: key 2 is evicted (frequency 1, and older)</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  then get(2), get(3)
+Output: -1, then 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= capacity &lt;= 10^4; up to 2 * 10^5 calls; 0 &lt;= key, value &lt;= 10^5.</p>
+    <p><b>Approach.</b> Extend the LRU design with one more map: frequency -&gt; ordered set of keys with that frequency. Eviction always comes from the smallest non-empty frequency, and each access moves the key up exactly one bucket. Tracking the minimum frequency explicitly (rather than searching for it) is what keeps every operation constant time.</p>
+    <pre><code>// freq -&gt; ordered keys; evict from the smallest non-empty bucket
+class LFUCache {
+    int cap, minFreq = 0;
+    unordered_map&lt;int, pair&lt;int, int&gt;&gt; kv;                 // key -&gt; (value, freq)
+    unordered_map&lt;int, list&lt;int&gt;&gt; byFreq;                  // freq -&gt; keys, oldest first
+    unordered_map&lt;int, list&lt;int&gt;::iterator&gt; pos;           // key -&gt; its list position
+    void touch(int key) {
+        auto&amp; [val, f] = kv[key];
+        byFreq[f].erase(pos[key]);
+        if (byFreq[f].empty()) {
+            byFreq.erase(f);
+            if (minFreq == f) minFreq++;                   // only bucket was f
+        }
+        byFreq[++f].push_back(key);                        // move up one bucket
+        pos[key] = prev(byFreq[f].end());
+    }
+public:
+    LFUCache(int capacity) : cap(capacity) {}
+    int get(int key) {
+        auto it = kv.find(key);
+        if (it == kv.end()) return -1;
+        touch(key);
+        return it-&gt;second.first;
+    }
+    void put(int key, int value) {
+        if (cap == 0) return;
+        if (kv.count(key)) { kv[key].first = value; touch(key); return; }
+        if ((int)kv.size() == cap) {                       // evict the LFU key
+            int victim = byFreq[minFreq].front();
+            byFreq[minFreq].pop_front();
+            if (byFreq[minFreq].empty()) byFreq.erase(minFreq);
+            kv.erase(victim); pos.erase(victim);
+        }
+        kv[key] = {value, 1};
+        byFreq[1].push_back(key);
+        pos[key] = prev(byFreq[1].end());
+        minFreq = 1;                                       // a new key is freq 1
+    }
+};   // O(1) per operation · O(capacity) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(1) per operation time · O(capacity) space.</p>
+  </section>
+  <section class="sub" id="sort-list">
+    <h3><span class="pn">H5</span> Sort a Linked List <span class="pill hot">Hard</span> <span class="muted small">· bottom-up merge sort</span></h3>
+    <p><b>Problem.</b> Sort a linked list in O(n log n) time with O(1) extra space.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  head = 4 -> 2 -> 1 -> 3
+Output: 1 -> 2 -> 3 -> 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  head = -1 -> 5 -> 3 -> 4 -> 0
+Output: -1 -> 0 -> 3 -> 4 -> 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 5 * 10^4; -10^5 &lt;= node values &lt;= 10^5; extra space must be O(1), so recursion is out.</p>
+    <p><b>Approach.</b> Merge sort, but built upwards instead of recursively: start with runs of length 1, merge neighbouring runs, then double the run length and repeat. Each pass costs O(n) and there are log n passes, and the only state kept between passes is a few pointers — the reason it satisfies the O(1) space rule.</p>
+    <pre><code>// Merge runs of size 1, 2, 4, ... — no recursion, no extra memory
+struct ListNode { int val; ListNode* next; ListNode(int v = 0) : val(v), next(nullptr) {} };
+ListNode* cut(ListNode* head, int size) {        // cut after 'size' nodes
+    for (int i = 0; head &amp;&amp; i &lt; size - 1; i++) head = head-&gt;next;
+    if (!head) return nullptr;
+    ListNode* rest = head-&gt;next;
+    head-&gt;next = nullptr;
+    return rest;
+}
+ListNode* mergeInto(ListNode* tail, ListNode* a, ListNode* b) {
+    while (a &amp;&amp; b) {
+        if (a-&gt;val &lt;= b-&gt;val) { tail-&gt;next = a; a = a-&gt;next; }
+        else { tail-&gt;next = b; b = b-&gt;next; }
+        tail = tail-&gt;next;
+    }
+    tail-&gt;next = a ? a : b;
+    while (tail-&gt;next) tail = tail-&gt;next;        // tail must end at the last node
+    return tail;
+}
+ListNode* sortList(ListNode* head) {
+    int n = 0; for (ListNode* p = head; p; p = p-&gt;next) n++;
+    ListNode dummy(0); dummy.next = head;
+    for (int size = 1; size &lt; n; size *= 2) {    // log n passes
+        ListNode* tail = &amp;dummy;
+        ListNode* cur = dummy.next;
+        while (cur) {                            // merge this pass, run by run
+            ListNode* left = cur;
+            ListNode* right = cut(left, size);
+            cur = cut(right, size);
+            tail = mergeInto(tail, left, right);
+        }
+    }
+    return dummy.next;
+}   // O(n log n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="design-skiplist">
+    <h3><span class="pn">H6</span> Design Skiplist <span class="pill hot">Hard</span> <span class="muted small">· probabilistic layered lists</span></h3>
+    <p><b>Problem.</b> Implement a skiplist with search(target), add(num) and erase(num), each in O(log n) expected time, and with no duplicates.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  add 1, add 2, add 3, search(0), add 4, search(1)
+Output: false, then true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  erase(0), erase(1), search(1)
+Output: false, true, false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= num &lt;= 10^4; up to 5 * 10^4 calls; the judge's values are distinct; level 1 must always be a complete sorted list.</p>
+    <p><b>Approach.</b> Every node carries a tower of forward pointers, and each extra level is added with probability 1/2 when the node is created. Searching drops down whenever the next node would overshoot, so the expected path length is logarithmic without any rebalancing. Erase unlinks the node from every level of its own tower — keeping track of the predecessor at each level during the search is what makes that possible.</p>
+    <pre><code>// Towers of forward pointers; each extra level appears with probability 1/2
+const int MAXLEVEL = 16;
+struct SNode {
+    int val; vector&lt;SNode*&gt; next;
+    SNode(int v, int lvl) : val(v), next(lvl, nullptr) {}
+};
+class Skiplist {
+    SNode* head = new SNode(-1, MAXLEVEL);
+    int level = 1;
+    int randomLevel() {
+        int lvl = 1;
+        while (lvl &lt; MAXLEVEL &amp;&amp; rand() % 2) lvl++;      // coin flips
+        return lvl;
+    }
+public:
+    bool search(int target) {
+        SNode* cur = head;
+        for (int i = level - 1; i &gt;= 0; i--) {
+            while (cur-&gt;next[i] &amp;&amp; cur-&gt;next[i]-&gt;val &lt; target) cur = cur-&gt;next[i];
+        }
+        cur = cur-&gt;next[0];
+        return cur &amp;&amp; cur-&gt;val == target;
+    }
+    void add(int num) {
+        vector&lt;SNode*&gt; update(MAXLEVEL, head);           // predecessor per level
+        SNode* cur = head;
+        for (int i = level - 1; i &gt;= 0; i--) {
+            while (cur-&gt;next[i] &amp;&amp; cur-&gt;next[i]-&gt;val &lt; num) cur = cur-&gt;next[i];
+            update[i] = cur;
+        }
+        int lvl = randomLevel();
+        level = max(level, lvl);                         // grow if the tower is tall
+        SNode* node = new SNode(num, lvl);
+        for (int i = 0; i &lt; lvl; i++) {
+            node-&gt;next[i] = update[i]-&gt;next[i];
+            update[i]-&gt;next[i] = node;
+        }
+    }
+    bool erase(int num) {
+        vector&lt;SNode*&gt; update(MAXLEVEL, head);
+        SNode* cur = head;
+        for (int i = level - 1; i &gt;= 0; i--) {
+            while (cur-&gt;next[i] &amp;&amp; cur-&gt;next[i]-&gt;val &lt; num) cur = cur-&gt;next[i];
+            update[i] = cur;
+        }
+        SNode* target = cur-&gt;next[0];
+        if (!target || target-&gt;val != num) return false;
+        for (int i = 0; i &lt; (int)target-&gt;next.size(); i++)
+            if (update[i]-&gt;next[i] == target) update[i]-&gt;next[i] = target-&gt;next[i];
+        while (level &gt; 1 &amp;&amp; !head-&gt;next[level - 1]) level--;   // shrink empty top
+        return true;
+    }
+};   // O(log n) expected per op · O(n) expected space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) expected per op time · O(n) expected space.</p>
+  </section>
+  <section class="sub" id="reverse-nodes-in-even-length-groups">
+    <h3><span class="pn">H7</span> Reverse Nodes in Even Length Groups <span class="pill hot">Hard</span> <span class="muted small">· growing group sizes</span></h3>
+    <p><b>Problem.</b> Group the nodes into sizes 1, 2, 3, 4, ... (the last group may be shorter) and reverse each group whose size is even. Return the head.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  head = 5 -> 2 -> 6 -> 3 -> 9 -> 1 -> 7 -> 3 -> 8 -> 4
+Output: 5 -> 6 -> 2 -> 3 -> 9 -> 1 -> 4 -> 8 -> 3 -> 7</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  head = 1 -> 1 -> 0 -> 6
+Output: 1 -> 0 -> 1 -> 6</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 10^5; 0 &lt;= node values &lt;= 10^9; only the links may change.</p>
+    <p><b>Approach.</b> Walk group by group with a group index, count how many nodes the group actually contains (the last one may be short), and reverse in place only when that count is even. Reusing the head-insertion reversal from the k-group problem keeps this short — the new difficulty is that the group size is discovered rather than given.</p>
+    <pre><code>// Groups of size 1,2,3,...; reverse only the ones whose real size is even
+struct ListNode { int val; ListNode* next; ListNode(int v = 0) : val(v), next(nullptr) {} };
+ListNode* reverseEvenLengthGroups(ListNode* head) {
+    ListNode dummy(0); dummy.next = head;
+    ListNode* prev = &amp;dummy;
+    int size = 1;
+    while (prev-&gt;next) {
+        ListNode* groupStart = prev-&gt;next;
+        int count = 0; ListNode* probe = groupStart;
+        while (probe &amp;&amp; count &lt; size) { probe = probe-&gt;next; count++; }   // real size
+        if (count % 2 == 0) {                            // even: reverse in place
+            ListNode* cur = groupStart;
+            for (int i = 1; i &lt; count; i++) {            // head-insert each node
+                ListNode* nxt = cur-&gt;next;
+                cur-&gt;next = nxt-&gt;next;
+                nxt-&gt;next = prev-&gt;next;
+                prev-&gt;next = nxt;
+            }
+        }
+        for (int i = 0; i &lt; count; i++) prev = prev-&gt;next;   // skip the group
+        size++;
+    }
+    return dummy.next;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="design-a-text-editor">
+    <h3><span class="pn">H8</span> Design a Text Editor <span class="pill hot">Hard</span> <span class="muted small">· two stacks around a cursor</span></h3>
+    <p><b>Problem.</b> Support addText(text), deleteText(k) (returns how many characters were deleted), cursorLeft(k), cursorRight(k) and getText() (up to the last 10 characters before the cursor). All operations must be fast.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  addText("leetcode"), deleteText(4), addText("practice"), cursorRight(3)
+Output: 4, then "etpractice"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  cursorLeft(8), deleteText(10), cursorLeft(2), cursorRight(6)
+Output: "leet", 4, "", "practi"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> up to 10^4 calls; text contains lowercase letters; at most 2 * 10^5 characters are ever added.</p>
+    <p><b>Approach.</b> Represent the document as two stacks: characters before the cursor and characters after it. Every operation then touches only the tops — adding pushes onto the left stack, deleting pops from it, and moving the cursor shifts characters between the two. getText is the only partial read, and it is capped at ten characters.</p>
+    <pre><code>// Two stacks meeting at the cursor: left = before, right = after
+class TextEditor {
+    deque&lt;char&gt; left, right;                     // top of each stack is at the cursor
+public:
+    void addText(string text) {
+        for (char c : text) left.push_back(c);
+    }
+    int deleteText(int k) {
+        int deleted = 0;
+        while (k-- &gt; 0 &amp;&amp; !left.empty()) { left.pop_back(); deleted++; }
+        return deleted;
+    }
+    string cursorLeft(int k) {
+        while (k-- &gt; 0 &amp;&amp; !left.empty()) { right.push_back(left.back()); left.pop_back(); }
+        return tail();
+    }
+    string cursorRight(int k) {
+        while (k-- &gt; 0 &amp;&amp; !right.empty()) { left.push_back(right.back()); right.pop_back(); }
+        return tail();
+    }
+    string getText() { return tail(); }
+private:
+    string tail() {                              // last &lt;= 10 characters before cursor
+        string s;
+        int take = min&lt;size_t&gt;(10, left.size());
+        for (size_t i = left.size() - take; i &lt; left.size(); i++) s += left[i];
+        return s;
+    }
+};   // O(k) per cursor move · O(total text) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(1) per character touched time · O(total text) space.</p>
+  </section>
+  <section class="sub" id="flatten-multilevel-linked-list-o1">
+    <h3><span class="pn">H9</span> Flatten a Multilevel List in O(1) Space <span class="pill hot">Hard</span> <span class="muted small">· in-place splicing without a stack</span></h3>
+    <p><b>Problem.</b> Flatten a multilevel doubly linked list using O(1) additional memory — no stack and no recursion.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  1 - 2 - 3 with child 7 - 8 on 3
+Output: 1 - 2 - 3 - 7 - 8</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nested children three levels deep
+Output: all nodes in depth-first order</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 1000; extra space must be O(1); the doubly linked pointers must stay consistent.</p>
+    <p><b>Approach.</b> For each node with a child, walk to the child's last node and sew it onto the parent's next pointer, then splice the child chain in. Nothing is stored — but the tail walk is repeated for every child encountered, which is exactly the trade-off against the stack version: constant space, and time that degrades for deeply nested chains.</p>
+    <pre><code>// Splice each child in by walking to its tail: no stack, no recursion
+struct Node { int val; Node *prev, *next, *child; Node(int v) : val(v), prev(nullptr), next(nullptr), child(nullptr) {} };
+Node* flatten(Node* head) {
+    for (Node* cur = head; cur; cur = cur-&gt;next) {
+        if (!cur-&gt;child) continue;
+        Node* child = cur-&gt;child;
+        while (child-&gt;next) child = child-&gt;next;     // child chain's tail
+        Node* nxt = cur-&gt;next;
+        child-&gt;next = nxt;                           // sew child tail to the rest
+        if (nxt) nxt-&gt;prev = child;
+        cur-&gt;next = cur-&gt;child;                      // splice the child in
+        cur-&gt;child-&gt;prev = cur;
+        cur-&gt;child = nullptr;                        // the child pointer is consumed
+    }
+    return head;
+}   // O(n) typical, O(n²) worst time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) typical, O(n²) worst case time · O(1) space.</p>
+  </section>
+  <section class="sub" id="copy-list-with-random-pointer-o1">
+    <h3><span class="pn">H10</span> Copy a Random-Pointer List in O(1) Space <span class="pill hot">Hard</span> <span class="muted small">· interleave copies with originals</span></h3>
+    <p><b>Problem.</b> Deep-copy a list whose nodes have next and random pointers, using O(1) extra memory.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [[7,null],[13,0],[11,4],[10,2],[1,0]]
+Output: an identical independent list</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [[1,1],[2,1]]
+Output: an identical independent list</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= number of nodes &lt;= 1000; extra space must be O(1); the original list must stay usable.</p>
+    <p><b>Approach.</b> Weave the copies into the original list as A -&gt; A' -&gt; B -&gt; B', so every copy sits right after its original and <code>random</code> becomes <code>original-&gt;random-&gt;next</code>. Then unweave the two interleaved lists. The doubled list *is* the lookup table — that is the whole trick, and it is why no hash map is needed.</p>
+    <pre><code>// Weave A-&gt;A'-&gt;B-&gt;B', point randoms, then unweave
+struct Node { int val; Node *next, *random; Node(int v) : val(v), next(nullptr), random(nullptr) {} };
+Node* copyRandomList(Node* head) {
+    for (Node* p = head; p; p = p-&gt;next-&gt;next) {      // 1. weave in the copies
+        Node* c = new Node(p-&gt;val);
+        c-&gt;next = p-&gt;next;
+        p-&gt;next = c;
+    }
+    for (Node* p = head; p; p = p-&gt;next-&gt;next)        // 2. fix random pointers
+        if (p-&gt;random) p-&gt;next-&gt;random = p-&gt;random-&gt;next;
+    Node dummy(0), *tail = &amp;dummy;
+    for (Node* p = head; p; ) {                       // 3. unweave
+        Node* c = p-&gt;next;
+        p-&gt;next = c-&gt;next;                            // restore the original
+        tail-&gt;next = c; tail = c;
+        p = p-&gt;next;
+    }
+    tail-&gt;next = nullptr;
+    return dummy.next;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="reverse-linked-list-ii">
+    <h3><span class="pn">H11</span> Reverse a Section of a List <span class="pill hot">Hard</span> <span class="muted small">· one-pass head insertion</span></h3>
+    <p><b>Problem.</b> Reverse the nodes between positions left and right (1-indexed) in a single pass with O(1) extra space, and return the head.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  head = 1 -> 2 -> 3 -> 4 -> 5, left = 2, right = 4
+Output: 1 -> 4 -> 3 -> 2 -> 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  head = 5, left = 1, right = 1
+Output: 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 500; 1 &lt;= left &lt;= right &lt;= number of nodes; only the links may change.</p>
+    <p><b>Approach.</b> Walk to the node before <code>left</code> and then repeatedly lift the node after it to the front of the section: after right-left liftings the section is reversed, and the node before <code>left</code> never moves — which is why the loop needs no position bookkeeping and works for left = 1 with a dummy head.</p>
+    <pre><code>// Lift the node after 'prev' to the front of the section, right-left times
+struct ListNode { int val; ListNode* next; ListNode(int v = 0) : val(v), next(nullptr) {} };
+ListNode* reverseBetween(ListNode* head, int left, int right) {
+    ListNode dummy(0); dummy.next = head;
+    ListNode* prev = &amp;dummy;
+    for (int i = 1; i &lt; left; i++) prev = prev-&gt;next;      // node before the section
+    ListNode* cur = prev-&gt;next;                            // stays the section's tail
+    for (int i = 0; i &lt; right - left; i++) {
+        ListNode* nxt = cur-&gt;next;
+        cur-&gt;next = nxt-&gt;next;                             // detach nxt
+        nxt-&gt;next = prev-&gt;next;                            // lift it to the front
+        prev-&gt;next = nxt;
+    }
+    return dummy.next;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="next-greater-node-in-linked-list">
+    <h3><span class="pn">H12</span> Next Greater Node in a Linked List <span class="pill hot">Hard</span> <span class="muted small">· monotonic stack over list indices</span></h3>
+    <p><b>Problem.</b> Return an array where the i-th value is the value of the first node after node i that has a strictly greater value, or 0 if there is none.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  head = 2 -> 1 -> 5
+Output: [5,5,0]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  head = 2 -> 7 -> 4 -> 3 -> 5
+Output: [7,0,5,5,0]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 10^4; 1 &lt;= node values &lt;= 10^9; the array is indexed by node position from the head.</p>
+    <p><b>Approach.</b> The list has no random access, so copy the values into an array (or keep a monotonic stack of node pointers) and apply the next-greater-element pass from the stack topic: keep a decreasing stack of indices, and every new value resolves all smaller values waiting on top. Each node is pushed and popped once, so the pass is linear.</p>
+    <pre><code>// Same decreasing stack as in arrays, over a list's indices
+struct ListNode { int val; ListNode* next; ListNode(int v = 0) : val(v), next(nullptr) {} };
+vector&lt;int&gt; nextLargerNodes(ListNode* head) {
+    vector&lt;int&gt; vals;
+    for (ListNode* p = head; p; p = p-&gt;next) vals.push_back(p-&gt;val);
+    vector&lt;int&gt; ans(vals.size(), 0), st;          // decreasing stack of indices
+    for (int i = 0; i &lt; (int)vals.size(); i++) {
+        while (!st.empty() &amp;&amp; vals[st.back()] &lt; vals[i]) {
+            ans[st.back()] = vals[i];             // first greater value to the right
+            st.pop_back();
+        }
+        st.push_back(i);
+    }
+    return ans;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+</section>
 
   </main>
 </div>
 
 <footer>
-  <p><b>C++ bank</b> — 150 problems across 5 topics, with complete solutions in
+  <p><b>C++ bank</b> — 180 problems across 6 topics, with complete solutions in
   C++17/20/23 solutions.</p>
   <p class="small">Same problems in every language:
     <a href="cpp-leetcode.html">C++</a> · <a href="java-leetcode.html">Java</a> · <a href="python-leetcode.html">Python</a>
