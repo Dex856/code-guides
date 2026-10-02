@@ -28,8 +28,10 @@ jobs:
           cp -r site/. _site/
           test -f _site/index.html
 
-      - name: Configure Pages
+      - name: Configure Pages (enables Pages on first run if needed)
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
