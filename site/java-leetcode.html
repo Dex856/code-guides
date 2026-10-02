@@ -12756,12 +12756,946 @@ String nearestPalindromic(String n) {
     <p class="cx"><b>Complexity:</b> O(len(n)) time time · O(len(n)) space.</p>
   </section>
 </section>
+<section class="chapter" id="t16">
+  <h2><span class="num">16</span> Prefix Sums &amp; Range Queries</h2>
+  <p class="tagline">Precompute once, answer forever: a running total turns any range into a subtraction.</p>
+  <div class="card"><p><b>What this topic trains.</b> The whole topic rests on one identity: sum(l..r) = prefix[r + 1] - prefix[l]. Everything else is a variation on what the prefix carries — sums for range weight, remainders for divisibility, XOR for parity, counts per value for frequency questions, and per-row prefixes for 2D blocks. When the array keeps changing, a Fenwick tree stores the same information in a form that survives updates; when the question is "how many subarrays sum to k", the prefixes themselves become a hash map or a sorted list, and counting pairs replaces scanning. Difference arrays are the inverse view: they record where a value starts and stops mattering instead of what it is.</p>
+<p class="small muted">Ordering: easy 1–2 build and use a prefix array, 3–4 match left and right sums, 5–6 track a running total while scanning; medium 1–3 cover 2D prefixes, prefix/suffix products and split sums, 4–5 turn prefixes into hash maps and XOR states, 6–7 pair prefixes with a sorted array and a squared block, 8 moves to sliding windows over prefixes, 9–12 add updates (Fenwick), per-value frequencies, per-value counts and sorted subarray sums; hard 1–2 read arrays as difference arrays, 3–5 combine prefix tables with window and index structures, 6–9 count pairs and triplets with Fenwick and merge sorting, 10–12 push prefixes through monotonic stacks, two-pointer windows and sorted contributions.</p></div>
+  <section class="sub" id="running-sum-of-1d-array">
+    <h3><span class="pn">E1</span> Running Sum of 1d Array <span class="pill">Easy</span> <span class="muted small">· accumulate in place</span></h3>
+    <p><b>Problem.</b> Return the running sum of nums: the i-th entry is the sum of nums[0..i].</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,2,3,4]
+Output: [1,3,6,10]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,1,1,1,1]
+Output: [1,2,3,4,5]</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [3,1,2,10,1]
+Output: [3,4,6,16,17]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 1000; -10^6 &lt;= nums[i] &lt;= 10^6.</p>
+    <p><b>Approach.</b> A running sum is the prefix array itself, so one pass suffices: each entry is the previous running total plus the current value. Writing the result back into the array avoids a second buffer, and there is no reason to ever recompute a partial sum.</p>
+    <pre><code>// One pass: each entry is the previous total plus the value
+int[] runningSum(int[] nums) {
+    for (int i = 1; i &lt; nums.length; i++)
+        nums[i] += nums[i - 1];              // nums[i] now holds prefix[i]
+    return nums;
+}   // O(n) time · O(1) extra space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(1) extra space.</p>
+  </section>
+  <section class="sub" id="range-sum-query-immutable">
+    <h3><span class="pn">E2</span> Range Sum Query - Immutable <span class="pill">Easy</span> <span class="muted small">· prefix array, O(1) queries</span></h3>
+    <p><b>Problem.</b> Design a structure over a fixed array that answers sumRange(left, right) — the sum of nums[left..right] — quickly.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  ["NumArray","sumRange","sumRange","sumRange"] [[[-2,0,3,-5,2,-1]],[0,2],[2,5],[0,5]]
+Output: [null, 1, -1, -3]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 10^4; -10^5 &lt;= nums[i] &lt;= 10^5; 0 &lt;= left &lt;= right &lt; nums.length; at most 10^4 calls to sumRange.</p>
+    <p><b>Approach.</b> Build the prefix array once in the constructor, offset by one so that prefix[i] is the sum of the first i values. Any range then costs one subtraction: prefix[right + 1] - prefix[left]. Paying O(n) up front is what makes every later query constant time.</p>
+    <pre><code>// Prefix with a leading zero: each query is one subtraction
+class NumArray {
+    private int[] prefix;
+    NumArray(int[] nums) {
+        prefix = new int[nums.length + 1];
+        for (int i = 0; i &lt; nums.length; i++)
+            prefix[i + 1] = prefix[i] + nums[i];   // prefix[i] = sum of first i
+    }
+    int sumRange(int left, int right) {
+        return prefix[right + 1] - prefix[left];   // sum(left..right)
+    }
+}   // O(n) build · O(1) per query · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) build, O(1) per query time · O(n) space.</p>
+  </section>
+  <section class="sub" id="find-pivot-index">
+    <h3><span class="pn">E3</span> Find Pivot Index <span class="pill">Easy</span> <span class="muted small">· left sum against total minus left</span></h3>
+    <p><b>Problem.</b> Return the leftmost index where the sum of everything to its left equals the sum of everything to its right, or -1 if none exists.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,7,3,6,5,6]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,2,3]
+Output: -1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [2,1,-1]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 10^4; -1000 &lt;= nums[i] &lt;= 1000.</p>
+    <p><b>Approach.</b> Take the total once, then sweep while keeping the sum of what you have passed. The right-hand sum is the total minus the left sum and the current value, so a single comparison per index decides the answer — no second sweep and no prefix array needed.</p>
+    <pre><code>// right = total - left - nums[i], so one sweep decides it
+int pivotIndex(int[] nums) {
+    long total = 0;
+    for (int x : nums) total += x;
+    long left = 0;
+    for (int i = 0; i &lt; nums.length; i++) {
+        if (left == total - left - nums[i]) return i;   // balanced here
+        left += nums[i];                                // move the pivot right
+    }
+    return -1;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="left-and-right-sum-differences">
+    <h3><span class="pn">E4</span> Left and Right Sum Differences <span class="pill">Easy</span> <span class="muted small">· two running totals</span></h3>
+    <p><b>Problem.</b> For every index i return |sum(nums[0..i-1]) - sum(nums[i+1..n-1])|.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [10,4,8,3]
+Output: [15,1,11,22]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1]
+Output: [0]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 1000; -10^5 &lt;= nums[i] &lt;= 10^5.</p>
+    <p><b>Approach.</b> Sweep once with the left sum in hand; the right sum is the total minus the left sum minus the current value. Subtracting and taking the absolute value gives each answer in O(1), so the whole array is built in one pass over the input.</p>
+    <pre><code>// Keep the left total; the right total is what remains
+int[] leftRightDifference(int[] nums) {
+    long total = 0;
+    for (int x : nums) total += x;
+    int[] answer = new int[nums.length];
+    long left = 0;
+    for (int i = 0; i &lt; nums.length; i++) {
+        long right = total - left - nums[i];
+        answer[i] = (int) Math.abs(left - right);
+        left += nums[i];
+    }
+    return answer;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="minimum-value-to-get-positive-step-by-step-sum">
+    <h3><span class="pn">E5</span> Minimum Value to Get Positive Step by Step Sum <span class="pill">Easy</span> <span class="muted small">· lowest prefix decides the start</span></h3>
+    <p><b>Problem.</b> Pick a startValue so that every step-by-step sum (startValue plus the first i values) is at least 1. Return the smallest such startValue.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [-3,2,-3,4,2]
+Output: 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,2]
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [1,-2,-3]
+Output: 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 100; -100 &lt;= nums[i] &lt;= 100.</p>
+    <p><b>Approach.</b> The step-by-step sums are startValue plus the prefix sums, so the tightest constraint comes from the smallest prefix. Choose startValue = 1 - minPrefix, which is exactly positive enough at the worst moment and no larger.</p>
+    <pre><code>// The worst moment is the smallest prefix sum
+int minStartValue(int[] nums) {
+    int prefix = 0, lowest = 0;
+    for (int x : nums) {
+        prefix += x;
+        lowest = Math.min(lowest, prefix);   // the deepest dip
+    }
+    return 1 - lowest;                       // lift that dip up to 1
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="maximum-score-after-splitting-a-string">
+    <h3><span class="pn">E6</span> Maximum Score After Splitting a String <span class="pill">Easy</span> <span class="muted small">· prefix zeros + suffix ones</span></h3>
+    <p><b>Problem.</b> Split the binary string s into two non-empty parts. The score is the number of zeros on the left plus the number of ones on the right. Return the maximum score.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "011101"
+Output: 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "00111"
+Output: 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  s = "1111"
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= s.length &lt;= 500; s consists of '0' and '1' characters.</p>
+    <p><b>Approach.</b> Count the ones in the whole string first, then walk the split point: as the left part grows it gains a zero or loses a one from the right part, so each candidate score is available in O(1) and the best one is found in a single sweep.</p>
+    <pre><code>// Walk the split point: zeros left plus ones right
+int maxScore(String s) {
+    int ones = 0;
+    for (char ch : s.toCharArray()) if (ch == '1') ones++;
+    int zeros = 0, best = 0;
+    for (int i = 0; i + 1 &lt; s.length(); i++) {
+        if (s.charAt(i) == '0') zeros++;     // the left part gained a zero
+        else ones--;                         // the right part lost a one
+        best = Math.max(best, zeros + ones);
+    }
+    return best;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="range-sum-query-2d-immutable">
+    <h3><span class="pn">M1</span> Range Sum Query 2D - Immutable <span class="pill">Medium</span> <span class="muted small">· 2D prefix sums with inclusion-exclusion</span></h3>
+    <p><b>Problem.</b> Design a structure over a fixed matrix that returns the sum of the submatrix with corners (row1, col1) and (row2, col2).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  ["NumMatrix","sumRegion","sumRegion","sumRegion"] [[[[3,0,1,4,2],[5,6,3,2,1],[1,2,0,1,5],[4,1,0,1,7],[1,0,3,0,5]]],[2,1,4,3],[1,1,2,2],[1,2,2,4]]
+Output: [null, 8, 11, 12]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 200; -10^4 &lt;= matrix[i][j] &lt;= 10^4; at most 10^4 calls to sumRegion.</p>
+    <p><b>Approach.</b> Extend the prefix idea to two dimensions: prefix[i][j] is the sum of the block from the origin to (i-1, j-1), built with one recurrence. A rectangle is then the big block minus the two strips above and to the left, with the doubly-subtracted corner added back — the inclusion-exclusion rule, four look-ups per query.</p>
+    <pre><code>// prefix[i][j] sums the block above and left of (i-1, j-1)
+class NumMatrix {
+    private long[][] prefix;
+    NumMatrix(int[][] matrix) {
+        int rows = matrix.length, cols = matrix[0].length;
+        prefix = new long[rows + 1][cols + 1];
+        for (int i = 0; i &lt; rows; i++)
+            for (int j = 0; j &lt; cols; j++)
+                prefix[i + 1][j + 1] = prefix[i][j + 1] + prefix[i + 1][j]
+                                     - prefix[i][j] + matrix[i][j];   // add the corner back
+    }
+    int sumRegion(int row1, int col1, int row2, int col2) {
+        return (int) (prefix[row2 + 1][col2 + 1] - prefix[row1][col2 + 1]
+                    - prefix[row2 + 1][col1] + prefix[row1][col1]);
+    }
+}   // O(rows·cols) build · O(1) per query</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · cols) build, O(1) per query time · O(rows · cols) space.</p>
+  </section>
+  <section class="sub" id="product-of-array-except-self">
+    <h3><span class="pn">M2</span> Product of Array Except Self <span class="pill">Medium</span> <span class="muted small">· prefix and suffix products in place</span></h3>
+    <p><b>Problem.</b> Return an array where answer[i] is the product of every element of nums except nums[i], without using division.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,2,3,4]
+Output: [24,12,8,6]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [-1,1,0,-3,3]
+Output: [0,0,9,0,0]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= nums.length &lt;= 10^5; -30 &lt;= nums[i] &lt;= 30; the product of any prefix or suffix fits in a 32-bit integer.</p>
+    <p><b>Approach.</b> answer[i] is the product of everything left of i times the product of everything right of i. Fill the result with prefix products on a first pass, then walk backwards with a running suffix product multiplied in — two passes, no division and no second array.</p>
+    <pre><code>// ans[i] = (product left of i) · (product right of i)
+int[] productExceptSelf(int[] nums) {
+    int n = nums.length;
+    int[] answer = new int[n];
+    Arrays.fill(answer, 1);
+    int running = 1;
+    for (int i = 0; i &lt; n; i++) {
+        answer[i] = running;                 // prefix product, excluding nums[i]
+        running *= nums[i];
+    }
+    running = 1;
+    for (int i = n - 1; i &gt;= 0; i--) {
+        answer[i] *= running;                // ... times the suffix product
+        running *= nums[i];
+    }
+    return answer;
+}   // O(n) time · O(1) extra space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(1) extra space.</p>
+  </section>
+  <section class="sub" id="number-of-ways-to-split-array">
+    <h3><span class="pn">M3</span> Number of Ways to Split Array <span class="pill">Medium</span> <span class="muted small">· prefix versus the remaining total</span></h3>
+    <p><b>Problem.</b> Count the indices i with 0 &lt;= i &lt; n - 1 where the sum of the first i + 1 elements is at least the sum of the rest.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [10,4,-8,7]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [2,3,1,0]
+Output: 2</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= nums.length &lt;= 10^5; -10^5 &lt;= nums[i] &lt;= 10^5.</p>
+    <p><b>Approach.</b> Total the array once, then sweep keeping a running left sum. The split at i is valid when left &gt;= total - left, and a single comparison per index is enough — the prefix is built as you go, so no extra array is needed.</p>
+    <pre><code>// A split is valid when the left prefix reaches half the total
+int waysToSplitArray(int[] nums) {
+    long total = 0;
+    for (int x : nums) total += x;
+    long left = 0;
+    int ways = 0;
+    for (int i = 0; i + 1 &lt; nums.length; i++) {
+        left += nums[i];                     // prefix ending at i
+        if (left &gt;= total - left) ways++;    // both sides non-empty
+    }
+    return ways;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="binary-subarrays-with-sum">
+    <h3><span class="pn">M4</span> Binary Subarrays With Sum <span class="pill">Medium</span> <span class="muted small">· prefix counts in a hash map</span></h3>
+    <p><b>Problem.</b> Count the non-empty subarrays of the 0/1 array nums whose sum is exactly goal.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,0,1,0,1], goal = 2
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [0,0,0,0,0], goal = 0
+Output: 15</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 3 · 10^4; nums[i] is 0 or 1; 0 &lt;= goal &lt;= nums.length.</p>
+    <p><b>Approach.</b> A subarray sums to goal exactly when two prefixes differ by goal, so count how many earlier prefixes hold each value. Walking left to right and asking for prefix - goal counts every subarray ending here in O(1); zeros are handled naturally because repeated prefix values accumulate in the map.</p>
+    <pre><code>// Subarrays ending here = prefixes equal to prefix - goal
+int numSubarraysWithSum(int[] nums, int goal) {
+    Map&lt;Integer, Integer&gt; seen = new HashMap&lt;&gt;();   // prefix value -&gt; frequency
+    seen.put(0, 1);                                 // the empty prefix
+    int prefix = 0, count = 0;
+    for (int x : nums) {
+        prefix += x;
+        count += seen.getOrDefault(prefix - goal, 0);   // ends a valid subarray
+        seen.merge(prefix, 1, Integer::sum);
+    }
+    return count;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="xor-queries-of-a-subarray">
+    <h3><span class="pn">M5</span> XOR Queries of a Subarray <span class="pill">Medium</span> <span class="muted small">· prefix XOR</span></h3>
+    <p><b>Problem.</b> Answer each query [left, right] with the XOR of arr[left..right].</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  arr = [1,3,4,8], queries = [[0,1],[1,2],[0,3],[3,3]]
+Output: [2,7,14,8]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  arr = [4,8,2,10], queries = [[2,3],[1,3],[0,0],[0,3]]
+Output: [8,0,4,4]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= arr.length, queries.length &lt;= 3 · 10^4; 0 &lt;= arr[i] &lt;= 10^9; queries[i].length == 2; 0 &lt;= left &lt;= right &lt; arr.length.</p>
+    <p><b>Approach.</b> XOR is its own inverse, so prefixes work exactly as they do for sums: prefix[i + 1] = prefix[i] ^ arr[i], and a range is prefix[right + 1] ^ prefix[left]. Anything appearing in both prefixes cancels, leaving precisely the query's range.</p>
+    <pre><code>// XOR of a range: prefixes that cancel everything outside it
+int[] xorQueries(int[] arr, int[][] queries) {
+    int[] prefix = new int[arr.length + 1];
+    for (int i = 0; i &lt; arr.length; i++)
+        prefix[i + 1] = prefix[i] ^ arr[i];      // running XOR
+    int[] answer = new int[queries.length];
+    for (int i = 0; i &lt; queries.length; i++)
+        answer[i] = prefix[queries[i][1] + 1] ^ prefix[queries[i][0]];
+    return answer;
+}   // O(n + q) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n + q) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="sum-of-absolute-differences-in-a-sorted-array">
+    <h3><span class="pn">M6</span> Sum of Absolute Differences in a Sorted Array <span class="pill">Medium</span> <span class="muted small">· prefix sums split the absolute value</span></h3>
+    <p><b>Problem.</b> For each index i of the sorted array nums, return the sum of |nums[i] - nums[j]| over all j.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [2,3,5]
+Output: [4,3,5]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,4,6,8,10]
+Output: [24,15,13,15,21]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= nums.length &lt;= 10^5; 0 &lt;= nums[i] &lt;= 10^4; nums is sorted in non-decreasing order.</p>
+    <p><b>Approach.</b> Sorted order removes the absolute value: everything to the left is smaller and everything to the right is larger, so the total is (i · nums[i] - sum of the left part) + (sum of the right part - (n - 1 - i) · nums[i]). Prefix sums give both parts instantly, turning an O(n²) sum into a single pass.</p>
+    <pre><code>// Sorted: left side below, right side above — prefix sums do the rest
+int[] getSumAbsoluteDifferences(int[] nums) {
+    int n = nums.length;
+    long[] prefix = new long[n + 1];
+    for (int i = 0; i &lt; n; i++) prefix[i + 1] = prefix[i] + nums[i];
+    int[] answer = new int[n];
+    for (int i = 0; i &lt; n; i++) {
+        long left = (long) i * nums[i] - prefix[i];                              // smaller side
+        long right = (prefix[n] - prefix[i + 1]) - (long) (n - 1 - i) * nums[i];
+        answer[i] = (int) (left + right);
+    }
+    return answer;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="matrix-block-sum">
+    <h3><span class="pn">M7</span> Matrix Block Sum <span class="pill">Medium</span> <span class="muted small">· 2D prefix with clamped corners</span></h3>
+    <p><b>Problem.</b> Return a matrix where answer[i][j] is the sum of all mat[r][c] with |r - i| &lt;= k and |c - j| &lt;= k.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  mat = [[1,2,3],[4,5,6],[7,8,9]], k = 1
+Output: [[12,21,16],[27,45,33],[24,39,28]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  mat = [[1,2,3],[4,5,6],[7,8,9]], k = 2
+Output: [[45,45,45],[45,45,45],[45,45,45]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 100; 1 &lt;= mat[i][j] &lt;= 100; 0 &lt;= k &lt;= 100.</p>
+    <p><b>Approach.</b> The 2D prefix from the previous problem turns each block into four look-ups. The only new idea is clamping the rectangle to the matrix borders, which is exactly why the prefix carries a leading row and column of zeros — no bounds checks are needed inside the sum itself.</p>
+    <pre><code>// Same 2D prefix; clamp each block to the matrix borders
+int[][] matrixBlockSum(int[][] mat, int k) {
+    int rows = mat.length, cols = mat[0].length;
+    long[][] prefix = new long[rows + 1][cols + 1];
+    for (int i = 0; i &lt; rows; i++)
+        for (int j = 0; j &lt; cols; j++)
+            prefix[i + 1][j + 1] = prefix[i][j + 1] + prefix[i + 1][j] - prefix[i][j] + mat[i][j];
+    int[][] answer = new int[rows][cols];
+    for (int i = 0; i &lt; rows; i++)
+        for (int j = 0; j &lt; cols; j++) {
+            int r1 = Math.max(0, i - k), c1 = Math.max(0, j - k);
+            int r2 = Math.min(rows - 1, i + k), c2 = Math.min(cols - 1, j + k);
+            answer[i][j] = (int) (prefix[r2 + 1][c2 + 1] - prefix[r1][c2 + 1]
+                                - prefix[r2 + 1][c1] + prefix[r1][c1]);
+        }
+    return answer;
+}   // O(rows·cols) time · O(rows·cols) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · cols) time time · O(rows · cols) space.</p>
+  </section>
+  <section class="sub" id="maximum-sum-of-two-non-overlapping-subarrays">
+    <h3><span class="pn">M8</span> Maximum Sum of Two Non-Overlapping Subarrays <span class="pill">Medium</span> <span class="muted small">· sliding window + best-so-far prefix</span></h3>
+    <p><b>Problem.</b> Given nums and two lengths, return the largest sum of two non-overlapping subarrays of those lengths (in either order).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [0,6,5,2,2,5,1,9,4], firstLen = 1, secondLen = 2
+Output: 20</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [3,8,1,3,2,1,8,9,0], firstLen = 3, secondLen = 2
+Output: 29</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [2,1,5,6,0,9,5,0,3,8], firstLen = 4, secondLen = 3
+Output: 31</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= firstLen, secondLen &lt;= 1000; 2 &lt;= nums.length &lt;= 1000; 0 &lt;= nums[i] &lt;= 1000.</p>
+    <p><b>Approach.</b> Fix the order: one window of the first length on the left, one of the second length on the right. Sweep the left window once recording the best sum seen so far, then slide the right window and combine it with that record — each pairing is considered exactly once. Running the same routine with the lengths swapped covers the other order.</p>
+    <pre><code>// Best left window so far + each right window, then swap the lengths
+int bestOrder(int[] nums, int first, int second) {
+    int n = nums.length;
+    int[] best = new int[n];                 // best `first`-window ending at or before i
+    int window = 0;
+    for (int i = 0; i &lt; first; i++) window += nums[i];
+    best[first - 1] = window;
+    for (int i = first; i &lt; n; i++) {
+        window += nums[i] - nums[i - first]; // slide by one
+        best[i] = Math.max(best[i - 1], window);
+    }
+    window = 0;
+    for (int i = first; i &lt; first + second; i++) window += nums[i];
+    int answer = best[first - 1] + window;   // second window starts at `first`
+    for (int i = first + second; i &lt; n; i++) {
+        window += nums[i] - nums[i - second]; // slide the right window
+        answer = Math.max(answer, best[i - second] + window);
+    }
+    return answer;
+}
+int maxSumTwoNoOverlap(int[] nums, int firstLen, int secondLen) {
+    return Math.max(bestOrder(nums, firstLen, secondLen), bestOrder(nums, secondLen, firstLen));
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="range-sum-query-mutable">
+    <h3><span class="pn">M9</span> Range Sum Query - Mutable <span class="pill">Medium</span> <span class="muted small">· Fenwick tree (binary indexed tree)</span></h3>
+    <p><b>Problem.</b> Design a structure over a mutable array that supports update(index, value) and sumRange(left, right).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  ["NumArray","sumRange","update","sumRange"] [[[1,3,5]],[0,2],[1,2],[0,2]]
+Output: [null, 9, null, 8]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 3 · 10^4; -100 &lt;= nums[i] &lt;= 100; 0 &lt;= index &lt; nums.length; -100 &lt;= value &lt;= 100; at most 3 · 10^4 calls in total.</p>
+    <p><b>Approach.</b> A prefix array breaks under updates, so keep a Fenwick tree instead: entry i stores the sum of a range of length lowbit(i) ending at i. Adding to a prefix walks upward by lowbit, reading a prefix walks downward, and both touch only O(log n) entries — so updates and queries are both fast.</p>
+    <pre><code>// Fenwick tree: each entry owns a lowbit-sized block
+class NumArray {
+    private int[] tree, values;
+    private int n;
+    NumArray(int[] nums) {
+        n = nums.length;
+        tree = new int[n + 1];
+        values = nums.clone();
+        for (int i = 0; i &lt; n; i++) add(i, nums[i]);   // build by inserting
+    }
+    private void add(int index, int delta) {
+        for (int i = index + 1; i &lt;= n; i += i &amp; (-i)) tree[i] += delta;   // walk up
+    }
+    private int prefixSum(int index) {               // sum of values[0..index - 1]
+        int total = 0;
+        for (int i = index; i &gt; 0; i -= i &amp; (-i)) total += tree[i];        // walk down
+        return total;
+    }
+    void update(int index, int value) {
+        add(index, value - values[index]);            // store only the change
+        values[index] = value;
+    }
+    int sumRange(int left, int right) {
+        return prefixSum(right + 1) - prefixSum(left);
+    }
+}   // O(log n) per operation · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) per update and per query time · O(n) space.</p>
+  </section>
+  <section class="sub" id="range-frequency-queries">
+    <h3><span class="pn">M10</span> Range Frequency Queries <span class="pill">Medium</span> <span class="muted small">· positions per value + binary search</span></h3>
+    <p><b>Problem.</b> Design a structure that answers query(left, right, value): how many times value occurs in arr[left..right].</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  ["RangeFreqQuery","query","query"] [[[12,33,4,56,22,2,34,33,22,12,34,56]],[1,2,4],[0,11,33]]
+Output: [null, 1, 2]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= arr.length &lt;= 10^5; 1 &lt;= arr[i], value &lt;= 10^4; 0 &lt;= left &lt;= right &lt; arr.length; at most 10^5 calls to query.</p>
+    <p><b>Approach.</b> Scanning the range per query is too slow, but the occurrences of one value are naturally sorted. Store the index list of every value, then count how many of those indices fall inside [left, right] with two binary searches — the answer is the distance between the two insertion points.</p>
+    <pre><code>// Sorted index lists: count them between left and right
+class RangeFreqQuery {
+    private Map&lt;Integer, List&lt;Integer&gt;&gt; positions = new HashMap&lt;&gt;();
+    RangeFreqQuery(int[] arr) {
+        for (int i = 0; i &lt; arr.length; i++)
+            positions.computeIfAbsent(arr[i], key -&gt; new ArrayList&lt;&gt;()).add(i);
+    }
+    int query(int left, int right, int value) {
+        List&lt;Integer&gt; list = positions.get(value);
+        if (list == null) return 0;
+        return upperBound(list, right) - lowerBound(list, left);
+    }
+    private int lowerBound(List&lt;Integer&gt; list, int target) {
+        int low = 0, high = list.size();
+        while (low &lt; high) {
+            int mid = (low + high) / 2;
+            if (list.get(mid) &lt; target) low = mid + 1;
+            else high = mid;
+        }
+        return low;
+    }
+    private int upperBound(List&lt;Integer&gt; list, int target) {
+        int low = 0, high = list.size();
+        while (low &lt; high) {
+            int mid = (low + high) / 2;
+            if (list.get(mid) &lt;= target) low = mid + 1;
+            else high = mid;
+        }
+        return low;
+    }
+}   // O(n) build · O(log n) per query</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) build, O(log n) per query time · O(n) space.</p>
+  </section>
+  <section class="sub" id="minimum-absolute-difference-queries">
+    <h3><span class="pn">M11</span> Minimum Absolute Difference Queries <span class="pill">Medium</span> <span class="muted small">· occurrence lists + a bounded value range</span></h3>
+    <p><b>Problem.</b> For each query [left, right], return the minimum |nums[i] - nums[j]| over distinct values inside the subarray, or -1 if the subarray holds fewer than two distinct values.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,3,4,8], queries = [[0,1],[1,2],[2,3],[0,3]]
+Output: [2,1,4,1]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [4,5,2,2,7,10], queries = [[2,3],[0,2],[0,5],[3,5]]
+Output: [-1,1,1,3]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length, queries.length &lt;= 10^5; 1 &lt;= nums[i] &lt;= 100; 0 &lt;= left &lt;= right &lt; nums.length.</p>
+    <p><b>Approach.</b> The values live in a small fixed range, so a query only needs to know which of the 100 values appear inside it. Scanning those 100 candidates in order and keeping the gap between consecutive present values finds the minimum in constant-ish time — a presence test per value comes from its sorted index list.</p>
+    <pre><code>// Only 100 possible values: check which appear, then take gaps
+int[] minDifference(int[] nums, int[][] queries) {
+    Map&lt;Integer, List&lt;Integer&gt;&gt; positions = new HashMap&lt;&gt;();
+    for (int i = 0; i &lt; nums.length; i++)
+        positions.computeIfAbsent(nums[i], key -&gt; new ArrayList&lt;&gt;()).add(i);
+    int[] answer = new int[queries.length];
+    for (int q = 0; q &lt; queries.length; q++) {
+        int left = queries[q][0], right = queries[q][1], previous = -1, best = Integer.MAX_VALUE;
+        for (int value = 1; value &lt;= 100; value++) {
+            List&lt;Integer&gt; list = positions.get(value);
+            if (list == null) continue;
+            int at = lowerBound(list, left);
+            if (at == list.size() || list.get(at) &gt; right) continue;   // not inside
+            if (previous != -1) best = Math.min(best, value - previous);
+            previous = value;
+        }
+        answer[q] = best == Integer.MAX_VALUE ? -1 : best;
+    }
+    return answer;
+}
+int lowerBound(List&lt;Integer&gt; list, int target) {
+    int low = 0, high = list.size();
+    while (low &lt; high) {
+        int mid = (low + high) / 2;
+        if (list.get(mid) &lt; target) low = mid + 1;
+        else high = mid;
+    }
+    return low;
+}   // O(100 log n) per query · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(100 · log n) per query time · O(n) space.</p>
+  </section>
+  <section class="sub" id="range-sum-of-sorted-subarray-sums">
+    <h3><span class="pn">M12</span> Range Sum of Sorted Subarray Sums <span class="pill">Medium</span> <span class="muted small">· prefix sums for every subarray, then sort</span></h3>
+    <p><b>Problem.</b> Take every non-empty subarray sum of nums, sort them, and return the sum of the entries from position left to position right (1-indexed) modulo 10^9 + 7.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,2,3,4], n = 4, left = 1, right = 5
+Output: 13</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,2,3,4], n = 4, left = 3, right = 4
+Output: 6</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [1,2,3,4], n = 4, left = 1, right = 10
+Output: 50</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 1000; 1 &lt;= nums[i] &lt;= 100; 1 &lt;= left &lt;= right &lt;= n · (n + 1) / 2.</p>
+    <p><b>Approach.</b> With a small array, the direct reading of the statement is fast enough: build every subarray sum by extending a running total from each starting point, sort the n(n+1)/2 values, and add the requested slice. Prefix-style running totals are what make the collection step quadratic rather than cubic.</p>
+    <pre><code>// Collect every subarray sum with running totals, sort, slice
+int rangeSum(int[] nums, int n, int left, int right) {
+    final long MOD = 1000000007L;
+    long[] sums = new long[n * (n + 1) / 2];
+    int at = 0;
+    for (int i = 0; i &lt; n; i++) {
+        long running = 0;
+        for (int j = i; j &lt; n; j++) {
+            running += nums[j];               // sum of nums[i..j]
+            sums[at++] = running;
+        }
+    }
+    Arrays.sort(sums);
+    long total = 0;
+    for (int i = left - 1; i &lt;= right - 1; i++) total = (total + sums[i]) % MOD;
+    return (int) total;
+}   // O(n^2 log n) time · O(n^2) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n² log n) time time · O(n²) space.</p>
+  </section>
+  <section class="sub" id="minimum-number-of-increments-on-subarrays-to-form-a-target-array">
+    <h3><span class="pn">H1</span> Minimum Number of Increments on Subarrays to Form a Target Array <span class="pill hot">Hard</span> <span class="muted small">· difference array: charge every rise</span></h3>
+    <p><b>Problem.</b> Starting from all zeros, each operation adds 1 to every element of a contiguous subarray. Return the minimum number of operations that build target.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  target = [1,2,3,2,1]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  target = [3,1,1,2]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  target = [3,1,5,4,2]
+Output: 7</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= target.length &lt;= 10^5; 1 &lt;= target[i] &lt;= 10^5.</p>
+    <p><b>Approach.</b> Read the array as differences: every increase from target[i-1] to target[i] costs exactly that many new increments, because the extra height cannot be produced by any operation that already covers the left part. Drops are free — those layers were paid for earlier — so the answer is the sum of the positive rises, with the first element compared against zero.</p>
+    <pre><code>// Sum of the positive rises: a drop is already paid for
+int minNumberOperations(int[] target) {
+    long operations = 0;
+    int previous = 0;
+    for (int value : target) {
+        if (value &gt; previous) operations += value - previous;   // new layers needed
+        previous = value;
+    }
+    return (int) operations;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="smallest-rotation-with-highest-score">
+    <h3><span class="pn">H2</span> Smallest Rotation with Highest Score <span class="pill hot">Hard</span> <span class="muted small">· difference array over rotations</span></h3>
+    <p><b>Problem.</b> Rotating nums by k moves each element k places left; a rotation scores one point per index i with nums[i] &lt;= i afterwards. Return the smallest k with the highest score.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [2,3,1,4,0]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,3,0,2,4]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 10^5; 0 &lt;= nums[i] &lt; nums.length.</p>
+    <p><b>Approach.</b> Instead of scoring every rotation, work out for each element which rotations make it score — a contiguous block of k values on a circle — and mark those blocks with a difference array. Prefix-summing that array gives all n scores in one pass, and the first maximum is the answer.</p>
+    <pre><code>// Each element fails to score on one circular block of rotations
+int bestRotation(int[] nums) {
+    int n = nums.length;
+    int[] penalty = new int[n + 1];
+    for (int i = 0; i &lt; n; i++) {
+        int length = Math.min(nums[i], n);            // rotations where i &lt; nums[i]
+        if (length == 0) continue;
+        int start = (i - length + 1 + n) % n;         // first bad rotation
+        if (start &lt;= i) {                             // one straight block
+            penalty[start]++;
+            penalty[i + 1]--;
+        } else {                                      // wraps past the end
+            penalty[start]++;
+            penalty[n]--;
+            penalty[0]++;
+            penalty[i + 1]--;
+        }
+    }
+    int best = -1, score = 0, answer = 0;
+    for (int k = 0; k &lt; n; k++) {
+        score += penalty[k];
+        if (n - score &gt; best) { best = n - score; answer = k; }   // first maximum wins
+    }
+    return answer;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="maximum-sum-of-3-non-overlapping-subarrays">
+    <h3><span class="pn">H3</span> Maximum Sum of 3 Non-Overlapping Subarrays <span class="pill hot">Hard</span> <span class="muted small">· window sums + best prefix and suffix</span></h3>
+    <p><b>Problem.</b> Choose three non-overlapping subarrays of length k with the largest total sum. Return their starting indices, taking the lexicographically smallest answer on a tie.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,2,1,2,6,7,5,1], k = 2
+Output: [0,3,5]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,2,1,2,1,2,1,2,1], k = 2
+Output: [0,2,4]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 2 · 10^4; 1 &lt;= nums[i] &lt; 10^5; 1 &lt;= k &lt;= nums.length / 3.</p>
+    <p><b>Approach.</b> Compute every k-length window sum once. Then for the middle window, the best left window is the best one that ends before it and the best right window starts after it — precompute those two arrays, keeping the earliest index on ties so the answer stays lexicographically smallest.</p>
+    <pre><code>// For each middle window: best window on its left plus best on its right
+int[] maxSumOfThreeSubarrays(int[] nums, int k) {
+    int n = nums.length, m = n - k + 1;
+    long[] window = new long[m];
+    long running = 0;
+    for (int i = 0; i &lt; n; i++) {
+        running += nums[i];
+        if (i &gt;= k) running -= nums[i - k];
+        if (i &gt;= k - 1) window[i - k + 1] = running;
+    }
+    int[] bestLeft = new int[m], bestRight = new int[m];
+    bestLeft[0] = 0;
+    for (int i = 1; i &lt; m; i++)                       // earliest index wins ties
+        bestLeft[i] = window[i] &gt; window[bestLeft[i - 1]] ? i : bestLeft[i - 1];
+    bestRight[m - 1] = m - 1;
+    for (int i = m - 2; i &gt;= 0; i--)
+        bestRight[i] = window[i] &gt;= window[bestRight[i + 1]] ? i : bestRight[i + 1];
+    long best = Long.MIN_VALUE;               // handles negative windows too
+    int[] answer = new int[3];
+    for (int mid = k; mid + 2 * k &lt;= n; mid++) {
+        int left = bestLeft[mid - k], right = bestRight[mid + k];
+        long total = window[left] + window[mid] + window[right];
+        if (total &gt; best) { best = total; answer = new int[]{left, mid, right}; }
+        else if (total == best &amp;&amp; lexLess(new int[]{left, mid, right}, answer))
+            answer = new int[]{left, mid, right};     // lexicographically smaller
+    }
+    return answer;
+}
+boolean lexLess(int[] a, int[] b) {
+    for (int i = 0; i &lt; a.length; i++) {
+        if (a[i] != b[i]) return a[i] &lt; b[i];
+    }
+    return false;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="count-of-range-sum">
+    <h3><span class="pn">H4</span> Count of Range Sum <span class="pill hot">Hard</span> <span class="muted small">· prefix pairs counted with a Fenwick tree</span></h3>
+    <p><b>Problem.</b> Count the subarrays whose sum lies in [lower, upper].</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [-2,5,-1], lower = -2, upper = 2
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [0], lower = 0, upper = 0
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 10^5; -2^31 &lt;= nums[i] &lt;= 2^31 - 1; -10^5 &lt;= lower &lt;= upper &lt;= 10^5.</p>
+    <p><b>Approach.</b> A subarray sum is a difference of two prefixes, so the question becomes: how many earlier prefixes p satisfy prefix[j] - upper &lt;= p &lt;= prefix[j] - lower? Sorting the prefixes and storing them in a Fenwick tree over their compressed ranks answers each of those range counts in logarithmic time.</p>
+    <pre><code>// Count earlier prefixes inside a moving range of values
+int countRangeSum(int[] nums, int lower, int upper) {
+    int n = nums.length;
+    long[] prefix = new long[n + 1];
+    for (int i = 0; i &lt; n; i++) prefix[i + 1] = prefix[i] + nums[i];
+    long[] sorted = prefix.clone();
+    Arrays.sort(sorted);
+    int m = 1;
+    for (int i = 1; i &lt; sorted.length; i++)          // drop duplicates
+        if (sorted[i] != sorted[m - 1]) sorted[m++] = sorted[i];
+    int[] tree = new int[m + 1];
+    long answer = 0;
+    for (int j = 0; j &lt;= n; j++) {
+        if (j &gt; 0) {
+            int low = lowerBound(sorted, m, prefix[j] - upper);
+            int high = upperBound(sorted, m, prefix[j] - lower);
+            if (high &gt;= low) answer += prefixCount(tree, high) - prefixCount(tree, low - 1);
+        }
+        add(tree, m, lowerBound(sorted, m, prefix[j]));
+    }
+    return (int) answer;
+}
+int lowerBound(long[] values, int size, long target) {
+    int low = 0, high = size;
+    while (low &lt; high) {
+        int mid = (low + high) / 2;
+        if (values[mid] &lt; target) low = mid + 1;
+        else high = mid;
+    }
+    return low;                                      // 0-based insertion point
+}
+int upperBound(long[] values, int size, long target) {
+    int low = 0, high = size;
+    while (low &lt; high) {
+        int mid = (low + high) / 2;
+        if (values[mid] &lt;= target) low = mid + 1;
+        else high = mid;
+    }
+    return low;
+}
+void add(int[] tree, int size, int zeroBased) {
+    for (int i = zeroBased + 1; i &lt;= size; i += i &amp; (-i)) tree[i]++;
+}
+int prefixCount(int[] tree, int oneBased) {
+    int total = 0;
+    for (int i = oneBased; i &gt; 0; i -= i &amp; (-i)) total += tree[i];
+    return total;
+}   // O(n log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="maximum-sum-queries">
+    <h3><span class="pn">H5</span> Maximum Sum Queries <span class="pill hot">Hard</span> <span class="muted small">· offline sort + Fenwick maximum</span></h3>
+    <p><b>Problem.</b> For each query [x, y], return the largest nums1[j] + nums2[j] over indices with nums1[j] &gt;= x and nums2[j] &gt;= y, or -1 if there is none.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums1 = [4,3,1,2], nums2 = [2,4,9,5], queries = [[4,1],[1,3],[2,5]]
+Output: [6,10,7]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums1 = [3,2,5], nums2 = [2,3,4], queries = [[4,4],[3,2],[1,1]]
+Output: [9,9,9]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums1.length, nums2.length, queries.length &lt;= 10^5; 1 &lt;= nums1[i], nums2[i] &lt;= 10^9; queries[i] = [xi, yi] with 1 &lt;= xi, yi &lt;= 10^9.</p>
+    <p><b>Approach.</b> Sort the queries by x and the indices by nums1 descending, so that answering a query only means inserting a few more indices. What is left is "the largest value among inserted indices with nums2 &gt;= y", which a Fenwick tree answers as a prefix maximum once nums2 values are compressed and the order is reversed.</p>
+    <pre><code>// Queries sorted by x; Fenwick maximum over compressed nums2
+int[] maximumSumQueries(int[] nums1, int[] nums2, int[][] queries) {
+    int n = nums1.length;
+    Integer[] order = new Integer[n], qorder = new Integer[queries.length];
+    for (int i = 0; i &lt; n; i++) order[i] = i;
+    for (int i = 0; i &lt; queries.length; i++) qorder[i] = i;
+    Arrays.sort(order, (a, b) -&gt; Integer.compare(nums1[b], nums1[a]));
+    Arrays.sort(qorder, (a, b) -&gt; Integer.compare(queries[b][0], queries[a][0]));
+    int[] values = nums2.clone();
+    Arrays.sort(values);
+    int m = 1;
+    for (int i = 1; i &lt; values.length; i++)
+        if (values[i] != values[m - 1]) values[m++] = values[i];
+    int[] tree = new int[m + 1];
+    Arrays.fill(tree, -1);
+    int[] answer = new int[queries.length];
+    Arrays.fill(answer, -1);
+    int next = 0;
+    for (int qi : qorder) {
+        int x = queries[qi][0], y = queries[qi][1];
+        while (next &lt; n &amp;&amp; nums1[order[next]] &gt;= x) {          // this index now qualifies
+            int j = order[next++];
+            int rank = lowerBound(values, m, nums2[j]);
+            int value = nums1[j] + nums2[j];
+            for (int i = m - rank; i &lt;= m; i += i &amp; (-i))      // reversed order
+                tree[i] = Math.max(tree[i], value);
+        }
+        int first = lowerBound(values, m, y);
+        int best = -1;
+        for (int i = m - first; i &gt; 0; i -= i &amp; (-i)) best = Math.max(best, tree[i]);
+        answer[qi] = best;
+    }
+    return answer;
+}
+int lowerBound(int[] values, int size, int target) {
+    int low = 0, high = size;
+    while (low &lt; high) {
+        int mid = (low + high) / 2;
+        if (values[mid] &lt; target) low = mid + 1;
+        else high = mid;
+    }
+    return low;
+}   // O((n + q) log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O((n + q) log n) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="count-of-smaller-numbers-after-self">
+    <h3><span class="pn">H6</span> Count of Smaller Numbers After Self <span class="pill hot">Hard</span> <span class="muted small">· Fenwick counts from the right</span></h3>
+    <p><b>Problem.</b> Return an array counts where counts[i] is the number of indices j &gt; i with nums[j] &lt; nums[i].</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [5,2,6,1]
+Output: [2,1,1,0]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [-1]
+Output: [0]</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [-1,-1]
+Output: [0,0]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 10^5; -10^4 &lt;= nums[i] &lt;= 10^4.</p>
+    <p><b>Approach.</b> Sweep from the right and keep the values already seen in a Fenwick tree indexed by compressed rank. The answer for the current element is the count of stored values with a smaller rank, which is one prefix query — the array is then built back to front in logarithmic time per element.</p>
+    <pre><code>// Sweep right to left, counting what is already stored
+List&lt;Integer&gt; countSmaller(int[] nums) {
+    int[] values = nums.clone();
+    Arrays.sort(values);
+    int m = 1;
+    for (int i = 1; i &lt; values.length; i++)
+        if (values[i] != values[m - 1]) values[m++] = values[i];
+    int[] tree = new int[m + 1], answer = new int[nums.length];
+    for (int i = nums.length - 1; i &gt;= 0; i--) {
+        int rank = lowerBound(values, m, nums[i]) + 1;
+        for (int p = rank - 1; p &gt; 0; p -= p &amp; (-p)) answer[i] += tree[p];   // smaller, seen
+        for (int p = rank; p &lt;= m; p += p &amp; (-p)) tree[p]++;
+    }
+    List&lt;Integer&gt; result = new ArrayList&lt;&gt;();
+    for (int value : answer) result.add(value);
+    return result;
+}
+int lowerBound(int[] values, int size, int target) {
+    int low = 0, high = size;
+    while (low &lt; high) {
+        int mid = (low + high) / 2;
+        if (values[mid] &lt; target) low = mid + 1;
+        else high = mid;
+    }
+    return low;
+}   // O(n log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="create-sorted-array-through-instructions">
+    <h3><span class="pn">H7</span> Create Sorted Array through Instructions <span class="pill hot">Hard</span> <span class="muted small">· Fenwick over values while inserting</span></h3>
+    <p><b>Problem.</b> Insert the values of instructions one by one into a sorted array. Each insertion costs the smaller of (strictly smaller values already present) and (strictly larger values already present). Return the total cost modulo 10^9 + 7.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  instructions = [1,5,6,2]
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  instructions = [1,2,3,6,5,4]
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= instructions.length &lt;= 10^5; 1 &lt;= instructions[i] &lt;= 10^5.</p>
+    <p><b>Approach.</b> Both costs are counts over values already inserted, and the value range is small and known. A Fenwick tree indexed by value gives the number of smaller and of equal values in two prefix queries, so the larger count follows by subtraction and every insertion is handled in logarithmic time.</p>
+    <pre><code>// Counts of smaller and larger values already inserted
+int createSortedArray(int[] instructions) {
+    final long MOD = 1000000007L;
+    int top = 0;
+    for (int value : instructions) top = Math.max(top, value);
+    int[] tree = new int[top + 1];
+    long cost = 0;
+    for (int index = 0; index &lt; instructions.length; index++) {
+        int value = instructions[index];
+        long smaller = 0;
+        for (int p = value - 1; p &gt; 0; p -= p &amp; (-p)) smaller += tree[p];
+        long notLarger = 0;
+        for (int p = value; p &gt; 0; p -= p &amp; (-p)) notLarger += tree[p];
+        long larger = index - notLarger;                  // inserted count is `index`
+        cost = (cost + Math.min(smaller, larger)) % MOD;   // cheaper side wins
+        for (int p = value; p &lt;= top; p += p &amp; (-p)) tree[p]++;
+    }
+    return (int) cost;
+}   // O(n log V) time · O(V) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log V) time time · O(V) space.</p>
+  </section>
+  <section class="sub" id="count-good-triplets-in-an-array">
+    <h3><span class="pn">H8</span> Count Good Triplets in an Array <span class="pill hot">Hard</span> <span class="muted small">· prefix counts of relative positions</span></h3>
+    <p><b>Problem.</b> nums1 and nums2 are permutations. A triplet (x, y, z) is good when their positions increase in both arrays. Count the good triplets.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums1 = [2,0,1,3], nums2 = [0,1,2,3]
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums1 = [4,0,1,3,2], nums2 = [4,1,0,2,3]
+Output: 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums1.length == nums2.length &lt;= 10^5; nums1 and nums2 are permutations of 0..n-1.</p>
+    <p><b>Approach.</b> Fix the middle value y and count the choices on each side. Sweep nums1 in order keeping a Fenwick tree of the positions that value has in nums2: the number of already-seen values with a smaller position gives one factor, and a subtraction gives the other — so every triplet is counted exactly once, by its middle element.</p>
+    <pre><code>// Fix the middle value; count smaller positions before and larger after
+long goodTriplets(int[] nums1, int[] nums2) {
+    int n = nums1.length;
+    int[] positionIn2 = new int[n];
+    for (int i = 0; i &lt; n; i++) positionIn2[nums2[i]] = i;
+    int[] tree = new int[n + 1];
+    long total = 0;
+    for (int i = 0; i &lt; n; i++) {
+        int pos = positionIn2[nums1[i]];
+        long smallerBefore = 0;
+        for (int p = pos; p &gt; 0; p -= p &amp; (-p)) smallerBefore += tree[p];
+        long biggerBefore = i - smallerBefore;
+        long biggerAfter = (n - 1 - pos) - biggerBefore;   // positions still unseen
+        total += smallerBefore * biggerAfter;              // left choice × right choice
+        for (int p = pos + 1; p &lt;= n; p += p &amp; (-p)) tree[p]++;
+    }
+    return total;
+}   // O(n log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="reverse-pairs">
+    <h3><span class="pn">H9</span> Reverse Pairs <span class="pill hot">Hard</span> <span class="muted small">· merge sort counting</span></h3>
+    <p><b>Problem.</b> Count the pairs (i, j) with i &lt; j and nums[i] &gt; 2 · nums[j].</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,3,2,3,1]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [2,4,3,5,1]
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 5 · 10^4; -2^31 &lt;= nums[i] &lt;= 2^31 - 1.</p>
+    <p><b>Approach.</b> Merge sort already splits the array in half and keeps each half sorted, which is exactly what the count needs: while merging, two pointers sweep the halves and count how many right-half values are less than half of each left-half value. Values are widened to 64 bits first so 2 · nums[j] cannot overflow.</p>
+    <pre><code>// Merge sort: count while the two sorted halves are joined
+void sortAndCount(long[] nums, long[] buffer, int left, int right, long[] count) {
+    if (right - left &lt;= 1) return;
+    int mid = (left + right) / 2;
+    sortAndCount(nums, buffer, left, mid, count);
+    sortAndCount(nums, buffer, mid, right, count);
+    int j = mid;
+    for (int i = left; i &lt; mid; i++) {
+        while (j &lt; right &amp;&amp; nums[i] &gt; 2 * nums[j]) j++;      // each j matches many i
+        count[0] += j - mid;
+    }
+    int a = left, b = mid, out = left;
+    while (a &lt; mid &amp;&amp; b &lt; right) buffer[out++] = nums[a] &lt;= nums[b] ? nums[a++] : nums[b++];
+    while (a &lt; mid) buffer[out++] = nums[a++];
+    while (b &lt; right) buffer[out++] = nums[b++];
+    for (int i = left; i &lt; right; i++) nums[i] = buffer[i];
+}
+int reversePairs(int[] nums) {
+    long[] values = new long[nums.length], buffer = new long[nums.length], count = new long[1];
+    for (int i = 0; i &lt; nums.length; i++) values[i] = nums[i];
+    sortAndCount(values, buffer, 0, values.length, count);
+    return (int) count[0];
+}   // O(n log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="sum-of-total-strength-of-wizards">
+    <h3><span class="pn">H10</span> Sum of Total Strength of Wizards <span class="pill hot">Hard</span> <span class="muted small">· monotonic boundaries + prefix of prefixes</span></h3>
+    <p><b>Problem.</b> The total strength of a subarray is its minimum times its sum. Return the sum of total strengths over every subarray, modulo 10^9 + 7.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  strength = [1,3,1,2]
+Output: 44</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  strength = [5,4,6]
+Output: 213</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= strength.length &lt;= 10^5; 1 &lt;= strength[i] &lt;= 10^9.</p>
+    <p><b>Approach.</b> Each subarray is charged to its minimum, so find for every index how far it stays the minimum — the nearest strictly smaller value on the left and the nearest smaller-or-equal value on the right, which the monotonic stack gives in linear time. Within that window all subarrays containing the index are counted at once, and a prefix-of-prefix array sums their sums in O(1).</p>
+    <pre><code>// Monotonic boundaries, then prefix-of-prefix sums for the window
+int totalStrength(int[] strength) {
+    final long MOD = 1000000007L;
+    int n = strength.length;
+    int[] previousSmaller = new int[n], nextSmallerOrEqual = new int[n];
+    int[] stack = new int[n];
+    int top = 0;
+    for (int i = 0; i &lt; n; i++) {
+        while (top &gt; 0 &amp;&amp; strength[stack[top - 1]] &gt;= strength[i]) top--;
+        previousSmaller[i] = top == 0 ? -1 : stack[top - 1];
+        stack[top++] = i;
+    }
+    top = 0;
+    for (int i = n - 1; i &gt;= 0; i--) {
+        while (top &gt; 0 &amp;&amp; strength[stack[top - 1]] &gt; strength[i]) top--;
+        nextSmallerOrEqual[i] = top == 0 ? n : stack[top - 1];
+        stack[top++] = i;
+    }
+    long[] prefix = new long[n + 1], doublePrefix = new long[n + 2];
+    for (int i = 0; i &lt; n; i++) prefix[i + 1] = (prefix[i] + strength[i]) % MOD;
+    for (int i = 0; i &lt;= n; i++) doublePrefix[i + 1] = (doublePrefix[i] + prefix[i]) % MOD;
+    long total = 0;
+    for (int i = 0; i &lt; n; i++) {
+        long left = i - previousSmaller[i];                        // choices of start
+        long right = nextSmallerOrEqual[i] - i;                    // choices of end
+        long rightSums = (doublePrefix[i + (int) right + 1] - doublePrefix[i + 1] + MOD) % MOD;
+        long leftSums = (doublePrefix[i + 1] - doublePrefix[i - (int) left + 1] + MOD) % MOD;
+        long contribution = (left * rightSums - right * leftSums) % MOD;
+        total = (total + strength[i] % MOD * contribution) % MOD;
+    }
+    return (int) ((total + MOD) % MOD);
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="count-subarrays-with-fixed-bounds">
+    <h3><span class="pn">H11</span> Count Subarrays With Fixed Bounds <span class="pill hot">Hard</span> <span class="muted small">· two pointers with the last bad index</span></h3>
+    <p><b>Problem.</b> Count the subarrays in which the minimum is exactly minK and the maximum is exactly maxK.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,3,5,2,7,5], minK = 1, maxK = 5
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,1,1,1], minK = 1, maxK = 1
+Output: 10</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= nums.length &lt;= 10^5; 1 &lt;= nums[i], minK, maxK &lt;= 10^6.</p>
+    <p><b>Approach.</b> Sweep the right end and remember three positions: the last element outside [minK, maxK], the last minK and the last maxK. A subarray ending here is valid exactly when it starts after the bad position and at or before the earlier of the two boundary positions, which turns into one subtraction per index.</p>
+    <pre><code>// Windows ending at i: start after the last bad index, before both bounds
+long countSubarrays(int[] nums, int minK, int maxK) {
+    long count = 0;
+    int lastBad = -1, lastMin = -1, lastMax = -1;
+    for (int i = 0; i &lt; nums.length; i++) {
+        if (nums[i] &lt; minK || nums[i] &gt; maxK) lastBad = i;   // breaks every window
+        if (nums[i] == minK) lastMin = i;
+        if (nums[i] == maxK) lastMax = i;
+        int earliest = Math.min(lastMin, lastMax);
+        if (earliest &gt; lastBad) count += earliest - lastBad;  // starts that work
+    }
+    return count;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="sum-of-subsequence-widths">
+    <h3><span class="pn">H12</span> Sum of Subsequence Widths <span class="pill hot">Hard</span> <span class="muted small">· sorted contributions with powers of two</span></h3>
+    <p><b>Problem.</b> The width of a sequence is its largest element minus its smallest. Return the sum of widths over all non-empty subsequences of nums, modulo 10^9 + 7.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [2,1,3]
+Output: 6</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [2]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 10^5; 1 &lt;= nums[i] &lt;= 10^5.</p>
+    <p><b>Approach.</b> Sort the array: then every subsequence contributes its last element as the maximum and its first as the minimum, and each element can be chosen freely in the middle. The value at sorted position i is the maximum of 2^i subsequences and the minimum of 2^(n-1-i), so the whole sum collapses into one pass with precomputed powers of two.</p>
+    <pre><code>// Element i is the max of 2^i and the min of 2^(n-1-i) subsequences
+int sumSubseqWidths(int[] nums) {
+    final long MOD = 1000000007L;
+    Arrays.sort(nums);
+    int n = nums.length;
+    long[] power = new long[n];
+    power[0] = 1;
+    for (int i = 1; i &lt; n; i++) power[i] = power[i - 1] * 2 % MOD;
+    long total = 0;
+    for (int i = 0; i &lt; n; i++)
+        total = (total + nums[i] % MOD * (power[i] - power[n - 1 - i])) % MOD;
+    return (int) ((total % MOD + MOD) % MOD);
+}   // O(n log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time time · O(n) space.</p>
+  </section>
+</section>
 
   </main>
 </div>
 
 <footer>
-  <p><b>Java bank</b> — 450 problems across 15 topics, with complete solutions in
+  <p><b>Java bank</b> — 480 problems across 16 topics, with complete solutions in
   Java 21/25 solutions.</p>
   <p class="small">Same problems in every language:
     <a href="cpp-leetcode.html">C++</a> · <a href="java-leetcode.html">Java</a> · <a href="python-leetcode.html">Python</a>
