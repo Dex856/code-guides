@@ -10084,12 +10084,931 @@ long countUpTo(int n, String bound, int m, int[][] go, long MOD) {
     <p class="cx"><b>Complexity:</b> O(n · |evil| · 26) time · O(|evil| · 26) space.</p>
   </section>
 </section>
+<section class="chapter" id="t13">
+  <h2><span class="num">13</span> Backtracking &amp; Recursion</h2>
+  <p class="tagline">Recursion is a promise you keep to yourself: trust the smaller case, and make exactly one decision per level.</p>
+  <div class="card"><p><b>What this topic trains.</b> Every problem here is the same shape: a decision tree where each level fixes one choice permanently for that branch. Three tools keep it fast. Pruning cuts a branch before its leaves are enumerated (a partial sum already past the target, a board square that is already attacked). Grouping and ordering handle duplicates (sort, then skip equal choices at the same level). And the recursion contract — what one call returns and what state it may touch — is what separates a clean solution from one that "almost works".</p>
+<p class="small muted">Ordering: easy 1–3 are plain recursion on numbers, 4–5 walk trees and accumulate a path, 6 mutates in place with two recursive pointers; medium 1–4 are the include/exclude and start-index templates (case choices, subsets, combinations, permutations), 5–8 add constraints (Gray code ordering, palindromic partitions, IP addresses, balanced parentheses), 9–12 add reuse, duplicate skipping, multiset counting and structural generation; hard 1–5 are counting searches with bitmask or coverage state, 6–9 prune whole search levels, 10–12 are the largest combinatorial searches with the strongest pruning.</p></div>
+  <section class="sub" id="power-of-two">
+    <h3><span class="pn">E1</span> Power of Two <span class="pill">Easy</span> <span class="muted small">· recursive halving</span></h3>
+    <p><b>Problem.</b> Return true if n is a power of two, false otherwise.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 1
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 16
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  n = 3
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> -2^31 &lt;= n &lt;= 2^31 - 1; n = 1 counts as 2^0.</p>
+    <p><b>Approach.</b> A power of two is either 1 or an even number whose half is also a power of two. That sentence is the recursion: test the base case, reject non-positive and odd values, and recurse on n / 2 — each call strictly shrinks the problem.</p>
+    <pre><code>// A power of two is 1, or an even number whose half is also one
+boolean isPowerOfTwo(int n) {
+    if (n &lt;= 0) return false;                // powers of two are positive
+    if (n == 1) return true;                 // the base case: 2^0
+    return n % 2 == 0 &amp;&amp; isPowerOfTwo(n / 2);
+}   // O(log n) time · O(log n) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time time · O(log n) stack space.</p>
+  </section>
+  <section class="sub" id="power-of-three">
+    <h3><span class="pn">E2</span> Power of Three <span class="pill">Easy</span> <span class="muted small">· recursive division by a fixed base</span></h3>
+    <p><b>Problem.</b> Return true if n is a power of three, false otherwise.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 27
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 0
+Output: false</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  n = -1
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> -2^31 &lt;= n &lt;= 2^31 - 1; n = 1 counts as 3^0.</p>
+    <p><b>Approach.</b> The same shape as the power-of-two recursion with the base changed: 1 is a power of three, and any larger value must be divisible by three with a power-of-three quotient. Reusing the halving idea with a different base is worth noticing — the recurrence does not care which base it is.</p>
+    <pre><code>// 1 is a power of three; anything larger must divide by three cleanly
+boolean isPowerOfThree(int n) {
+    if (n &lt;= 0) return false;                // 0 and negatives never qualify
+    if (n == 1) return true;                 // the base case: 3^0
+    return n % 3 == 0 &amp;&amp; isPowerOfThree(n / 3);
+}   // O(log n) time · O(log n) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time time · O(log n) stack space.</p>
+  </section>
+  <section class="sub" id="fibonacci-number">
+    <h3><span class="pn">E3</span> Fibonacci Number <span class="pill">Easy</span> <span class="muted small">· recursion plus memoisation</span></h3>
+    <p><b>Problem.</b> Return F(n) where F(0) = 0, F(1) = 1 and F(n) = F(n-1) + F(n-2).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 2
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 3
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  n = 4
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= n &lt;= 30; the answer fits in a 32-bit integer.</p>
+    <p><b>Approach.</b> The definition is already recursive, but the naive translation recomputes the same values exponentially often. Storing each answer in a table the first time it is computed turns the recursion into a linear pass — the standard first lesson in memoisation, and the reason "recursion" and "dynamic programming" are the same idea seen from two ends.</p>
+    <pre><code>// The definition is recursive; the table removes all repeated work
+int fib(int n) {
+    if (n &lt; 2) return n;
+    int[] memo = new int[n + 1];
+    Arrays.fill(memo, -1);
+    memo[0] = 0; memo[1] = 1;
+    return go(n, memo);
+}
+int go(int x, int[] memo) {
+    if (memo[x] != -1) return memo[x];       // computed before
+    memo[x] = go(x - 1, memo) + go(x - 2, memo);
+    return memo[x];
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time with memoisation time · O(n) space.</p>
+  </section>
+  <section class="sub" id="binary-tree-paths">
+    <h3><span class="pn">E4</span> Binary Tree Paths <span class="pill">Easy</span> <span class="muted small">· DFS that carries a path</span></h3>
+    <p><b>Problem.</b> Return all root-to-leaf paths as strings like "1-&gt;2-&gt;5".</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [1,2,3,null,5]
+Output: ["1->2->5","1->3"]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [1]
+Output: ["1"]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nodes &lt;= 100; -100 &lt;= node values &lt;= 100; a path ends at a leaf.</p>
+    <p><b>Approach.</b> Walk down passing the path built so far, and record it when a node has no children — that is the moment a path is complete. The path is rebuilt per branch rather than shared and undone, which keeps the recursion easy to read; a leaf is detected by both children being empty, not by depth.</p>
+    <pre><code>// Carry the path down; a node with no children closes it
+class TreeNode { int val; TreeNode left, right; TreeNode(int v) { val = v; } }
+List&lt;String&gt; binaryTreePaths(TreeNode root) {
+    List&lt;String&gt; out = new ArrayList&lt;&gt;();
+    walk(root, "", out);
+    return out;
+}
+void walk(TreeNode node, String path, List&lt;String&gt; out) {
+    if (node == null) return;
+    path += node.val;
+    if (node.left == null &amp;&amp; node.right == null) {   // a leaf: path complete
+        out.add(path);
+        return;
+    }
+    walk(node.left, path + "-&gt;", out);
+    walk(node.right, path + "-&gt;", out);
+}   // O(n · h) time · O(h) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n · h) time (each path is copied as a string) time · O(h) stack space.</p>
+  </section>
+  <section class="sub" id="sum-of-left-leaves">
+    <h3><span class="pn">E5</span> Sum of Left Leaves <span class="pill">Easy</span> <span class="muted small">· DFS with one extra flag</span></h3>
+    <p><b>Problem.</b> Return the sum of all left leaves of a binary tree.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  root = [3,9,20,null,null,15,7]
+Output: 24</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  root = [1]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nodes &lt;= 1000; -1000 &lt;= node values &lt;= 1000.</p>
+    <p><b>Approach.</b> A node needs to know something its children cannot see — whether it arrived as a left child. Passing that one boolean down makes the test exact: add the value when the flag is true *and* the node is a leaf. Carrying a tiny piece of context through the recursion is the same technique the harder backtracking problems use for partial sums.</p>
+    <pre><code>// The flag says how the node was reached; left + leaf is what counts
+class TreeNode { int val; TreeNode left, right; TreeNode(int v) { val = v; } }
+int sumOfLeftLeaves(TreeNode root) {
+    return walk(root, false);
+}
+int walk(TreeNode node, boolean fromLeft) {
+    if (node == null) return 0;
+    if (fromLeft &amp;&amp; node.left == null &amp;&amp; node.right == null) return node.val;   // left leaf
+    return walk(node.left, true) + walk(node.right, false);
+}   // O(n) time · O(h) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(h) stack space.</p>
+  </section>
+  <section class="sub" id="reverse-string">
+    <h3><span class="pn">E6</span> Reverse String <span class="pill">Easy</span> <span class="muted small">· two pointers, recursively</span></h3>
+    <p><b>Problem.</b> Reverse the array of characters s in place using O(1) extra memory.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = ["h","e","l","l","o"]
+Output: ["o","l","l","e","h"]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = ["H","a","n","n","a","h"]
+Output: ["h","a","n","n","a","H"]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 10^5; s[i] is a printable ASCII character; the reversal must happen in place.</p>
+    <p><b>Approach.</b> Swap the two ends, then ask the same question about the inner slice. Written recursively the loop becomes a call that swaps once and hands the rest on, and the base case is when the pointers meet or cross — the recursion is the loop, spelled differently.</p>
+    <pre><code>// Swap the ends, then recurse on the inside
+void reverseString(char[] s) {
+    go(s, 0, s.length - 1);
+}
+void go(char[] s, int i, int j) {
+    if (i &gt;= j) return;                      // base case: pointers met or crossed
+    char t = s[i]; s[i] = s[j]; s[j] = t;
+    go(s, i + 1, j - 1);
+}   // O(n) time · O(n) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(n) stack (O(1) with a loop) space.</p>
+  </section>
+  <section class="sub" id="letter-case-permutation">
+    <h3><span class="pn">M1</span> Letter Case Permutation <span class="pill">Medium</span> <span class="muted small">· one branch per character</span></h3>
+    <p><b>Problem.</b> Return all strings that can be made by changing the case of some letters of s (the order of the answer does not matter).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "a1b2"
+Output: ["a1b2","a1B2","A1b2","A1B2"]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "3z4"
+Output: ["3z4","3Z4"]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 12; s consists of letters and digits.</p>
+    <p><b>Approach.</b> Each position contributes a fixed set of choices: two for a letter, one for a digit. Walking positions left to right and trying every choice is a full decision tree whose leaves are the answers — the plainest possible backtracking template, and the reason digits need no special case beyond a single-option loop.</p>
+    <pre><code>// Two choices per letter, one per digit: the plainest template
+List&lt;String&gt; letterCasePermutation(String s) {
+    List&lt;String&gt; out = new ArrayList&lt;&gt;();
+    char[] cur = s.toCharArray();
+    dfs(s.toCharArray(), 0, cur, out);
+    return out;
+}
+void dfs(char[] s, int i, char[] cur, List&lt;String&gt; out) {
+    if (i == s.length) { out.add(new String(cur)); return; }
+    char c = s[i];
+    if (!Character.isLetter(c)) { dfs(s, i + 1, cur, out); return; }   // one option
+    cur[i] = Character.toLowerCase(c);
+    dfs(s, i + 1, cur, out);
+    cur[i] = Character.toUpperCase(c);
+    dfs(s, i + 1, cur, out);
+    cur[i] = c;                              // restore for the caller
+}   // O(2^letters · n) time · O(2^letters · n) output space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(2^letters · n) time time · O(2^letters) output space.</p>
+  </section>
+  <section class="sub" id="subsets">
+    <h3><span class="pn">M2</span> Subsets <span class="pill">Medium</span> <span class="muted small">· include or exclude each element</span></h3>
+    <p><b>Problem.</b> Return all subsets of the distinct integers in nums (the order of the answer does not matter).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,2,3]
+Output: [[],[1],[2],[1,2],[3],[1,3],[2,3],[1,2,3]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [0]
+Output: [[],[0]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 10; -10 &lt;= nums[i] &lt;= 10; all numbers are distinct.</p>
+    <p><b>Approach.</b> Every element is a yes/no decision, so the tree has 2^n leaves. The trick that makes the code short is recording the current partial set at *every* node rather than only at the leaves — a node's path from the root already is a complete subset, so no extra bookkeeping is needed.</p>
+    <pre><code>// Record the partial set at every node: a path already is a subset
+List&lt;List&lt;Integer&gt;&gt; subsets(int[] nums) {
+    List&lt;List&lt;Integer&gt;&gt; out = new ArrayList&lt;&gt;();
+    dfs(nums, 0, new ArrayList&lt;&gt;(), out);
+    return out;
+}
+void dfs(int[] nums, int start, List&lt;Integer&gt; cur, List&lt;List&lt;Integer&gt;&gt; out) {
+    out.add(new ArrayList&lt;&gt;(cur));           // every node is an answer
+    for (int i = start; i &lt; nums.length; i++) {
+        cur.add(nums[i]);
+        dfs(nums, i + 1, cur, out);
+        cur.remove(cur.size() - 1);          // undo the choice
+    }
+}   // O(2^n · n) time · O(2^n · n) output space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(2^n · n) time time · O(2^n) output space.</p>
+  </section>
+  <section class="sub" id="combinations">
+    <h3><span class="pn">M3</span> Combinations <span class="pill">Medium</span> <span class="muted small">· start index plus a length target</span></h3>
+    <p><b>Problem.</b> Return all k-element combinations of the numbers 1..n (the order of the answer does not matter).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 4, k = 2
+Output: [[1,2],[1,3],[1,4],[2,3],[2,4],[3,4]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 1, k = 1
+Output: [[1]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 20; 1 &lt;= k &lt;= n.</p>
+    <p><b>Approach.</b> The subsets template with a finish line: keep a start index so each combination is built in increasing order (which is what stops 1,2 and 2,1 both appearing), and record only when the current list reaches length k. Trimming the loop at n - (k - len) skips branches that can no longer be completed.</p>
+    <pre><code>// Start index keeps order; the loop bound skips unfinishable branches
+List&lt;List&lt;Integer&gt;&gt; combine(int n, int k) {
+    List&lt;List&lt;Integer&gt;&gt; out = new ArrayList&lt;&gt;();
+    dfs(n, k, 1, new ArrayList&lt;&gt;(), out);
+    return out;
+}
+void dfs(int n, int k, int start, List&lt;Integer&gt; cur, List&lt;List&lt;Integer&gt;&gt; out) {
+    if (cur.size() == k) { out.add(new ArrayList&lt;&gt;(cur)); return; }
+    int need = k - cur.size();
+    for (int v = start; v &lt;= n - need + 1; v++) {    // room for the rest
+        cur.add(v);
+        dfs(n, k, v + 1, cur, out);
+        cur.remove(cur.size() - 1);
+    }
+}   // O(C(n,k) · k) time · O(C(n,k) · k) output space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(C(n,k) · k) time time · O(C(n,k)) output space.</p>
+  </section>
+  <section class="sub" id="permutations">
+    <h3><span class="pn">M4</span> Permutations <span class="pill">Medium</span> <span class="muted small">· used array</span></h3>
+    <p><b>Problem.</b> Return all permutations of the distinct integers in nums (the order of the answer does not matter).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,2,3]
+Output: [[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [0,1]
+Output: [[0,1],[1,0]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [1]
+Output: [[1]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 6; -10 &lt;= nums[i] &lt;= 10; all numbers are distinct.</p>
+    <p><b>Approach.</b> Unlike subsets, order matters here, so the state that stops a repeat is not a start index but a used flag per element: at every level try each unused element, and the recursion depth is the position being filled. The permutation is complete when the partial list reaches the full length.</p>
+    <pre><code>// Try every unused element at each position; depth is the position
+List&lt;List&lt;Integer&gt;&gt; permute(int[] nums) {
+    List&lt;List&lt;Integer&gt;&gt; out = new ArrayList&lt;&gt;();
+    dfs(nums, new boolean[nums.length], new ArrayList&lt;&gt;(), out);
+    return out;
+}
+void dfs(int[] nums, boolean[] used, List&lt;Integer&gt; cur, List&lt;List&lt;Integer&gt;&gt; out) {
+    if (cur.size() == nums.length) { out.add(new ArrayList&lt;&gt;(cur)); return; }
+    for (int i = 0; i &lt; nums.length; i++) {
+        if (used[i]) continue;               // already placed earlier
+        used[i] = true;
+        cur.add(nums[i]);
+        dfs(nums, used, cur, out);
+        cur.remove(cur.size() - 1);
+        used[i] = false;                     // undo the choice
+    }
+}   // O(n! · n) time · O(n! · n) output space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n! · n) time time · O(n! · n) output space.</p>
+  </section>
+  <section class="sub" id="gray-code">
+    <h3><span class="pn">M5</span> Gray Code <span class="pill">Medium</span> <span class="muted small">· reflected recursion (and a one-line formula)</span></h3>
+    <p><b>Problem.</b> Return any sequence of the 2^n integers 0..2^n - 1 in which consecutive values differ by exactly one bit, and the first and last also differ by one bit.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 2
+Output: [0,1,3,2]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 1
+Output: [0,1]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 16; all 2^n values must appear exactly once.</p>
+    <p><b>Approach.</b> Two equivalent views. Recursively, the code for n is the code for n-1 written forwards (top bit 0) followed by the same sequence backwards with the top bit set — reversing the second half is exactly what keeps the join edge legal. Algebraically the same sequence is i XOR (i &gt;&gt; 1) for i = 0, 1, 2, ….</p>
+    <pre><code>// i ^ (i &gt;&gt; 1) walks the reflected Gray code in order
+List&lt;Integer&gt; grayCode(int n) {
+    List&lt;Integer&gt; out = new ArrayList&lt;&gt;();
+    for (int i = 0; i &lt; (1 &lt;&lt; n); i++)
+        out.add(i ^ (i &gt;&gt; 1));               // one bit changes each step
+    return out;
+}   // O(2^n) time · O(2^n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(2^n) time time · O(2^n) space.</p>
+  </section>
+  <section class="sub" id="palindrome-partitioning">
+    <h3><span class="pn">M6</span> Palindrome Partitioning <span class="pill">Medium</span> <span class="muted small">· partition DFS with a validity check</span></h3>
+    <p><b>Problem.</b> Split s into substrings so that every piece is a palindrome; return all such partitions (the order of the answer does not matter).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "aab"
+Output: [["a","a","b"],["aa","b"]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "a"
+Output: [["a"]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 16; s consists of lowercase letters.</p>
+    <p><b>Approach.</b> Partitioning is a choice of cut positions, so the recursion fixes one cut at a time: take s[start..end], keep it only if it reads the same both ways, and recurse on what follows. The palindrome test is the only pruning needed, and it is what keeps the tree small on most inputs.</p>
+    <pre><code>// Fix one cut at a time; only palindromic pieces may be kept
+List&lt;List&lt;String&gt;&gt; partition(String s) {
+    List&lt;List&lt;String&gt;&gt; out = new ArrayList&lt;&gt;();
+    dfs(s, 0, new ArrayList&lt;&gt;(), out);
+    return out;
+}
+void dfs(String s, int start, List&lt;String&gt; cur, List&lt;List&lt;String&gt;&gt; out) {
+    if (start == s.length()) { out.add(new ArrayList&lt;&gt;(cur)); return; }
+    for (int end = start; end &lt; s.length(); end++) {
+        if (!isPal(s, start, end)) continue;     // this piece cannot be used
+        cur.add(s.substring(start, end + 1));
+        dfs(s, end + 1, cur, out);
+        cur.remove(cur.size() - 1);
+    }
+}
+boolean isPal(String s, int i, int j) {
+    while (i &lt; j) {
+        if (s.charAt(i) != s.charAt(j)) return false;
+        i++; j--;
+    }
+    return true;
+}   // O(2^n · n) time · O(2^n · n) output space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(2^n · n) time time · O(2^n · n) output space.</p>
+  </section>
+  <section class="sub" id="restore-ip-addresses">
+    <h3><span class="pn">M7</span> Restore IP Addresses <span class="pill">Medium</span> <span class="muted small">· partition DFS with numeric constraints</span></h3>
+    <p><b>Problem.</b> Insert three dots into s so that the result is a valid IP address (four parts, each 0..255, no part with a leading zero); return all valid addresses (the order of the answer does not matter).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "25525511135"
+Output: ["255.255.11.135","255.255.111.35"]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "0000"
+Output: ["0.0.0.0"]</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  s = "101023"
+Output: ["1.0.10.23","1.0.102.3","10.1.0.23","10.10.2.3","101.0.2.3"]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 20; s consists of digits only.</p>
+    <p><b>Approach.</b> Same cut-by-cut recursion as palindromic partitioning, with an IP rule instead of a palindrome rule: a piece may have at most three characters, at most the value 255, and may not start with zero unless it is the single character "0". Four parts must cover s exactly, so the depth of the recursion is the depth of the address.</p>
+    <pre><code>// Four parts, each &lt;= 255 and without a leading zero
+List&lt;String&gt; restoreIpAddresses(String s) {
+    List&lt;String&gt; out = new ArrayList&lt;&gt;();
+    dfs(s, 0, new ArrayList&lt;&gt;(), out);
+    return out;
+}
+void dfs(String s, int i, List&lt;String&gt; parts, List&lt;String&gt; out) {
+    if (parts.size() == 4) {
+        if (i == s.length()) {                   // the address used all of s
+            out.add(String.join(".", parts));
+        }
+        return;
+    }
+    for (int len = 1; len &lt;= 3 &amp;&amp; i + len &lt;= s.length(); len++) {
+        String piece = s.substring(i, i + len);
+        if (piece.length() &gt; 1 &amp;&amp; piece.charAt(0) == '0') break;   // leading zero
+        if (Integer.parseInt(piece) &gt; 255) break;                  // so are the rest
+        parts.add(piece);
+        dfs(s, i + len, parts, out);
+        parts.remove(parts.size() - 1);
+    }
+}   // O(3^4) recursion nodes · O(1) extra space per answer</code></pre>
+    <p class="cx"><b>Complexity:</b> O(3^4 · n) time (each part has at most three choices) time · O(1) parts per answer space.</p>
+  </section>
+  <section class="sub" id="generate-parentheses">
+    <h3><span class="pn">M8</span> Generate Parentheses <span class="pill">Medium</span> <span class="muted small">· validity-driven construction</span></h3>
+    <p><b>Problem.</b> Given n pairs of parentheses, return all balanced strings of n pairs (the order of the answer does not matter).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 3
+Output: ["((()))","(()())","(())()","()(())","()()()"]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 1
+Output: ["()"]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 8.</p>
+    <p><b>Approach.</b> Instead of generating all 2^(2n) strings and filtering, only ever make legal moves: open a group while fewer than n have been opened, and close one only while more have been opened than closed. The second rule is the whole problem — it guarantees that no prefix ever has more closing than opening parentheses.</p>
+    <pre><code>// Only legal moves: open if you can, close only when it stays balanced
+List&lt;String&gt; generateParenthesis(int n) {
+    List&lt;String&gt; out = new ArrayList&lt;&gt;();
+    dfs(n, 0, 0, new StringBuilder(), out);
+    return out;
+}
+void dfs(int n, int open, int close, StringBuilder cur, List&lt;String&gt; out) {
+    if (cur.length() == 2 * n) { out.add(cur.toString()); return; }
+    if (open &lt; n) {                          // room to open another group
+        cur.append('(');
+        dfs(n, open + 1, close, cur, out);
+        cur.deleteCharAt(cur.length() - 1);
+    }
+    if (close &lt; open) {                      // closing keeps it balanced
+        cur.append(')');
+        dfs(n, open, close + 1, cur, out);
+        cur.deleteCharAt(cur.length() - 1);
+    }
+}   // O(4^n / sqrt(n)) time · O(n) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(4^n / sqrt(n)) time (the Catalan number of answers) time · O(n) stack space.</p>
+  </section>
+  <section class="sub" id="combination-sum">
+    <h3><span class="pn">M9</span> Combination Sum <span class="pill">Medium</span> <span class="muted small">· choose with reuse allowed</span></h3>
+    <p><b>Problem.</b> Given distinct positive candidates and a target, return all unique combinations that sum to the target, where each candidate may be used any number of times (the order of the answer does not matter).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  candidates = [2,3,6,7], target = 7
+Output: [[2,2,3],[7]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  candidates = [2,3,5], target = 8
+Output: [[2,2,2,2],[2,3,3],[3,5]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  candidates = [2], target = 1
+Output: []</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= candidates.length &lt;= 30; 2 &lt;= candidates[i] &lt;= 40; 1 &lt;= target &lt;= 40; candidates are distinct.</p>
+    <p><b>Approach.</b> The start index returns, but the recursive call keeps it instead of moving past it — that single difference is "reuse allowed". Two prunes matter: stop the loop once a candidate exceeds the remaining target (after sorting, everything later is larger), and never look left of the current index, which is what keeps each combination from being emitted in many orders.</p>
+    <pre><code>// Start index stays put for reuse; sorted order makes the prune exact
+List&lt;List&lt;Integer&gt;&gt; combinationSum(int[] candidates, int target) {
+    Arrays.sort(candidates);
+    List&lt;List&lt;Integer&gt;&gt; out = new ArrayList&lt;&gt;();
+    dfs(candidates, 0, target, new ArrayList&lt;&gt;(), out);
+    return out;
+}
+void dfs(int[] cand, int start, int remaining, List&lt;Integer&gt; cur, List&lt;List&lt;Integer&gt;&gt; out) {
+    if (remaining == 0) { out.add(new ArrayList&lt;&gt;(cur)); return; }
+    for (int i = start; i &lt; cand.length; i++) {
+        if (cand[i] &gt; remaining) break;          // sorted: nothing later fits
+        cur.add(cand[i]);
+        dfs(cand, i, remaining - cand[i], cur, out);   // i, not i + 1: reuse
+        cur.remove(cur.size() - 1);
+    }
+}   // O(n^(target/minCandidate)) worst case · O(target/minCandidate) stack</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n^(target/min)) worst case time · O(target/min) stack space.</p>
+  </section>
+  <section class="sub" id="subsets-ii">
+    <h3><span class="pn">M10</span> Subsets II <span class="pill">Medium</span> <span class="muted small">· duplicates handled by sorting and skipping</span></h3>
+    <p><b>Problem.</b> Return all subsets of nums, which may contain duplicates, without repeating any subset (the order of the answer does not matter).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,2,2]
+Output: [[],[1],[1,2],[1,2,2],[2],[2,2]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [0]
+Output: [[],[0]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 10; -10 &lt;= nums[i] &lt;= 10.</p>
+    <p><b>Approach.</b> Sort first, then at each level of the recursion skip a value that equals the previous value tried at that same level. Sorting means equal values sit together, so "same as the one before" is exactly "this branch would duplicate the previous branch" — the subsets template with one extra line.</p>
+    <pre><code>// Sort, then skip a value equal to the one tried at the same level
+List&lt;List&lt;Integer&gt;&gt; subsetsWithDup(int[] nums) {
+    Arrays.sort(nums);
+    List&lt;List&lt;Integer&gt;&gt; out = new ArrayList&lt;&gt;();
+    dfs(nums, 0, new ArrayList&lt;&gt;(), out);
+    return out;
+}
+void dfs(int[] nums, int start, List&lt;Integer&gt; cur, List&lt;List&lt;Integer&gt;&gt; out) {
+    out.add(new ArrayList&lt;&gt;(cur));
+    for (int i = start; i &lt; nums.length; i++) {
+        if (i &gt; start &amp;&amp; nums[i] == nums[i-1]) continue;   // duplicate branch
+        cur.add(nums[i]);
+        dfs(nums, i + 1, cur, out);
+        cur.remove(cur.size() - 1);
+    }
+}   // O(2^n · n) time · O(2^n · n) output space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(2^n · n) time time · O(2^n · n) output space.</p>
+  </section>
+  <section class="sub" id="letter-tile-possibilities">
+    <h3><span class="pn">M11</span> Letter Tile Possibilities <span class="pill">Medium</span> <span class="muted small">· multiset counting without enumerating strings</span></h3>
+    <p><b>Problem.</b> Given a string of tiles, count how many different non-empty sequences can be made using each tile at most once.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  tiles = "AAB"
+Output: 8</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  tiles = "AAABBC"
+Output: 188</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  tiles = "V"
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= tiles.length &lt;= 7; tiles consists of uppercase letters.</p>
+    <p><b>Approach.</b> Forget the strings and count the prefixes: keep 26 counters and, at every level, try each letter that still has a copy left. Each step of the recursion *is* one new sequence, so the count is just the number of recursive steps taken — a counting backtracking problem with no output list at all.</p>
+    <pre><code>// Count the prefixes instead of building the strings
+int numTilePossibilities(String tiles) {
+    int[] count = new int[26];
+    for (char c : tiles.toCharArray()) count[c - 'A']++;
+    return dfs(count);
+}
+int dfs(int[] count) {
+    int total = 0;
+    for (int c = 0; c &lt; 26; c++) {
+        if (count[c] == 0) continue;
+        count[c]--;                          // use one tile of this letter
+        total += 1 + dfs(count);              // this prefix plus its extensions
+        count[c]++;                          // give it back
+    }
+    return total;
+}   // O(number of sequences) time · O(n) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(number of sequences) time time · O(n) stack space.</p>
+  </section>
+  <section class="sub" id="unique-binary-search-trees-ii">
+    <h3><span class="pn">M12</span> Unique Binary Search Trees II <span class="pill">Medium</span> <span class="muted small">· recursive structure generation</span></h3>
+    <p><b>Problem.</b> Return all structurally different binary search trees holding the values 1..n (the order of the answer does not matter).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 3
+Output: [[1,null,2,null,3],[1,null,3,2],[2,1,3],[3,1,null,null,2],[3,2,null,1]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 1
+Output: [[1]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 8.</p>
+    <p><b>Approach.</b> Every BST over a range has a root, and once the root is fixed the left and right subtrees are BSTs over the two smaller ranges. So the recursion returns all trees for a range, and the answer is the cross product of left and right choices around each possible root — recursion that builds values instead of just counting them.</p>
+    <pre><code>// Every root splits the range; the answer is left x right around it
+class TreeNode { int val; TreeNode left, right; TreeNode(int v) { val = v; } }
+List&lt;TreeNode&gt; generateTrees(int n) {
+    return build(1, n);
+}
+List&lt;TreeNode&gt; build(int lo, int hi) {
+    List&lt;TreeNode&gt; trees = new ArrayList&lt;&gt;();
+    if (lo &gt; hi) { trees.add(null); return trees; }        // one empty tree
+    for (int rootVal = lo; rootVal &lt;= hi; rootVal++) {
+        for (TreeNode l : build(lo, rootVal - 1))
+            for (TreeNode r : build(rootVal + 1, hi)) {
+                TreeNode root = new TreeNode(rootVal);
+                root.left = l;
+                root.right = r;
+                trees.add(root);
+            }
+    }
+    return trees;
+}   // O(Catalan(n) · n) time and space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(Catalan(n)) trees, each O(n) nodes time · O(Catalan(n) · n) space.</p>
+  </section>
+  <section class="sub" id="n-queens-ii">
+    <h3><span class="pn">H1</span> N-Queens II <span class="pill hot">Hard</span> <span class="muted small">· bitmask backtracking (counting only)</span></h3>
+    <p><b>Problem.</b> Return the number of ways to place n queens on an n x n board so that no two attack each other.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 4
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 1
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 9.</p>
+    <p><b>Approach.</b> Place one queen per row and remember, in three bitmasks, which columns and both diagonals are already occupied. A diagonal is identified by row + col (one direction) and row - col (the other), so attacks are two shifts and an AND. Counting instead of printing lets the same recursion skip board construction entirely.</p>
+    <pre><code>// One queen per row; three bitmasks rule out columns and diagonals
+int totalNQueens(int n) {
+    return dfs(0, 0, 0, 0, n);
+}
+int dfs(int row, int cols, int diag1, int diag2, int n) {
+    if (row == n) return 1;
+    int free = ((1 &lt;&lt; n) - 1) &amp; ~(cols | diag1 | diag2);   // legal columns
+    int count = 0;
+    while (free != 0) {
+        int bit = free &amp; -free;                     // lowest legal column
+        free -= bit;
+        count += dfs(row + 1, cols | bit, (diag1 | bit) &lt;&lt; 1, (diag2 | bit) &gt;&gt; 1, n);
+    }
+    return count;
+}   // O(n!) with pruning · O(n) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n!) with heavy pruning time · O(n) stack space.</p>
+  </section>
+  <section class="sub" id="n-queens">
+    <h3><span class="pn">H2</span> N-Queens <span class="pill hot">Hard</span> <span class="muted small">· bitmask backtracking with board building</span></h3>
+    <p><b>Problem.</b> Return every distinct solution of the n-queens puzzle, each board written as n strings (the order of the answer does not matter).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 4
+Output: [[".Q..","...Q","Q...","..Q."],["..Q.","Q...","...Q",".Q.."]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 1
+Output: [["Q"]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 9.</p>
+    <p><b>Approach.</b> The counting version plus one more thing to carry: the board itself. Write the queen into the current row, recurse, then erase it — the same place-and-undo rhythm as the subsets template, with the three bitmasks doing the legality test in constant time per row.</p>
+    <pre><code>// Place, recurse, erase: the board is carried along as mutable state
+List&lt;List&lt;String&gt;&gt; solveNQueens(int n) {
+    List&lt;List&lt;String&gt;&gt; out = new ArrayList&lt;&gt;();
+    char[][] board = new char[n][n];
+    for (char[] row : board) Arrays.fill(row, '.');
+    dfs(0, 0, 0, 0, n, board, out);
+    return out;
+}
+void dfs(int row, int cols, int diag1, int diag2, int n, char[][] board, List&lt;List&lt;String&gt;&gt; out) {
+    if (row == n) {
+        List&lt;String&gt; snapshot = new ArrayList&lt;&gt;();
+        for (char[] r : board) snapshot.add(new String(r));
+        out.add(snapshot);
+        return;
+    }
+    int free = ((1 &lt;&lt; n) - 1) &amp; ~(cols | diag1 | diag2);
+    while (free != 0) {
+        int bit = free &amp; -free;
+        free -= bit;
+        int col = Integer.numberOfTrailingZeros(bit);
+        board[row][col] = 'Q';                       // place
+        dfs(row + 1, cols | bit, (diag1 | bit) &lt;&lt; 1, (diag2 | bit) &gt;&gt; 1, n, board, out);
+        board[row][col] = '.';                       // undo
+    }
+}   // O(n! · n^2) time · O(n^2) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n!) with pruning, times O(n) to record each board time · O(n²) board plus O(n) stack space.</p>
+  </section>
+  <section class="sub" id="number-of-squareful-arrays">
+    <h3><span class="pn">H3</span> Number of Squareful Arrays <span class="pill hot">Hard</span> <span class="muted small">· permutation search with an adjacency test</span></h3>
+    <p><b>Problem.</b> Count the permutations of nums in which the sum of every pair of adjacent elements is a perfect square.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,17,8]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [2,2,2]
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 12; 0 &lt;= nums[i] &lt;= 10^9.</p>
+    <p><b>Approach.</b> A permutation search with adjacency: try each unused element that forms a perfect square with the last placed one. Duplicates are handled the subsets-II way — sort and skip an equal value at the same level — so [2,2,2] is counted once rather than six times, and precomputing which pairs are squareful turns the inner test into a table lookup.</p>
+    <pre><code>// Permute with an adjacency test; skip equal values at the same level
+int numSquarefulPerms(int[] nums) {
+    Arrays.sort(nums);
+    int n = nums.length;
+    boolean[][] ok = new boolean[n][n];
+    for (int i = 0; i &lt; n; i++)
+        for (int j = 0; j &lt; n; j++) {
+            if (i == j) continue;
+            long s = (long) nums[i] + nums[j];
+            long r = (long) Math.sqrt(s);
+            ok[i][j] = (r * r == s);             // a perfect square?
+        }
+    return dfs(nums, new boolean[n], -1, 0, ok);
+}
+int dfs(int[] nums, boolean[] used, int last, int depth, boolean[][] ok) {
+    if (depth == nums.length) return 1;
+    int total = 0;
+    for (int i = 0; i &lt; nums.length; i++) {
+        if (used[i]) continue;
+        if (i &gt; 0 &amp;&amp; nums[i] == nums[i-1] &amp;&amp; !used[i-1]) continue;   // duplicate
+        if (last &gt;= 0 &amp;&amp; !ok[last][i]) continue;                     // not squareful
+        used[i] = true;
+        total += dfs(nums, used, i, depth + 1, ok);
+        used[i] = false;
+    }
+    return total;
+}   // O(n!) with duplicate pruning · O(n^2) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n!) worst case with duplicate pruning time · O(n²) space.</p>
+  </section>
+  <section class="sub" id="unique-paths-iii">
+    <h3><span class="pn">H4</span> Unique Paths III <span class="pill hot">Hard</span> <span class="muted small">· coverage search (Hamiltonian style)</span></h3>
+    <p><b>Problem.</b> Walking in four directions over the non-obstacle squares, count the paths from the start square to the end square that step on every non-obstacle square exactly once.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  grid = [[1,0,0,0],[0,0,0,0],[0,0,2,-1]]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  grid = [[1,0,0,0],[0,0,0,0],[0,0,0,2]]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  grid = [[0,1],[2,0]]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 20; 1 &lt;= non-obstacle squares &lt;= 20; grid contains exactly one 1 and one 2.</p>
+    <p><b>Approach.</b> The answer must use every walkable square, so the search carries a count of squares already visited and only accepts a path that arrives at the end with that count equal to the total. Marking the current square as an obstacle on the way down (and restoring it after) is the visited set — cheap, and impossible to forget to undo.</p>
+    <pre><code>// Must cover every walkable square; mark and restore on the way
+int uniquePathsIII(int[][] grid) {
+    int R = grid.length, C = grid[0].length;
+    int total = 0, sr = 0, sc = 0;
+    for (int r = 0; r &lt; R; r++)
+        for (int c = 0; c &lt; C; c++) {
+            if (grid[r][c] != -1) total++;       // squares that must be walked
+            if (grid[r][c] == 1) { sr = r; sc = c; }
+        }
+    return dfs(grid, sr, sc, 1, total);
+}
+int dfs(int[][] grid, int r, int c, int walked, int total) {
+    if (grid[r][c] == 2) return walked == total ? 1 : 0;   // end, fully covered?
+    grid[r][c] = -1;                             // mark visited
+    int count = 0;
+    int[] dr = {1,-1,0,0}, dc = {0,0,1,-1};
+    for (int d = 0; d &lt; 4; d++) {
+        int nr = r + dr[d], nc = c + dc[d];
+        if (nr &lt; 0 || nr &gt;= grid.length || nc &lt; 0 || nc &gt;= grid[0].length) continue;
+        if (grid[nr][nc] == -1) continue;
+        count += dfs(grid, nr, nc, walked + 1, total);
+    }
+    grid[r][c] = 0;                              // restore for other paths
+    return count;
+}   // O(4^k) with pruning · O(k) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(4^k) for k walkable squares (k &lt;= 20, heavily pruned) time · O(k) stack space.</p>
+  </section>
+  <section class="sub" id="maximum-score-words-formed-by-letters">
+    <h3><span class="pn">H5</span> Maximum Score Words Formed by Letters <span class="pill hot">Hard</span> <span class="muted small">· choose or skip with a shared budget</span></h3>
+    <p><b>Problem.</b> Each word has a score obtained by adding the scores of its letters, and the given letters are a limited pool that each word consumes. Return the largest total score of any set of words that can be spelled with the pool.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  words = ["dog","cat","dad","good"], letters = ["a","a","c","d","d","d","g","o","o"], score = 26 values starting 1,0,9,5,0,0,3,...
+Output: 23</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  words = ["leetcode"], letters = ["l","e","t","c","o","d"], score = letter scores
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= words.length &lt;= 14; 1 &lt;= words[i].length &lt;= 15; 1 &lt;= letters.length &lt;= 100; score.length == 26.</p>
+    <p><b>Approach.</b> Take the letters as a 26-slot budget and run the include/exclude recursion over the words: taking a word spends its letters for the whole subtree and gives them back afterwards. A suffix-sum bound — the total score of all words still to be considered — cuts a branch the moment even the best case cannot beat the current best, which is what keeps 14 words tractable.</p>
+    <pre><code>// Include/exclude over words with a shared 26-slot letter budget
+int maxScoreWords(String[] words, char[] letters, int[] score) {
+    int[] have = new int[26];
+    for (char c : letters) have[c - 'a']++;
+    int n = words.length;
+    int[][] need = new int[n][26];
+    int[] worth = new int[n];
+    for (int i = 0; i &lt; n; i++)
+        for (char c : words[i].toCharArray()) {
+            need[i][c - 'a']++;
+            worth[i] += score[c - 'a'];
+        }
+    int[] suffix = new int[n + 1];
+    for (int i = n - 1; i &gt;= 0; i--) suffix[i] = suffix[i + 1] + worth[i];
+    best = 0;
+    dfs(0, 0, have, need, worth, suffix, n);
+    return best;
+}
+private int best;
+void dfs(int i, int got, int[] have, int[][] need, int[] worth, int[] suffix, int n) {
+    if (got + suffix[i] &lt;= best) return;         // cannot beat the best any more
+    if (i == n) { best = Math.max(best, got); return; }
+    boolean fits = true;
+    for (int c = 0; c &lt; 26; c++) if (need[i][c] &gt; have[c]) { fits = false; break; }
+    if (fits) {                                  // take the word
+        for (int c = 0; c &lt; 26; c++) have[c] -= need[i][c];
+        dfs(i + 1, got + worth[i], have, need, worth, suffix, n);
+        for (int c = 0; c &lt; 26; c++) have[c] += need[i][c];   // give back
+    }
+    dfs(i + 1, got, have, need, worth, suffix, n);            // skip the word
+}   // O(2^n · 26) with pruning · O(n) stack</code></pre>
+    <p class="cx"><b>Complexity:</b> O(2^n · 26) with pruning time · O(n) stack space.</p>
+  </section>
+  <section class="sub" id="remove-invalid-parentheses">
+    <h3><span class="pn">H6</span> Remove Invalid Parentheses <span class="pill hot">Hard</span> <span class="muted small">· level-by-level removal (BFS over strings)</span></h3>
+    <p><b>Problem.</b> Remove the fewest parentheses needed to make s balanced, and return all distinct results of that minimal length (the order of the answer does not matter).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "()())()"
+Output: ["(())()","()()()"]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "(a)())()"
+Output: ["(a())()","(a)()()"]</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  s = ")("
+Output: [""]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 25; s consists of lowercase letters and parentheses.</p>
+    <p><b>Approach.</b> Because the answer needs the *fewest* removals, search breadth-first over removal counts: keep the set of strings reachable by deleting exactly k characters, test each level for balance, and stop at the first level that contains a balanced string. Working level by level is what guarantees minimality, and a set per level removes duplicate work.</p>
+    <pre><code>// BFS over deletion counts: the first balanced level is minimal
+List&lt;String&gt; removeInvalidParentheses(String s) {
+    Set&lt;String&gt; level = new HashSet&lt;&gt;();
+    level.add(s);
+    while (!level.isEmpty()) {
+        List&lt;String&gt; good = new ArrayList&lt;&gt;();
+        for (String t : level) if (valid(t)) good.add(t);
+        if (!good.isEmpty()) return good;         // fewest removals reached
+        Set&lt;String&gt; next = new HashSet&lt;&gt;();
+        for (String t : level)
+            for (int i = 0; i &lt; t.length(); i++)
+                if (t.charAt(i) == '(' || t.charAt(i) == ')')
+                    next.add(t.substring(0, i) + t.substring(i + 1));   // delete one
+        level = next;
+    }
+    return List.of("");
+}
+boolean valid(String t) {
+    int bal = 0;
+    for (char c : t.toCharArray()) {
+        if (c == '(') bal++;
+        else if (c == ')') {
+            bal--;
+            if (bal &lt; 0) return false;             // a closing with nothing open
+        }
+    }
+    return bal == 0;                               // nothing left open
+}   // O(2^n · n) worst case · O(2^n · n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(2^n · n) worst case time · O(2^n · n) space.</p>
+  </section>
+  <section class="sub" id="expression-add-operators">
+    <h3><span class="pn">H7</span> Expression Add Operators <span class="pill hot">Hard</span> <span class="muted small">· expression building with precedence</span></h3>
+    <p><b>Problem.</b> Insert '+', '-' or '*' between the digits of num (keeping their order) so that the expression evaluates to target; return all such expressions (the order of the answer does not matter).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  num = "123", target = 6
+Output: ["1*2*3","1+2+3"]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  num = "232", target = 8
+Output: ["2*3+2","2+3*2"]</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  num = "3456237490", target = 9191
+Output: []</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= num.length &lt;= 10; num consists of digits; -2^31 &lt;= target &lt;= 2^31 - 1; no number may have a leading zero.</p>
+    <p><b>Approach.</b> The recursion consumes digits in groups (a group is the next number) and folds each group in with an operator. Multiplication is the subtlety: because it binds tighter, the running total must be corrected by *undoing* the previous term — so the recursion carries the value of the last term alongside the total, and a multiplication replaces that term with last × group.</p>
+    <pre><code>// Carry the last term so '*' can undo it instead of reassociating
+List&lt;String&gt; addOperators(String num, int target) {
+    List&lt;String&gt; out = new ArrayList&lt;&gt;();
+    dfs(num, target, 0, "", 0L, 0L, out);
+    return out;
+}
+void dfs(String num, int target, int i, String expr, long value, long last, List&lt;String&gt; out) {
+    if (i == num.length()) {
+        if (value == target) out.add(expr);
+        return;
+    }
+    for (int j = i; j &lt; num.length(); j++) {
+        if (j &gt; i &amp;&amp; num.charAt(i) == '0') break;      // a group cannot start with 0
+        long piece = Long.parseLong(num.substring(i, j + 1));
+        String text = num.substring(i, j + 1);
+        if (i == 0) {
+            dfs(num, target, j + 1, text, piece, piece, out);   // first group
+        } else {
+            dfs(num, target, j + 1, expr + "+" + text, value + piece, piece, out);
+            dfs(num, target, j + 1, expr + "-" + text, value - piece, -piece, out);
+            dfs(num, target, j + 1, expr + "*" + text, value - last + last * piece, last * piece, out);
+        }
+    }
+}   // O(4^n) with pruning · O(n) stack space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(4^n) expressions with pruning time · O(n) stack space.</p>
+  </section>
+  <section class="sub" id="valid-permutations-for-di-sequence">
+    <h3><span class="pn">H8</span> Valid Permutations for DI Sequence <span class="pill hot">Hard</span> <span class="muted small">· rank DP over a growing permutation</span></h3>
+    <p><b>Problem.</b> s is a string of 'I' and 'D'. Count the permutations p of 0..n (where n = len(s)) such that p[i] &lt; p[i+1] where s[i] is 'I' and p[i] &gt; p[i+1] where it is 'D', modulo 10^9 + 7.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "DID"
+Output: 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "D"
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 200; s consists of 'D' and 'I'.</p>
+    <p><b>Approach.</b> Build the permutation one position at a time, tracking only the *rank* of the last value among the values used so far — the actual numbers never matter, because inserting the next value only depends on whether it is bigger or smaller. dp[j] counts partial arrangements ending with the j-th smallest value, and prefix or suffix sums make each step linear.</p>
+    <pre><code>// dp[j]: partial arrangements whose last value has rank j among those used
+int numPermsDISequence(String s) {
+    final long MOD = 1_000_000_007L;
+    int m = s.length();
+    long[] dp = new long[m + 1];
+    Arrays.fill(dp, 1);                          // length 1: one arrangement
+    for (int i = 1; i &lt;= m; i++) {
+        long[] ndp = new long[i + 1];
+        if (s.charAt(i-1) == 'I') {              // the new value outranks the last
+            long run = 0;
+            for (int j = 0; j &lt;= i; j++) {
+                ndp[j] = run;                    // ranks strictly below j
+                if (j &lt; i) run = (run + dp[j]) % MOD;
+            }
+        } else {                                 // the new value must rank below
+            long run = 0;
+            for (int j = i; j &gt;= 0; j--) {
+                if (j &lt; i) run = (run + dp[j]) % MOD;
+                ndp[j] = run;
+            }
+        }
+        dp = ndp;
+    }
+    long total = 0;
+    for (long v : dp) total = (total + v) % MOD;
+    return (int) total;
+}   // O(n^2) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="find-minimum-time-to-finish-all-jobs">
+    <h3><span class="pn">H9</span> Find Minimum Time to Finish All Jobs <span class="pill hot">Hard</span> <span class="muted small">· binary search on the answer plus assignment search</span></h3>
+    <p><b>Problem.</b> Assign every job to one of k workers; a worker's time is the sum of the jobs assigned to it. Return the smallest possible maximum worker time.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  jobs = [3,2,3], k = 3
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  jobs = [1,2,4,7,8], k = 2
+Output: 11</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= k &lt;= jobs.length &lt;= 12; 1 &lt;= jobs[i] &lt;= 10^7.</p>
+    <p><b>Approach.</b> The answer is monotone — if a limit works, every larger limit works — so binary search it, and for a fixed limit run a backtracking assignment: place each job on a worker whose load stays inside the limit. Two prunes do the real work: never retry a worker whose load equals the load just tried, and stop once an empty worker has failed, because every empty worker is interchangeable.</p>
+    <pre><code>// Binary search the limit; place each job on a worker that still fits
+int minimumTimeRequired(int[] jobs, int k) {
+    Integer[] boxed = Arrays.stream(jobs).boxed().toArray(Integer[]::new);
+    Arrays.sort(boxed, Collections.reverseOrder());   // big jobs first
+    int n = boxed.length;
+    int lo = boxed[0], hi = 0;
+    for (int j : jobs) hi += j;
+    while (lo &lt; hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (canFinish(boxed, k, mid)) hi = mid; else lo = mid + 1;
+    }
+    return lo;
+}
+boolean canFinish(Integer[] jobs, int k, long limit) {
+    return place(jobs, new long[k], 0, limit);
+}
+boolean place(Integer[] jobs, long[] load, int i, long limit) {
+    if (i == jobs.length) return true;
+    Set&lt;Long&gt; tried = new HashSet&lt;&gt;();           // identical loads are interchangeable
+    for (int w = 0; w &lt; load.length; w++) {
+        if (tried.contains(load[w])) continue;
+        if (load[w] + jobs[i] &gt; limit) continue;
+        tried.add(load[w]);
+        load[w] += jobs[i];
+        if (place(jobs, load, i + 1, limit)) return true;
+        load[w] -= jobs[i];
+        if (load[w] == 0) break;                 // an empty worker failed: stop
+    }
+    return false;
+}   // O(log(sum) · k^n) with pruning · O(n) stack</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log(sum) · k^n) with pruning time · O(n) stack space.</p>
+  </section>
+  <section class="sub" id="maximum-number-of-achievable-transfer-requests">
+    <h3><span class="pn">H10</span> Maximum Number of Achievable Transfer Requests <span class="pill hot">Hard</span> <span class="muted small">· include/exclude over requests with a balance check</span></h3>
+    <p><b>Problem.</b> Each request moves one employee from building a to building b. Return the largest number of requests that can all be satisfied, meaning every building ends with as many employees as it started with.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 5, requests = [[0,1],[1,0],[0,1],[1,2],[2,0],[3,4]]
+Output: 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 3, requests = [[0,0],[1,2],[2,1]]
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 20; 1 &lt;= requests.length &lt;= 16; requests[i].length == 2; 0 &lt;= from, to &lt; n.</p>
+    <p><b>Approach.</b> Every request is in or out, so walk the include/exclude tree and, at the leaves, accept the selection when the net movement of every building is zero — taking a request simply decrements the source and increments the destination. A count bound (selected so far plus requests left) prunes branches that can no longer beat the best found.</p>
+    <pre><code>// Include/exclude each request; a selection counts when nets are zero
+int maximumRequests(int n, int[][] requests) {
+    int[] net = new int[n];
+    return dfs(requests, 0, 0, net, requests.length);
+}
+int dfs(int[][] requests, int i, int taken, int[] net, int m) {
+    if (i == m) {
+        for (int v : net) if (v != 0) return 0;  // some building is unbalanced
+        return taken;
+    }
+    int a = requests[i][0], b = requests[i][1];
+    net[a]--; net[b]++;                          // take this request
+    int withIt = dfs(requests, i + 1, taken + 1, net, m);
+    net[a]++; net[b]--;                          // undo it
+    int without = dfs(requests, i + 1, taken, net, m);
+    return Math.max(withIt, without);
+}   // O(2^m · n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(2^requests · n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="24-game">
+    <h3><span class="pn">H11</span> 24 Game <span class="pill hot">Hard</span> <span class="muted small">· arithmetic search over a shrinking list</span></h3>
+    <p><b>Problem.</b> Using the four cards and the operations +, -, * and / (with parentheses), decide whether 24 can be reached; every card must be used exactly once.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  cards = [4,1,8,7]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  cards = [1,2,1,2]
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> cards.length == 4; 1 &lt;= cards[i] &lt;= 9; division by zero is not allowed.</p>
+    <p><b>Approach.</b> Pick any two of the remaining numbers, replace them by the result of one operation, and recurse on the shorter list — that models every parenthesisation, because a parenthesis is exactly a choice of which two values combine first. Because floating point is involved, the final test compares against 24 with a small tolerance.</p>
+    <pre><code>// Combine any two numbers into one, recursively: that is every parenthesis
+boolean judgePoint24(int[] cards) {
+    double[] nums = new double[cards.length];
+    for (int i = 0; i &lt; cards.length; i++) nums[i] = cards[i];
+    return dfs(nums);
+}
+boolean dfs(double[] a) {
+    if (a.length == 1) return Math.abs(a[0] - 24.0) &lt; 1e-6;   // close enough
+    for (int i = 0; i &lt; a.length; i++)
+        for (int j = 0; j &lt; a.length; j++) {
+            if (i == j) continue;
+            double[] rest = new double[a.length - 1];
+            int at = 0;
+            for (int k = 0; k &lt; a.length; k++)
+                if (k != i &amp;&amp; k != j) rest[at++] = a[k];
+            double x = a[i], y = a[j];
+            double[] cands = {x + y, x - y, x * y};
+            for (double v : cands) {
+                rest[at] = v;
+                if (dfs(rest)) return true;       // recurse on the shorter list
+            }
+            if (Math.abs(y) &gt; 1e-9) {             // division by zero is not allowed
+                rest[at] = x / y;
+                if (dfs(rest)) return true;
+            }
+        }
+    return false;
+}   // O(1) · at most 4! · 4^3 combinations</code></pre>
+    <p class="cx"><b>Complexity:</b> O(1) in practice: at most 4! · 4³ combinations time · O(1) space.</p>
+  </section>
+  <section class="sub" id="sudoku-solver">
+    <h3><span class="pn">H12</span> Sudoku Solver <span class="pill hot">Hard</span> <span class="muted small">· constraint backtracking with sets</span></h3>
+    <p><b>Problem.</b> Fill the 9 x 9 board so that every row, column and 3 x 3 box contains the digits 1-9 exactly once.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  board = [["5","3",".",".","7",".",".",".","."],["6",".",".","1","9","5",".",".","."],[".","9","8",".",".",".",".","6","."],["8",".",".",".","6",".",".",".","3"],["4",".",".","8",".","3",".",".","1"],["7",".",".",".","2",".",".",".","6"],[".","6",".",".",".",".","2","8","."],[".",".",".","4","1","9",".",".","5"],[".",".",".",".","8",".",".","7","9"]]
+Output: the board becomes [["5","3","4","6","7","8","9","1","2"],["6","7","2","1","9","5","3","4","8"],["1","9","8","3","4","2","5","6","7"],["8","5","9","7","6","1","4","2","3"],["4","2","6","8","5","3","7","9","1"],["7","1","3","9","2","4","8","5","6"],["9","6","1","5","3","7","2","8","4"],["2","8","7","4","1","9","6","3","5"],["3","4","5","2","8","6","1","7","9"]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> board.length == board[i].length == 9; each cell is a digit or '.'; the input has exactly one solution.</p>
+    <p><b>Approach.</b> Track the digits already present in each row, column and box in three sets, then walk the empty cells one at a time trying only the digits that appear in none of the three. A digit that leads to a dead end is removed again — the classic constraint-propagation backtracking, and consistent ordering of the empty cells is all the search needs to stay fast.</p>
+    <pre><code>// Three sets per cell group; try only digits absent from all three
+void solveSudoku(char[][] board) {
+    Set&lt;Character&gt;[] rows = new HashSet[9], cols = new HashSet[9], boxes = new HashSet[9];
+    for (int i = 0; i &lt; 9; i++) { rows[i] = new HashSet&lt;&gt;(); cols[i] = new HashSet&lt;&gt;(); boxes[i] = new HashSet&lt;&gt;(); }
+    List&lt;int[]&gt; empty = new ArrayList&lt;&gt;();
+    for (int r = 0; r &lt; 9; r++)
+        for (int c = 0; c &lt; 9; c++) {
+            int b = (r / 3) * 3 + c / 3;
+            if (board[r][c] == '.') empty.add(new int[]{r, c});
+            else { rows[r].add(board[r][c]); cols[c].add(board[r][c]); boxes[b].add(board[r][c]); }
+        }
+    place(board, 0, empty, rows, cols, boxes);
+}
+boolean place(char[][] board, int i, List&lt;int[]&gt; empty, Set&lt;Character&gt;[] rows, Set&lt;Character&gt;[] cols, Set&lt;Character&gt;[] boxes) {
+    if (i == empty.size()) return true;
+    int r = empty.get(i)[0], c = empty.get(i)[1];
+    int b = (r / 3) * 3 + c / 3;
+    for (char d = '1'; d &lt;= '9'; d++) {
+        if (rows[r].contains(d) || cols[c].contains(d) || boxes[b].contains(d)) continue;
+        board[r][c] = d;                         // place and record
+        rows[r].add(d); cols[c].add(d); boxes[b].add(d);
+        if (place(board, i + 1, empty, rows, cols, boxes)) return true;
+        rows[r].remove(d); cols[c].remove(d); boxes[b].remove(d);
+        board[r][c] = '.';                       // undo
+    }
+    return false;
+}   // O(9^empties) worst case · O(1) extra space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(9^(empties)) worst case, far less with propagation time · O(1) for the board space.</p>
+  </section>
+</section>
 
   </main>
 </div>
 
 <footer>
-  <p><b>Java bank</b> — 360 problems across 12 topics, with complete solutions in
+  <p><b>Java bank</b> — 390 problems across 13 topics, with complete solutions in
   Java 21/25 solutions.</p>
   <p class="small">Same problems in every language:
     <a href="cpp-leetcode.html">C++</a> · <a href="java-leetcode.html">Java</a> · <a href="python-leetcode.html">Python</a>
