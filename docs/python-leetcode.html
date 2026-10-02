@@ -11401,12 +11401,810 @@ Output: 0</code></pre></div>
     <p class="cx"><b>Complexity:</b> O(2^(n/2) · n) time time · O(2^(n/2)) space.</p>
   </section>
 </section>
+<section class="chapter" id="t15">
+  <h2><span class="num">15</span> Math &amp; Number Theory</h2>
+  <p class="tagline">Most number questions collapse into digits, primes or modular arithmetic — pick the right lens and the loop disappears.</p>
+  <div class="card"><p><b>What this topic trains.</b> Four lenses cover this topic. Digit work reads a number place by place: peel with % 10, rebuild with * 10 + d, and remember that the column you are standing in has a weight (positions, carry, digital root). Prime work replaces trial division with a sieve or a smallest-prime-factor table, and turns "how many" into "how many multiples of p". Modular work keeps intermediate values small: subtract a remainder, exponentiate by squaring, and let a repeating remainder prove a cycle. Counting work asks how many objects satisfy a property — stars and bars for distributions, binomials for orderings, and digit DP when the bound is a number instead of a count.</p>
+<p class="small muted">Ordering: easy 1–3 are digit reads (palindrome, carry, base-26), 4–6 are digit sums and binary addition; medium 1–4 are reversal, sieving, trailing zeros and the n-th digit, 5–8 fast power, grade-school multiplication, integer breakage and two squares, 9–12 are angles, remainder cycles, long division with repeating blocks and modular exponent towers; hard 1–4 count digits, spell numbers, rank permutations and run digit DP, 5–8 handle harmonic sums, reverse Euclidean geometry, stars-and-bars factorisations and palindrome enumeration, 9–12 compose prime exponents, count BST orderings, DP over digit sums with huge bounds and construct the nearest palindrome.</p></div>
+  <section class="sub" id="palindrome-number">
+    <h3><span class="pn">E1</span> Palindrome Number <span class="pill">Easy</span> <span class="muted small">· reverse half of the digits</span></h3>
+    <p><b>Problem.</b> Return true if the integer x reads the same forwards and backwards.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  x = 121
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  x = -121
+Output: false</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  x = 10
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> -2^31 &lt;= x &lt;= 2^31 - 1.</p>
+    <p><b>Approach.</b> Build the reversed number only until it catches up with what is left of x, then compare the two halves — that avoids both string conversion and any risk of overflow. Two cases fall out early: negatives are never palindromes, and a positive number ending in 0 cannot be one unless it is 0 itself. An odd number of digits leaves a middle digit in the reversed half, which is why the final comparison also accepts rev / 10.</p>
+    <pre><code>def is_palindrome(x):
+    if x &lt; 0 or (x % 10 == 0 and x != 0):
+        return False                       # negatives and trailing zeros never work
+    reversed_half = 0
+    while x &gt; reversed_half:
+        reversed_half = reversed_half * 10 + x % 10
+        x //= 10
+    return x == reversed_half or x == reversed_half // 10</code></pre>
+    <p class="cx"><b>Complexity:</b> O(number of digits) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="plus-one">
+    <h3><span class="pn">E2</span> Plus One <span class="pill">Easy</span> <span class="muted small">· carry from the last digit</span></h3>
+    <p><b>Problem.</b> digits holds the decimal digits of a non-negative integer, most significant first. Return the digits of that integer plus one.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  digits = [1,2,3]
+Output: [1,2,4]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  digits = [4,3,2,1]
+Output: [4,3,2,2]</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  digits = [9]
+Output: [1,0]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= digits.length &lt;= 100; 0 &lt;= digits[i] &lt;= 9; digits has no leading zeros except the number 0 itself.</p>
+    <p><b>Approach.</b> Walk from the last digit: anything below 9 can simply be increased, and that ends the carry. A 9 becomes 0 and passes the carry left, so the loop either returns early or rewrites a run of nines. If every digit was a 9 the value gained a digit, which is the only case needing a 1 pushed onto the front.</p>
+    <pre><code>def plus_one(digits):
+    for i in range(len(digits) - 1, -1, -1):
+        if digits[i] &lt; 9:
+            digits[i] += 1              # the carry stops here
+            return digits
+        digits[i] = 0                    # a 9 becomes 0 and carries on
+    return [1] + digits                  # 99…9 became 100…0</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time time · O(1) extra space.</p>
+  </section>
+  <section class="sub" id="excel-sheet-column-title">
+    <h3><span class="pn">E3</span> Excel Sheet Column Title <span class="pill">Easy</span> <span class="muted small">· bijective base-26</span></h3>
+    <p><b>Problem.</b> Return the column title that corresponds to the positive integer columnNumber (1 -&gt; "A", 26 -&gt; "Z", 27 -&gt; "AA").</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  columnNumber = 1
+Output: "A"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  columnNumber = 28
+Output: "AB"</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  columnNumber = 701
+Output: "ZY"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= columnNumber &lt;= 2^31 - 1.</p>
+    <p><b>Approach.</b> This is base 26 with a twist: there is no digit for zero, so the digits run 1…26 instead of 0…25. Subtracting one before taking the remainder shifts the digit into 0…25 and makes ordinary division work — the same trick turns this into a loop as short as the title itself.</p>
+    <pre><code>def excel_title(column_number):
+    title = []
+    while column_number &gt; 0:
+        column_number -= 1                    # digits run 1…26, not 0…25
+        title.append(chr(ord("A") + column_number % 26))
+        column_number //= 26
+    return "".join(reversed(title))</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time time · O(log n) space.</p>
+  </section>
+  <section class="sub" id="add-digits">
+    <h3><span class="pn">E4</span> Add Digits <span class="pill">Easy</span> <span class="muted small">· digital root mod 9</span></h3>
+    <p><b>Problem.</b> Repeatedly replace num with the sum of its digits until one digit remains, and return that digit. Do it without a loop.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  num = 38
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  num = 0
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= num &lt;= 2^31 - 1.</p>
+    <p><b>Approach.</b> Summing digits is the same as reducing modulo 9, because 10 ≡ 1 (mod 9) at every place. The only mismatch is that ordinary remainders run 0…8 while digital roots run 1…9, so shifting the input by one before the modulo and back again after it gives the answer in constant time.</p>
+    <pre><code>def add_digits(num):
+    if num == 0:
+        return 0
+    return 1 + (num - 1) % 9       # the digital root: 10 ≡ 1 (mod 9) at every place</code></pre>
+    <p class="cx"><b>Complexity:</b> O(1) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="add-binary">
+    <h3><span class="pn">E5</span> Add Binary <span class="pill">Easy</span> <span class="muted small">· carry over two strings</span></h3>
+    <p><b>Problem.</b> Given two binary strings a and b, return their sum as a binary string.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  a = "11", b = "1"
+Output: "100"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  a = "1010", b = "1011"
+Output: "10101"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= a.length, b.length &lt;= 10^4; a and b contain only '0' and '1' characters; neither string has leading zeros except "0".</p>
+    <p><b>Approach.</b> Do the addition the way you would on paper: read both strings from the back, add the two bits plus the carry, write the sum bit and carry the rest. A single loop that keeps going while either string or the carry has something left handles the different lengths and the final carry without special cases.</p>
+    <pre><code>def add_binary(a, b):
+    result = []
+    i, j, carry = len(a) - 1, len(b) - 1, 0
+    while i &gt;= 0 or j &gt;= 0 or carry:
+        total = carry
+        if i &gt;= 0:
+            total += int(a[i])             # this column's bits
+            i -= 1
+        if j &gt;= 0:
+            total += int(b[j])
+            j -= 1
+        result.append(str(total % 2))      # write the bit
+        carry = total // 2                 # carry what is left
+    return "".join(reversed(result))</code></pre>
+    <p class="cx"><b>Complexity:</b> O(max(n, m)) time time · O(max(n, m)) space.</p>
+  </section>
+  <section class="sub" id="happy-number">
+    <h3><span class="pn">E6</span> Happy Number <span class="pill">Easy</span> <span class="muted small">· digit-square map + cycle detection</span></h3>
+    <p><b>Problem.</b> Starting from n, repeatedly replace the number with the sum of the squares of its digits. Return true if this reaches 1.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 19
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 2
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 2^31 - 1.</p>
+    <p><b>Approach.</b> The sequence is deterministic, so it either reaches 1 or repeats; an unhappy number always falls into the cycle 4 -&gt; 16 -&gt; 37 -&gt; 58 -&gt; 89 -&gt; 145 -&gt; 42 -&gt; 20 -&gt; 4. Remember the values seen and stop when a value repeats, which keeps the loop short and needs no bound on how long the run can be.</p>
+    <pre><code>def is_happy(n):
+    seen = set()
+    while n != 1 and n not in seen:
+        seen.add(n)
+        total = 0
+        while n &gt; 0:                       # sum of squared digits
+            digit = n % 10
+            total += digit * digit
+            n //= 10
+        n = total
+    return n == 1</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) per step, few steps time · O(1) (the cycle is tiny) space.</p>
+  </section>
+  <section class="sub" id="reverse-integer">
+    <h3><span class="pn">M1</span> Reverse Integer <span class="pill">Medium</span> <span class="muted small">· reverse digits with an overflow test</span></h3>
+    <p><b>Problem.</b> Reverse the digits of the 32-bit signed integer x. Return 0 when the reversed value would leave the signed 32-bit range.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  x = 123
+Output: 321</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  x = -123
+Output: -321</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  x = 120
+Output: 21</code></pre></div>
+    <p class="cons"><b>Constraints:</b> -2^31 &lt;= x &lt;= 2^31 - 1; the answer must fit in a signed 32-bit integer, otherwise return 0.</p>
+    <p><b>Approach.</b> Peel digits off with % 10 and push them onto the result with * 10 + digit. The only trap is overflow, and it can be checked before it happens: if the result already exceeds (or undercuts) the last full power of ten, the next multiply is doomed. Testing the bound first is what keeps the answer correct without widening the type.</p>
+    <pre><code>def reverse_integer(x):
+    limit = 2**31 - 1
+    sign = -1 if x &lt; 0 else 1
+    result = 0
+    x = abs(x)
+    while x:
+        result = result * 10 + x % 10
+        x //= 10
+    result *= sign
+    return result if -limit - 1 &lt;= result &lt;= limit else 0   # 32-bit bound</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log x) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="count-primes">
+    <h3><span class="pn">M2</span> Count Primes <span class="pill">Medium</span> <span class="muted small">· sieve of Eratosthenes</span></h3>
+    <p><b>Problem.</b> Return how many primes are strictly less than n.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 10
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 0
+Output: 0</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  n = 1
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= n &lt;= 5 · 10^6.</p>
+    <p><b>Approach.</b> Trial division would be far too slow, but a sieve is linear-ish: keep a flag per number, and each time you meet an unflagged value, mark its multiples — they cannot be prime. Marking starts at p², since smaller multiples were already crossed off by smaller primes, which is what keeps the total work near n log log n.</p>
+    <pre><code>def count_primes(n):
+    if n &lt; 3:
+        return 0
+    composite = [False] * n
+    primes = 0
+    for p in range(2, n):
+        if composite[p]:
+            continue
+        primes += 1
+        for m in range(p * p, n, p):       # smaller multiples were crossed already
+            composite[m] = True
+    return primes</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log log n) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="factorial-trailing-zeroes">
+    <h3><span class="pn">M3</span> Factorial Trailing Zeroes <span class="pill">Medium</span> <span class="muted small">· count factors of five</span></h3>
+    <p><b>Problem.</b> Return the number of trailing zeroes in n!.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 3
+Output: 0</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 5
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  n = 0
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= n &lt;= 10^4.</p>
+    <p><b>Approach.</b> A trailing zero is a factor of ten, and tens come from pairing a two with a five; twos are everywhere, so fives are the bottleneck. Counting multiples of 5, then of 25, of 125 and so on adds up the exponents of five in n! without ever building the factorial.</p>
+    <pre><code>def trailing_zeroes(n):
+    zeroes = 0
+    while n &gt; 0:
+        n //= 5                    # 5, 25, 125 … every exponent of five
+        zeroes += n
+    return zeroes</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="nth-digit">
+    <h3><span class="pn">M4</span> Nth Digit <span class="pill">Medium</span> <span class="muted small">· locate the block of equal-length numbers</span></h3>
+    <p><b>Problem.</b> The infinite sequence is 1, 2, 3, … written as digits. Return the n-th digit of that sequence (1-indexed).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 3
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 11
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 2^31 - 1.</p>
+    <p><b>Approach.</b> Numbers of a given length occupy a predictable block: 9 one-digit numbers, 90 two-digit numbers, 900 three-digit ones. Skip whole blocks while n exceeds their size, then the block you land in tells you the number and the offset inside it. Everything is school arithmetic once the block sizes are known — the only thing to watch is using 64-bit values for the totals.</p>
+    <pre><code>def find_nth_digit(n):
+    digits, first, block_size = 1, 1, 9          # 9 numbers of one digit
+    while n &gt; digits * block_size:
+        n -= digits * block_size                 # skip the whole block
+        digits += 1
+        first *= 10
+        block_size *= 10
+    number = first + (n - 1) // digits           # which number holds it
+    offset = (n - 1) % digits                    # and where inside that number
+    return int(str(number)[offset])</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="powx-n">
+    <h3><span class="pn">M5</span> Pow(x, n) <span class="pill">Medium</span> <span class="muted small">· exponentiation by squaring</span></h3>
+    <p><b>Problem.</b> Implement pow(x, n), which computes x raised to the integer power n.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  x = 2.00000, n = 10
+Output: 1024.00000</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  x = 2.10000, n = 3
+Output: 9.26100</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  x = 2.00000, n = -2
+Output: 0.25000</code></pre></div>
+    <p class="cons"><b>Constraints:</b> -100.0 &lt; x &lt; 100.0; -2^31 &lt;= n &lt;= 2^31 - 1; either x is not zero or n &gt; 0.</p>
+    <p><b>Approach.</b> Multiplying n times is O(n). Instead, square the base and halve the exponent: each bit of n that is set contributes one factor, so the loop runs as many times as n has bits. A negative exponent just inverts the base, and the exponent is widened before negating so that Integer.MIN_VALUE does not overflow.</p>
+    <pre><code>def my_pow(x, n):
+    if n &lt; 0:
+        x = 1 / x
+        n = -n
+    result = 1
+    while n:
+        if n &amp; 1:
+            result *= x             # this bit of the exponent is set
+        x *= x                      # square up for the next bit
+        n &gt;&gt;= 1
+    return result</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log |n|) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="multiply-strings">
+    <h3><span class="pn">M6</span> Multiply Strings <span class="pill">Medium</span> <span class="muted small">· grade-school multiplication on digit arrays</span></h3>
+    <p><b>Problem.</b> Given two non-negative integers as strings, return their product as a string, without using any built-in big-integer conversion.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  num1 = "2", num2 = "3"
+Output: "6"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  num1 = "123", num2 = "456"
+Output: "56088"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= num1.length, num2.length &lt;= 200; both strings contain only digits; neither has leading zeros except "0".</p>
+    <p><b>Approach.</b> Every pair of digits multiplies into a known pair of output positions: index i from the first number and j from the second land on i + j and i + j + 1. Accumulating those products in an array of digits and carrying as you go reproduces long multiplication and never needs a number type wider than the answer.</p>
+    <pre><code>def multiply(num1, num2):
+    if num1 == "0" or num2 == "0":
+        return "0"
+    product = [0] * (len(num1) + len(num2))
+    for i in range(len(num1) - 1, -1, -1):
+        for j in range(len(num2) - 1, -1, -1):
+            total = int(num1[i]) * int(num2[j]) + product[i + j + 1]
+            product[i + j + 1] = total % 10        # this column
+            product[i + j] += total // 10          # and the carry left of it
+    start = 0
+    while start + 1 &lt; len(product) and product[start] == 0:
+        start += 1                                 # drop leading zeros
+    return "".join(map(str, product[start:]))</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n · m) time time · O(n + m) space.</p>
+  </section>
+  <section class="sub" id="integer-break">
+    <h3><span class="pn">M7</span> Integer Break <span class="pill">Medium</span> <span class="muted small">· prefer 3s, then 2s</span></h3>
+    <p><b>Problem.</b> Break n into the sum of at least two positive integers and return the largest possible product of those integers.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 2
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 10
+Output: 36</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= n &lt;= 58.</p>
+    <p><b>Approach.</b> Splitting a number into equal parts is best, and the best part is 3 — a part of 4 is two 2s, a part of 5 is better as 2 + 3, and anything above 4 loses by splitting further. So use as many 3s as possible, then repair the remainder: a leftover 1 must become 2 + 2, and small n has its own trivial answer.</p>
+    <pre><code>def integer_break(n):
+    if n &lt;= 3:
+        return n - 1                          # 2 -&gt; 1, 3 -&gt; 2
+    threes, rest = divmod(n, 3)
+    if rest == 1:
+        threes -= 1                           # 3 + 1 is worse than 2 + 2
+        rest = 4
+    return 3 ** threes * (rest if rest else 1)</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time (O(log n) with fast power) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="sum-of-square-numbers">
+    <h3><span class="pn">M8</span> Sum of Square Numbers <span class="pill">Medium</span> <span class="muted small">· two pointers over squares</span></h3>
+    <p><b>Problem.</b> Return true if there exist non-negative integers a and b with a² + b² = c.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  c = 5
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  c = 3
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= c &lt;= 2^31 - 1.</p>
+    <p><b>Approach.</b> Start one pointer at 0 and the other at the integer square root of c. If the squares overshoot, lower the big pointer; if they fall short, raise the small one — the sum is monotone in each pointer, so the pair meets the target if it exists. No lookup table and no floating-point comparison of the answer, just the sqrt limit for the starting position.</p>
+    <pre><code>def judge_square_sum(c):
+    low, high = 0, int(c ** 0.5)
+    while low &lt;= high:
+        total = low * low + high * high
+        if total == c:
+            return True
+        if total &lt; c:
+            low += 1                 # the small square is not big enough
+        else:
+            high -= 1                # the big square overshoots
+    return False</code></pre>
+    <p class="cx"><b>Complexity:</b> O(sqrt c) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="angle-between-hands-of-a-clock">
+    <h3><span class="pn">M9</span> Angle Between Hands of a Clock <span class="pill">Medium</span> <span class="muted small">· two angles, then the smaller one</span></h3>
+    <p><b>Problem.</b> Given hour and minutes, return the smaller angle in degrees between the clock's two hands.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  hour = 12, minutes = 30
+Output: 165</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  hour = 3, minutes = 30
+Output: 75</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  hour = 3, minutes = 15
+Output: 7.5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= hour &lt;= 12; 0 &lt;= minutes &lt;= 59; answers within 10^-5 of the true value count as correct.</p>
+    <p><b>Approach.</b> Each hand has a fixed speed: the minute hand sweeps 6° per minute, the hour hand 30° per hour plus 0.5° for every minute it has already travelled — that half-degree is what makes 3:15 give 7.5° instead of 0°. Take the absolute difference and, because the two hands are symmetric, report min(difference, 360 - difference).</p>
+    <pre><code>def angle_clock(hour, minutes):
+    minute_angle = minutes * 6.0                            # 360 / 60
+    hour_angle = (hour % 12) * 30.0 + minutes * 0.5         # 30 per hour, 0.5 per minute
+    difference = abs(hour_angle - minute_angle)
+    return min(difference, 360 - difference)                # the smaller of the two gaps</code></pre>
+    <p class="cx"><b>Complexity:</b> O(1) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="smallest-integer-divisible-by-k">
+    <h3><span class="pn">M10</span> Smallest Integer Divisible by K <span class="pill">Medium</span> <span class="muted small">· remainders of repunits</span></h3>
+    <p><b>Problem.</b> Return the length of the smallest positive integer made only of 1s that is divisible by k, or -1 if no such number exists.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  k = 1
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  k = 2
+Output: -1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  k = 3
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= k &lt;= 10^5.</p>
+    <p><b>Approach.</b> The repunit of length L is the previous one times ten plus one, and only the remainder modulo k matters. If k shares a factor with ten, no repunit can ever be divisible by it, so answer -1 immediately; otherwise the remainder sequence must repeat within k steps, so trying k lengths is enough and never needs the enormous numbers themselves.</p>
+    <pre><code>def smallest_repunit_div_by_k(k):
+    if k % 2 == 0 or k % 5 == 0:
+        return -1                    # no repunit can hold a factor of 2 or 5
+    remainder = 0
+    for length in range(1, k + 1):
+        remainder = (remainder * 10 + 1) % k   # append another 1
+        if remainder == 0:
+            return length
+    return -1</code></pre>
+    <p class="cx"><b>Complexity:</b> O(k) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="fraction-to-recurring-decimal">
+    <h3><span class="pn">M11</span> Fraction to Recurring Decimal <span class="pill">Medium</span> <span class="muted small">· long division + repeated remainder</span></h3>
+    <p><b>Problem.</b> Given numerator and denominator, return the fraction as a decimal string, wrapping any repeating part in parentheses.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  numerator = 1, denominator = 2
+Output: "0.5"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  numerator = 2, denominator = 1
+Output: "2"</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  numerator = 4, denominator = 333
+Output: "0.(012)"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> -2^31 &lt;= numerator, denominator &lt;= 2^31 - 1; denominator != 0; the answer string is shorter than 10^4 characters.</p>
+    <p><b>Approach.</b> Handle the sign and the integer part first, then run school long division: multiply the remainder by ten, write a digit, keep the remainder. The fraction repeats exactly when a remainder reappears, and remembering where each remainder first appeared tells you where to open the parenthesis — no floating point anywhere.</p>
+    <pre><code>def fraction_to_decimal(numerator, denominator):
+    if numerator == 0:
+        return "0"
+    sign = "-" if (numerator &lt; 0) != (denominator &lt; 0) else ""
+    top, bottom = abs(numerator), abs(denominator)
+    result = [sign, str(top // bottom)]        # integer part
+    remainder = top % bottom
+    if remainder == 0:
+        return "".join(result)
+    result.append(".")
+    seen = {}                                  # remainder -&gt; where its digit was written
+    while remainder:
+        if remainder in seen:                  # the block repeats from here
+            result.insert(seen[remainder], "(")
+            result.append(")")
+            break
+        seen[remainder] = len(result)
+        remainder *= 10
+        result.append(str(remainder // bottom))
+        remainder %= bottom
+    return "".join(result)</code></pre>
+    <p class="cx"><b>Complexity:</b> O(denominator) time time · O(denominator) space.</p>
+  </section>
+  <section class="sub" id="super-pow">
+    <h3><span class="pn">M12</span> Super Pow <span class="pill">Medium</span> <span class="muted small">· modular exponentiation over a digit array</span></h3>
+    <p><b>Problem.</b> Compute a^b modulo 1337, where b is given as an array of decimal digits (it may be far too large to build).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  a = 2, b = [3]
+Output: 8</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  a = 2, b = [1,0]
+Output: 1024</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  a = 1, b = [4,3,3,8,5,2]
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= a &lt;= 2^31 - 1; 1 &lt;= b.length &lt;= 2000; 0 &lt;= b[i] &lt;= 9; b has no leading zeros.</p>
+    <p><b>Approach.</b> Read the exponent one digit at a time and use a^(10d + e) = (a^d)^10 · a^e, all modulo 1337. Sweeping the digits from the front keeps one running value: raise it to the tenth power for the next digit and multiply in the new one. Only a small modulus is ever squared, so nothing overflows and the exponent array never has to become a number.</p>
+    <pre><code>def super_pow(a, b):
+    mod = 1337
+
+    def power(base, exponent):
+        base %= mod
+        result = 1
+        while exponent:
+            if exponent &amp; 1:
+                result = result * base % mod
+            base = base * base % mod
+            exponent &gt;&gt;= 1
+        return result
+
+    result = 1
+    for digit in b:                          # a^(10d + e) = (a^d)^10 · a^e
+        result = power(result, 10) * power(a, digit) % mod
+    return result</code></pre>
+    <p class="cx"><b>Complexity:</b> O(len(b) · 10 · log 1337) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="number-of-digit-one">
+    <h3><span class="pn">H1</span> Number of Digit One <span class="pill hot">Hard</span> <span class="muted small">· count a digit column by column</span></h3>
+    <p><b>Problem.</b> Return how many times the digit 1 appears in the decimal representations of every integer from 0 to n.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 13
+Output: 6</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 0
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= n &lt;= 10^9.</p>
+    <p><b>Approach.</b> Do not walk the numbers — walk the positions. At the place worth d, the sequence of digits at that place is a repeating pattern, so the number of 1s there is whole blocks times d, plus a partial block decided by the current digit: 0 contributes nothing, 1 contributes the number of suffixes seen so far plus one, anything larger contributes a full d.</p>
+    <pre><code>def count_digit_one(n):
+    ones = 0
+    place = 1
+    while place &lt;= n:
+        lower = n % place                   # digits right of this place
+        current = (n // place) % 10
+        higher = n // (place * 10)
+        if current == 0:
+            ones += higher * place
+        elif current == 1:
+            ones += higher * place + lower + 1   # the partial block runs to n
+        else:
+            ones += (higher + 1) * place
+        place *= 10
+    return ones</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="integer-to-english-words">
+    <h3><span class="pn">H2</span> Integer to English Words <span class="pill hot">Hard</span> <span class="muted small">· three-digit chunks + scale words</span></h3>
+    <p><b>Problem.</b> Convert a non-negative integer into its English words representation.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  num = 123
+Output: "One Hundred Twenty Three"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  num = 12345
+Output: "Twelve Thousand Three Hundred Forty Five"</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  num = 1234567
+Output: "One Million Two Hundred Thirty Four Thousand Five Hundred Sixty Seven"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= num &lt;= 2^31 - 1; the output must not contain leading or trailing spaces, or double spaces.</p>
+    <p><b>Approach.</b> English groups numbers in threes, and each group is read the same way with a scale word after it. Write one routine for a value below 1000 — hundreds digit, then the 10…19 words, then tens and units — and call it once per group from the least significant upwards, prepending each group's text so the big end lands in front.</p>
+    <pre><code>def number_to_words(num):
+    if num == 0:
+        return "Zero"
+    small = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+             "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+             "Seventeen", "Eighteen", "Nineteen"]
+    tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"]
+    scales = ["", " Thousand", " Million", " Billion"]
+
+    def below_thousand(n):
+        words = []
+        if n &gt;= 100:
+            words.append(small[n // 100] + " Hundred")
+            n %= 100
+        if n &gt;= 20:
+            words.append(tens[n // 10])
+            n %= 10
+        if n:
+            words.append(small[n])
+        return " ".join(words)
+
+    parts = []
+    group = 0
+    while num &gt; 0:
+        chunk = num % 1000
+        if chunk:                                   # read every group of three
+            parts.insert(0, below_thousand(chunk) + scales[group])
+        num //= 1000
+        group += 1
+    return " ".join(parts)</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time time · O(log n) space.</p>
+  </section>
+  <section class="sub" id="permutation-sequence">
+    <h3><span class="pn">H3</span> Permutation Sequence <span class="pill hot">Hard</span> <span class="muted small">· factorial number system</span></h3>
+    <p><b>Problem.</b> Return the k-th permutation of the numbers 1 to n when all of them are listed in lexicographic order.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 3, k = 3
+Output: "213"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 4, k = 9
+Output: "2314"</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  n = 3, k = 1
+Output: "123"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 9; 1 &lt;= k &lt;= n!.</p>
+    <p><b>Approach.</b> The first position splits the permutations into n equal blocks of (n-1)! each, and which block k falls in names the first digit. Taking the remainder and repeating with the remaining digits decodes k the way you decode a number written in the factorial number system — no permutation is ever generated.</p>
+    <pre><code>def get_permutation(n, k):
+    factorial = [1] * (n + 1)
+    available = [str(i) for i in range(1, n + 1)]
+    for i in range(1, n + 1):
+        factorial[i] = factorial[i - 1] * i
+    k -= 1                                   # 0-based counting
+    result = []
+    for remaining in range(n, 0, -1):
+        block = factorial[remaining - 1]     # permutations sharing this prefix
+        index, k = divmod(k, block)
+        result.append(available.pop(index))
+    return "".join(result)</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) time time · O(n) space.</p>
+  </section>
+  <section class="sub" id="numbers-at-most-n-given-digit-set">
+    <h3><span class="pn">H4</span> Numbers At Most N Given Digit Set <span class="pill hot">Hard</span> <span class="muted small">· digit DP with a prefix walk</span></h3>
+    <p><b>Problem.</b> digits is a sorted list of distinct single-digit strings. Return how many positive integers, using only those digits, are less than or equal to n.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  digits = ["1","3","5","7"], n = 100
+Output: 20</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  digits = ["1","4","9"], n = 1000000000
+Output: 29523</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  digits = ["7"], n = 8
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= digits.length &lt;= 9; digits[i].length == 1; digits contains no duplicates; 1 &lt;= n &lt;= 10^9.</p>
+    <p><b>Approach.</b> Split the count by length. Every number shorter than n can use any allowed digit in any position — that is base^length. Numbers of n's own length are counted by walking n's digits: each allowed digit smaller than the current one frees the remaining positions, and the walk continues only while n's own digit is available; if a digit of n is not allowed, the walk stops there.</p>
+    <pre><code>def at_most_n_given_digit_set(digits, n):
+    bound = str(n)
+    base = len(digits)
+    total = 0
+    for length in range(1, len(bound)):        # any digit, any position
+        total += base ** length
+    for i, ch in enumerate(bound):             # numbers of n's own length
+        matched = False
+        for d in digits:
+            if d &lt; ch:
+                total += base ** (len(bound) - i - 1)   # smaller digit frees the rest
+            elif d == ch:
+                matched = True                          # keep following n's prefix
+        if not matched:
+            return total                       # n's prefix can no longer be matched
+    return total + 1                           # n itself qualifies</code></pre>
+    <p class="cx"><b>Complexity:</b> O(10 · digits of n) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="sum-of-floored-pairs">
+    <h3><span class="pn">H5</span> Sum of Floored Pairs <span class="pill hot">Hard</span> <span class="muted small">· harmonic sweep of quotients</span></h3>
+    <p><b>Problem.</b> Return the sum of floor(nums[i] / nums[j]) over all pairs of indices (i, j), modulo 10^9 + 7.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [2,5,9]
+Output: 10</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [7,7,7,7,7,7,7]
+Output: 49</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 10^5; 1 &lt;= nums[i] &lt;= 10^5.</p>
+    <p><b>Approach.</b> For a fixed denominator d the quotient is constant on ranges of numerators: [d, 2d-1] gives 1, [2d, 3d-1] gives 2, and so on. Sort by counting values into buckets, build a prefix count, then for every denominator sweep its multiples — the total number of steps is harmonic, about M log M, instead of quadratic.</p>
+    <pre><code>def sum_of_floored_pairs(nums):
+    mod = 10**9 + 7
+    top = max(nums)
+    frequency = [0] * (top + 2)
+    for x in nums:
+        frequency[x] += 1
+    prefix = [0] * (top + 2)              # prefix[v] = how many values are ≤ v
+    for v in range(1, top + 1):
+        prefix[v] = prefix[v - 1] + frequency[v]
+    total = 0
+    for d in range(1, top + 1):
+        if frequency[d] == 0:
+            continue                      # d is never a denominator
+        for low in range(d, top + 1, d):  # quotient is low // d on this whole range
+            high = min(top, low + d - 1)
+            numerators = prefix[high] - prefix[low - 1]
+            total = (total + (low // d) * numerators % mod * frequency[d]) % mod
+    return total</code></pre>
+    <p class="cx"><b>Complexity:</b> O(M log M) time time · O(M) space.</p>
+  </section>
+  <section class="sub" id="reaching-points">
+    <h3><span class="pn">H6</span> Reaching Points <span class="pill hot">Hard</span> <span class="muted small">· run the Euclidean step backwards</span></h3>
+    <p><b>Problem.</b> Starting from (sx, sy), a move replaces (x, y) with (x + y, y) or (x, y + x). Return true if (tx, ty) is reachable.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  sx = 1, sy = 1, tx = 3, ty = 5
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  sx = 1, sy = 1, tx = 2, ty = 2
+Output: false</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  sx = 1, sy = 1, tx = 1, ty = 1
+Output: true</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= sx, sy, tx, ty &lt;= 10^9.</p>
+    <p><b>Approach.</b> Forward moves only grow the coordinates, so run them backwards: the larger coordinate must be the one that was just increased, so subtract the smaller from it. Subtracting one step at a time is far too slow for 10^9, but a modulo does many steps at once — with the special case that when the other coordinate already equals its target, only exact multiples of the remaining gap will land.</p>
+    <pre><code>def reaching_points(sx, sy, tx, ty):
+    while tx &gt;= sx and ty &gt;= sy:
+        if tx == sx and ty == sy:
+            return True
+        if tx &gt; ty:
+            if ty == sy:                      # only x can still shrink
+                return (tx - sx) % ty == 0
+            tx %= ty                          # undo as many steps as fit
+        else:
+            if tx == sx:                      # only y can still shrink
+                return (ty - sy) % tx == 0
+            ty %= tx
+    return False</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log max) time time · O(1) space.</p>
+  </section>
+  <section class="sub" id="count-ways-to-make-array-with-product">
+    <h3><span class="pn">H7</span> Count Ways to Make Array With Product <span class="pill hot">Hard</span> <span class="muted small">· stars and bars per prime</span></h3>
+    <p><b>Problem.</b> For each query [n, k], count the arrays of n positive integers whose product is k, using only primes below 100, modulo 10^9 + 7.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  queries = [[2,6],[5,1],[73,660]]
+Output: [4,1,50734910]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  queries = [[1,1],[2,2],[3,3],[4,4],[5,5]]
+Output: [1,2,3,10,5]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= queries.length &lt;= 10^4; 1 &lt;= n_i &lt;= 10^4; 0 &lt;= k_i &lt;= 10^5; each k_i has no prime factor above 100, or is 1.</p>
+    <p><b>Approach.</b> Each prime in k is distributed independently across the n slots, and distributing e copies of one prime is a stars-and-bars count: C(e + n - 1, e). Factor k with the primes below 100, evaluate that binomial as a short product with modular inverses, and multiply the results — a leftover large prime means no array exists at all.</p>
+    <pre><code>def ways_to_fill_array(queries):
+    mod = 10**9 + 7
+    primes = [p for p in range(2, 100) if all(p % d for d in range(2, int(p ** 0.5) + 1))]
+    answer = []
+    for n, k in queries:
+        ways = 1
+        for p in primes:
+            exponent = 0
+            while k % p == 0:                     # how many copies of this prime
+                k //= p
+                exponent += 1
+            for i in range(1, exponent + 1):      # stars and bars: C(e + n - 1, e)
+                ways = ways * (n + i - 1) % mod * pow(i, mod - 2, mod) % mod
+        if k &gt; 1:
+            ways = 0                              # a prime above 100 can never appear
+        answer.append(ways)
+    return answer</code></pre>
+    <p class="cx"><b>Complexity:</b> O(25 · max exponent) per query time · O(1) space.</p>
+  </section>
+  <section class="sub" id="sum-of-k-mirror-numbers">
+    <h3><span class="pn">H8</span> Sum of K-Mirror Numbers <span class="pill hot">Hard</span> <span class="muted small">· enumerate decimal palindromes</span></h3>
+    <p><b>Problem.</b> A k-mirror number reads the same forwards and backwards in base 10 and in base k. Return the sum of the n smallest k-mirror numbers.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  k = 2, n = 5
+Output: 25</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  k = 3, n = 7
+Output: 499</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= k &lt;= 9; 1 &lt;= n &lt;= 30.</p>
+    <p><b>Approach.</b> Rather than testing every integer, generate the decimal palindromes in increasing order: pick a half, mirror it, and numbers come out sorted by construction. Each candidate is then converted to base k and checked — only about two integers in every decade of candidates can ever pass, so the search stays small.</p>
+    <pre><code>def sum_of_k_mirror_numbers(k, n):
+    def base_k_palindrome(value):
+        digits = []
+        while value:
+            digits.append(value % k)
+            value //= k
+        return digits == digits[::-1]
+
+    total = 0
+    found = 0
+    length = 1
+    while found &lt; n:
+        half_length = (length + 1) // 2
+        start = 10 ** (half_length - 1)          # smallest half of this length
+        for half in range(start, start * 10):
+            text = str(half)
+            mirror = text[:-1][::-1] if length % 2 else text[::-1]
+            candidate = int(text + mirror)       # a decimal palindrome, in order
+            if base_k_palindrome(candidate):
+                total += candidate
+                found += 1
+                if found == n:
+                    break
+        length += 1
+    return total</code></pre>
+    <p class="cx"><b>Complexity:</b> O(answer size · log_k answer) time time · O(log answer) space.</p>
+  </section>
+  <section class="sub" id="count-the-number-of-ideal-arrays">
+    <h3><span class="pn">H9</span> Count the Number of Ideal Arrays <span class="pill hot">Hard</span> <span class="muted small">· prime exponents + stars and bars</span></h3>
+    <p><b>Problem.</b> An array of length n with values in [1, maxValue] is ideal when every element divides the next. Return the number of distinct ideal arrays, modulo 10^9 + 7.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 2, maxValue = 5
+Output: 10</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 5, maxValue = 3
+Output: 11</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= n &lt;= 10^4; 1 &lt;= maxValue &lt;= 10^4.</p>
+    <p><b>Approach.</b> A chain of divisions is a set of non-decreasing prime exponents, so fix the last value v and look at each prime in it. If v contains p exponent e times, the e units of p spread across the n positions as a non-decreasing (equivalently, an ordered) distribution: C(e + n - 1, e) ways. Multiplying those binomials over the primes of v and summing over all v counts every ideal array exactly once.</p>
+    <pre><code>def ideal_arrays(n, max_value):
+    mod = 10**9 + 7
+    smallest_prime = list(range(max_value + 1))
+    for p in range(2, int(max_value ** 0.5) + 1):
+        if smallest_prime[p] == p:                     # p is prime
+            for multiple in range(p * p, max_value + 1, p):
+                if smallest_prime[multiple] == multiple:
+                    smallest_prime[multiple] = p
+    max_exponent = max_value.bit_length()              # log2 of max_value
+    combinations = [1] * (max_exponent + 1)
+    for e in range(1, max_exponent + 1):               # C(e + n - 1, e)
+        combinations[e] = combinations[e - 1] * (n + e - 1) % mod * pow(e, mod - 2, mod) % mod
+    total = 0
+    for value in range(1, max_value + 1):
+        ways = 1
+        rest = value
+        while rest &gt; 1:                                # factor using the sieve
+            p = smallest_prime[rest]
+            exponent = 0
+            while rest % p == 0:
+                rest //= p
+                exponent += 1
+            ways = ways * combinations[exponent] % mod
+        total = (total + ways) % mod
+    return total</code></pre>
+    <p class="cx"><b>Complexity:</b> O(maxValue · log maxValue) time time · O(maxValue) space.</p>
+  </section>
+  <section class="sub" id="number-of-ways-to-reorder-array-to-get-same-bst">
+    <h3><span class="pn">H10</span> Number of Ways to Reorder Array to Get Same BST <span class="pill hot">Hard</span> <span class="muted small">· interleave left and right subtrees</span></h3>
+    <p><b>Problem.</b> Return, modulo 10^9 + 7, how many permutations of nums build exactly the same binary search tree as the original order, excluding the original order itself.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [2,1,3]
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [3,4,5,1,2]
+Output: 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [1,2,3]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 1000; 1 &lt;= nums[i] &lt;= 10^9; all values are distinct.</p>
+    <p><b>Approach.</b> The first element is always the root. Everything smaller than it keeps its relative order within the left subtree and everything larger within the right, but the two groups may be interleaved freely: choose which of the remaining positions hold the left group — C(n-1, leftSize) ways — and multiply by the counts inside each subtree. Add one at the end because the original order is always counted and must be excluded.</p>
+    <pre><code>def num_of_ways(nums):
+    import sys
+    sys.setrecursionlimit(10000)          # the tree can be 1000 deep
+    mod = 10**9 + 7
+    n = len(nums)
+    choose = [[0] * (n + 1) for _ in range(n + 1)]
+    for i in range(n + 1):
+        choose[i][0] = 1
+        for j in range(1, i + 1):
+            choose[i][j] = (choose[i - 1][j - 1] + choose[i - 1][j]) % mod
+
+    def count(seq):
+        if len(seq) &lt;= 1:
+            return 1
+        left = [v for v in seq[1:] if v &lt; seq[0]]
+        right = [v for v in seq[1:] if v &gt; seq[0]]
+        ways = choose[len(seq) - 1][len(left)]     # interleave the two groups
+        return ways * count(left) % mod * count(right) % mod
+
+    return (count(nums) - 1) % mod        # the original order does not count</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) time time · O(n²) space.</p>
+  </section>
+  <section class="sub" id="count-of-integers">
+    <h3><span class="pn">H11</span> Count of Integers <span class="pill hot">Hard</span> <span class="muted small">· digit DP over a huge bound</span></h3>
+    <p><b>Problem.</b> Count the integers in [num1, num2] whose digit sum lies between min_sum and max_sum, modulo 10^9 + 7. Both bounds are given as strings and may be far larger than 64 bits.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  num1 = "1", num2 = "12", min_sum = 1, max_sum = 8
+Output: 11</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  num1 = "1", num2 = "5", min_sum = 1, max_sum = 5
+Output: 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= num1 &lt;= num2 &lt;= 10^22; 1 &lt;= min_sum &lt;= max_sum &lt;= 400; num1 and num2 have no leading zeros.</p>
+    <p><b>Approach.</b> Work with the decimal string of the bound and count by digit position with three states: where you are, the digit sum so far, and whether the prefix still equals the bound. The bound-free part of that state is memoised, so the work is positions × sums rather than the size of the numbers. Subtracting the count up to num1 with the count up to num2, then adding back num1's own contribution, avoids doing arithmetic on 23-digit values.</p>
+    <pre><code>def count_of_integers(num1, num2, min_sum, max_sum):
+    mod = 10**9 + 7
+
+    def count_up_to(bound, limit):
+        if limit &lt; 0:
+            return 0
+        length = len(bound)
+        loose = [0] * (limit + 1)          # prefix already below the bound
+        tight = [0] * (limit + 1)          # prefix still equal to the bound
+        tight[0] = 1
+        for pos in range(length):
+            next_loose = [0] * (limit + 1)
+            next_tight = [0] * (limit + 1)
+            bound_digit = int(bound[pos])
+            for total in range(limit + 1):
+                if tight[total]:
+                    for d in range(min(bound_digit, limit - total) + 1):
+                        if d == bound_digit:
+                            next_tight[total + d] += 1
+                        else:
+                            next_loose[total + d] += 1
+                if loose[total]:
+                    for d in range(min(9, limit - total) + 1):
+                        next_loose[total + d] = (next_loose[total + d] + loose[total]) % mod
+            loose = [v % mod for v in next_loose]
+            tight = [v % mod for v in next_tight]
+        return (sum(loose) + sum(tight)) % mod
+
+    counted = (count_up_to(num2, max_sum) - count_up_to(num2, min_sum - 1)
+               - count_up_to(num1, max_sum) + count_up_to(num1, min_sum - 1)) % mod
+    own_sum = sum(int(ch) for ch in num1)
+    if min_sum &lt;= own_sum &lt;= max_sum:
+        counted = (counted + 1) % mod      # num1 is counted twice in the subtraction
+    return counted</code></pre>
+    <p class="cx"><b>Complexity:</b> O(len(num2) · max_sum · 10) time time · O(len(num2) · max_sum) space.</p>
+  </section>
+  <section class="sub" id="find-the-closest-palindrome">
+    <h3><span class="pn">H12</span> Find the Closest Palindrome <span class="pill hot">Hard</span> <span class="muted small">· mirror the half, check the neighbours</span></h3>
+    <p><b>Problem.</b> Given n as a decimal string, return the closest integer (as a string) that is a palindrome and not equal to n. On a tie, return the smaller one.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = "123"
+Output: "121"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = "1"
+Output: "0"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= len(n) &lt;= 18; n has no leading zeros; the answer must not have leading zeros.</p>
+    <p><b>Approach.</b> Any palindrome is decided by its first half, so the answer lies near the palindrome built from n's first half — but the half might need to go up or down by one, which is why both neighbours are tried. Two extra candidates cover the length changes: 9…9 (one digit shorter) and 1 0…0 1, and when nothing else fits these are what carry the answer across a power of ten.</p>
+    <pre><code>def nearest_palindromic(n):
+    length = len(n)
+    value = int(n)
+    candidates = set()
+    candidates.add(int("1" + "0" * (length - 1) + "1"))     # 1 0…0 1
+    candidates.add(int("9" * (length - 1)) if length &gt; 1 else 0)   # 9…9
+    half = int(n[:(length + 1) // 2])
+    for h in (half - 1, half, half + 1):
+        if h &lt;= 0:
+            continue
+        left = str(h)
+        right = left[:-1] if length % 2 else left           # drop the middle digit
+        candidates.add(int(left + right[::-1]))
+    best = None
+    for candidate in candidates:
+        if candidate == value:
+            continue
+        if (best is None or abs(candidate - value) &lt; abs(best - value)
+                or (abs(candidate - value) == abs(best - value) and candidate &lt; best)):
+            best = candidate
+    return str(best)</code></pre>
+    <p class="cx"><b>Complexity:</b> O(len(n)) time time · O(len(n)) space.</p>
+  </section>
+</section>
 
   </main>
 </div>
 
 <footer>
-  <p><b>Python bank</b> — 420 problems across 14 topics, with complete solutions in
+  <p><b>Python bank</b> — 450 problems across 15 topics, with complete solutions in
   Python 3.12+ solutions.</p>
   <p class="small">Same problems in every language:
     <a href="cpp-leetcode.html">C++</a> · <a href="java-leetcode.html">Java</a> · <a href="python-leetcode.html">Python</a>
