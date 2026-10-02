@@ -3285,12 +3285,777 @@ int maximumScore(int[] a, int k) {
     <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
   </section>
 </section>
+<section class="chapter" id="t05">
+  <h2><span class="num">5</span> Binary Search &amp; Sorted Structures</h2>
+  <p class="tagline">Halving the problem — and its more valuable cousin: binary searching an *answer* instead of an index.</p>
+  <div class="card"><p><b>What this topic trains.</b> Three skills. (1) Writing a correct loop and choosing the invariant so the boundary cases never bite. (2) 'Binary search on the answer': when a monotone feasibility test exists, search the value rather than the position. (3) Searching structures that are sorted in more than one direction — rotated arrays, matrices, mountains, and pairs whose k-th smallest statistic is wanted.</p>
+<p class="small muted">Ordering: easy 1–6 are plain index searches and integer roots; medium 1–4 are rotated arrays and sorted matrices, 5–7 turn a monotone predicate into an answer search (Koko, shipping, bouquets), 8–12 are boundaries, peaks, LIS and staircase search; hard 1–4 are medians, duplicated rotations and answer searches with a sharp edge case, 5–12 are k-th statistics and partition problems that only look impossible.</p></div>
+  <section class="sub" id="binary-search">
+    <h3><span class="pn">E1</span> Binary Search <span class="pill">Easy</span> <span class="muted small">· the canonical loop</span></h3>
+    <p><b>Problem.</b> Given a sorted array of distinct integers, return the index of the target or -1 if it is absent.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [-1,0,3,5,9,12], target = 9
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [-1,0,3,5,9,12], target = 2
+Output: -1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^4; the array is sorted ascending with distinct values; the algorithm must run in O(log n).</p>
+    <p><b>Approach.</b> Keep an inclusive range [lo, hi] and compare the middle element. Writing <code>lo + (hi - lo) // 2</code> rather than <code>(lo + hi) // 2</code> avoids overflow in fixed-width languages; writing <code>while lo &lt;= hi</code> with <code>hi = mid - 1</code> guarantees the range shrinks even when the target is absent.</p>
+    <pre><code>// Inclusive bounds; every step strictly shrinks the range
+int search(int[] a, int target) {
+    int lo = 0, hi = a.length - 1;
+    while (lo &lt;= hi) {
+        int mid = lo + (hi - lo) / 2;            // no overflow
+        if (a[mid] == target) return mid;
+        if (a[mid] &lt; target) lo = mid + 1;
+        else hi = mid - 1;
+    }
+    return -1;
+}   // O(log n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="search-insert-position">
+    <h3><span class="pn">E2</span> Search Insert Position <span class="pill">Easy</span> <span class="muted small">· lower bound</span></h3>
+    <p><b>Problem.</b> In a sorted array of distinct values, return the index of the target, or the index where it should be inserted to keep the array sorted.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,3,5,6], target = 5
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,3,5,6], target = 2
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [1,3,5,6], target = 7
+Output: 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^4; the array is sorted ascending with distinct values; the answer must be found in O(log n).</p>
+    <p><b>Approach.</b> This is the 'first index where the value is &gt;= target' search, also called lower bound. Return <code>lo</code> when the loop ends: it is simultaneously the insertion point and the answer, which is why lower-bound loops never need post-processing.</p>
+    <pre><code>// First index with a[i] &gt;= target
+int searchInsert(int[] a, int target) {
+    int lo = 0, hi = a.length;                   // half-open [lo, hi)
+    while (lo &lt; hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (a[mid] &lt; target) lo = mid + 1;
+        else hi = mid;
+    }
+    return lo;                                   // insertion point
+}   // O(log n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="sqrtx">
+    <h3><span class="pn">E3</span> Integer Square Root <span class="pill">Easy</span> <span class="muted small">· search on a monotone predicate</span></h3>
+    <p><b>Problem.</b> Given a non-negative integer x, return the integer part of its square root without using any power or square-root function.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  x = 4
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  x = 8
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  x = 0
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= x &lt;= 2^31 - 1; use only integer arithmetic; no built-in sqrt is allowed.</p>
+    <p><b>Approach.</b> Squares grow monotonically, so 'the largest m with m*m &lt;= x' is a search over a monotone predicate — the first taste of binary searching on the answer. Use a 64-bit type for m*m so the test itself cannot overflow.</p>
+    <pre><code>// Largest m with m*m &lt;= x
+int mySqrt(int x) {
+    long lo = 0, hi = x;
+    while (lo &lt; hi) {
+        long mid = lo + (hi - lo + 1) / 2;       // upper mid: keep lo moving
+        if (mid * mid &lt;= x) lo = mid;
+        else hi = mid - 1;
+    }
+    return (int) lo;
+}   // O(log x) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log x) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="first-bad-version">
+    <h3><span class="pn">E4</span> First Bad Version <span class="pill">Easy</span> <span class="muted small">· lower bound on a hidden predicate</span></h3>
+    <p><b>Problem.</b> Versions 1..n are ordered so that all versions after the first bad one are also bad. Using only the API isBadVersion(v), find the first bad version with as few calls as possible.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 5, first bad = 4
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 1, first bad = 1
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 2^31 - 1; the predicate is monotone (false...false, true...true); the API is the only way to inspect a version.</p>
+    <p><b>Approach.</b> The predicate's monotonicity is the entire reason binary search applies: seeing *one* bad version rules out everything before it as the answer. This is the template for every 'find the boundary of a hidden property' question.</p>
+    <pre><code>// Lower bound of a monotone hidden predicate
+static boolean isBadVersion(int v) { return false; }   // stub for the judge API
+int firstBadVersion(int n) {
+    int lo = 1, hi = n;
+    while (lo &lt; hi) {
+        int mid = lo + (hi - lo) / 2;            // avoids lo + hi overflow
+        if (isBadVersion(mid)) hi = mid;         // mid may be the answer
+        else lo = mid + 1;
+    }
+    return lo;
+}   // O(log n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="valid-perfect-square">
+    <h3><span class="pn">E5</span> Valid Perfect Square <span class="pill">Easy</span> <span class="muted small">· exact-value search</span></h3>
+    <p><b>Problem.</b> Return true if the given positive integer is a perfect square, using no built-in square-root function.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  num = 16
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  num = 14
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= num &lt;= 2^31 - 1; integer arithmetic only; the answer must be exact, not approximate.</p>
+    <p><b>Approach.</b> Same search as the integer square root, but the predicate is exact equality: return true only when a mid hit the value squarely. Comparing mid*m*m == num inside the loop avoids relying on a floating-point sqrt and a rounding check.</p>
+    <pre><code>// Same search; only an exact hit counts
+boolean isPerfectSquare(int num) {
+    long lo = 1, hi = num;
+    while (lo &lt;= hi) {
+        long mid = lo + (hi - lo) / 2, sq = mid * mid;
+        if (sq == num) return true;
+        if (sq &lt; num) lo = mid + 1;
+        else hi = mid - 1;
+    }
+    return false;
+}   // O(log num) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log num) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="smallest-letter-greater-than-target">
+    <h3><span class="pn">E6</span> Smallest Letter Greater Than Target <span class="pill">Easy</span> <span class="muted small">· upper bound with wraparound</span></h3>
+    <p><b>Problem.</b> Given a sorted circular list of lowercase letters and a target letter, return the smallest letter in the list that is strictly greater than the target, wrapping around to the first letter if none is.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  letters = ["c","f","j"], target = "a"
+Output: "c"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  letters = ["c","f","j"], target = "j"
+Output: "c"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= n &lt;= 10^4; letters are lowercase and sorted, possibly repeating; the answer is always one of the letters.</p>
+    <p><b>Approach.</b> This is the upper bound: the first index whose letter is strictly greater than the target. If that index runs off the end, the circular order means the answer is index 0 — a single modulo converts the failure case into the success case.</p>
+    <pre><code>// Upper bound; wrap to the first letter if there is none
+char nextGreatestLetter(char[] letters, char target) {
+    int lo = 0, hi = letters.length;
+    while (lo &lt; hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (letters[mid] &lt;= target) lo = mid + 1;   // strictly greater
+        else hi = mid;
+    }
+    return letters[lo % letters.length];            // wrap around
+}   // O(log n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="search-in-rotated-sorted-array">
+    <h3><span class="pn">M1</span> Search in Rotated Sorted Array <span class="pill">Medium</span> <span class="muted small">· one half is always sorted</span></h3>
+    <p><b>Problem.</b> A sorted array of distinct values was rotated at some pivot; find the index of the target or return -1, in O(log n).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [4,5,6,7,0,1,2], target = 0
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [4,5,6,7,0,1,2], target = 3
+Output: -1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 5000; all values are distinct; the array is a rotation of a sorted array.</p>
+    <p><b>Approach.</b> Even after a rotation, at least one side of the midpoint is properly sorted. Identify that side by comparing a[lo] with a[mid], then decide in one comparison whether the target lies inside the sorted half — if it does, search there, otherwise search the other half.</p>
+    <pre><code>// Exactly one of the two halves is sorted: use it to decide
+int search(int[] a, int target) {
+    int lo = 0, hi = a.length - 1;
+    while (lo &lt;= hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (a[mid] == target) return mid;
+        if (a[lo] &lt;= a[mid]) {                       // left half sorted
+            if (a[lo] &lt;= target &amp;&amp; target &lt; a[mid]) hi = mid - 1;
+            else lo = mid + 1;
+        } else {                                     // right half sorted
+            if (a[mid] &lt; target &amp;&amp; target &lt;= a[hi]) lo = mid + 1;
+            else hi = mid - 1;
+        }
+    }
+    return -1;
+}   // O(log n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="find-minimum-in-rotated-sorted-array">
+    <h3><span class="pn">M2</span> Find Minimum in Rotated Sorted Array <span class="pill">Medium</span> <span class="muted small">· compare with the right end</span></h3>
+    <p><b>Problem.</b> A sorted array of distinct values was rotated; return its minimum element in O(log n).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [3,4,5,1,2]
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [4,5,6,7,0,1,2]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 5000; all values are distinct; the array is a rotation of a sorted array.</p>
+    <p><b>Approach.</b> Compare the middle value with the rightmost one: if a[mid] is greater, the rotation point (and therefore the minimum) is to the right; otherwise it is at mid or to the left. This comparison is the one formulation that needs no special case for an array that was not rotated at all.</p>
+    <pre><code>// Compare a[mid] with a[hi]; the minimum follows that sign
+int findMin(int[] a) {
+    int lo = 0, hi = a.length - 1;
+    while (lo &lt; hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (a[mid] &gt; a[hi]) lo = mid + 1;            // rotation point is right
+        else hi = mid;                               // mid could be the min
+    }
+    return a[lo];
+}   // O(log n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="search-a-2d-matrix">
+    <h3><span class="pn">M3</span> Search a 2D Matrix <span class="pill">Medium</span> <span class="muted small">· flatten the index</span></h3>
+    <p><b>Problem.</b> Rows are sorted left to right and the first value of each row is greater than the last value of the previous row. Decide whether a target appears in the matrix, in O(log(rows · cols)).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  matrix = [[1,3,5,7],[10,11,16,20],[23,30,34,60]], target = 3
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  same matrix, target = 13
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 100; -10^4 &lt;= values, target &lt;= 10^4; the whole matrix is sorted row-major.</p>
+    <p><b>Approach.</b> The row-major layout is itself sorted, so the matrix is a single sorted array stored in two dimensions: map an index k to row k/cols and column k%cols and run ordinary binary search. Recognising a layout as one sorted sequence is quicker than any two-level search.</p>
+    <pre><code>// Row-major layout is one sorted array: map k -&gt; (k / C, k % C)
+boolean searchMatrix(int[][] m, int target) {
+    int R = m.length, C = m[0].length;
+    int lo = 0, hi = R * C - 1;
+    while (lo &lt;= hi) {
+        int mid = lo + (hi - lo) / 2;
+        int v = m[mid / C][mid % C];                 // flatten the index
+        if (v == target) return true;
+        if (v &lt; target) lo = mid + 1;
+        else hi = mid - 1;
+    }
+    return false;
+}   // O(log(R·C)) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log(rows · cols)) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="koko-eating-bananas">
+    <h3><span class="pn">M4</span> Koko Eating Bananas <span class="pill">Medium</span> <span class="muted small">· binary search on the answer</span></h3>
+    <p><b>Problem.</b> There are piles of bananas and h hours. Each hour Koko picks one pile and eats up to k bananas from it (finishing a pile before moving on). Return the smallest speed k that clears every pile within h hours.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  piles = [3,6,7,11], h = 8
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  piles = [30,11,23,4,20], h = 5
+Output: 30</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of piles &lt;= 10^4; h &gt;= number of piles; 1 &lt;= bananas per pile &lt;= 10^9.</p>
+    <p><b>Approach.</b> Slow speeds fail and fast speeds succeed — feasibility is monotone, so binary search the speed instead of a position. The check sums ceil(pile / k) over all piles; the first speed whose total is at most h is the answer. This 'search the answer space with a greedy feasibility test' pattern covers a whole family of problems.</p>
+    <pre><code>// Monotone in k: binary search the speed, check with ceil division
+int minEatingSpeed(int[] piles, int h) {
+    long lo = 1, hi = 0;
+    for (int p : piles) hi = Math.max(hi, p);
+    while (lo &lt; hi) {
+        long mid = lo + (hi - lo) / 2, total = 0;
+        for (int p : piles) total += (p + mid - 1) / mid;     // ceil(p / mid)
+        if (total &lt;= h) hi = mid;                             // feasible: try slower
+        else lo = mid + 1;
+    }
+    return (int) lo;
+}   // O(n log max) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log max) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="capacity-to-ship-packages-within-d-days">
+    <h3><span class="pn">M5</span> Ship Packages Within D Days <span class="pill">Medium</span> <span class="muted small">· binary search on capacity</span></h3>
+    <p><b>Problem.</b> Packages must be shipped in the given order within d days, loading each day's packages consecutively. Return the smallest ship capacity that finishes in time.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  weights = [1,2,3,4,5,6,7,8,9,10], days = 5
+Output: 15</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  weights = [3,2,2,4,1,4], days = 3
+Output: 6</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 5 * 10^4; 1 &lt;= weights, days &lt;= 5 * 10^4; the order of the packages may not change.</p>
+    <p><b>Approach.</b> Same answer-search shape: capacity is monotone (bigger is never worse), and the feasibility test is one greedy pass that fills each day until the next package would exceed the capacity. The lower bound is the heaviest package and the upper bound is the total weight — bounding the search tightly is what keeps it fast.</p>
+    <pre><code>// Greedy feasibility pass, then binary search the capacity
+int shipWithinDays(int[] w, int days) {
+    int lo = 0, hi = 0;
+    for (int x : w) { lo = Math.max(lo, x); hi += x; }  // tight bounds
+    while (lo &lt; hi) {
+        int mid = lo + (hi - lo) / 2;
+        int used = 1, load = 0;
+        for (int x : w) {
+            if (load + x &gt; mid) { used++; load = 0; }   // start a new day
+            load += x;
+        }
+        if (used &lt;= days) hi = mid;
+        else lo = mid + 1;
+    }
+    return lo;
+}   // O(n log total) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log total) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="find-peak-element">
+    <h3><span class="pn">M6</span> Find Peak Element <span class="pill">Medium</span> <span class="muted small">· climb the slope</span></h3>
+    <p><b>Problem.</b> An element is a peak if it is strictly greater than its neighbours (out-of-range neighbours count as negative infinity). Return the index of any peak, in O(log n).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,2,3,1]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,2,1,3,5,6,4]
+Output: 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 1000; adjacent values are never equal; any valid peak index is accepted.</p>
+    <p><b>Approach.</b> If the middle element is smaller than its right neighbour, a peak must exist to the right (the sequence has to come down somewhere); otherwise a peak exists at mid or to the left. Following the uphill direction never gets stuck, which is why this search needs no sorted input at all.</p>
+    <pre><code>// Always step uphill: a peak is guaranteed in that direction
+int findPeakElement(int[] a) {
+    int lo = 0, hi = a.length - 1;
+    while (lo &lt; hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (a[mid] &lt; a[mid + 1]) lo = mid + 1;       // uphill to the right
+        else hi = mid;                               // downhill: peak is here or left
+    }
+    return lo;
+}   // O(log n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="find-first-and-last-position">
+    <h3><span class="pn">M7</span> First and Last Position of a Target <span class="pill">Medium</span> <span class="muted small">· lower bound + upper bound</span></h3>
+    <p><b>Problem.</b> In a sorted array (with duplicates), return the first and last index of the target, or [-1,-1] if it is absent. The algorithm must run in O(log n).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [5,7,7,8,8,10], target = 8
+Output: [3,4]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [5,7,7,8,8,10], target = 6
+Output: [-1,-1]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= n &lt;= 10^5; the array is sorted ascending; O(log n) is required, so linear scanning is not allowed.</p>
+    <p><b>Approach.</b> Two boundary searches on the same array: the first index with value &gt;= target, and the first index with value &gt; target (then subtract one). Factoring both into one helper that takes a 'wanted' flag keeps them consistent — most wrong answers here come from two hand-edited copies that drifted apart.</p>
+    <pre><code>// One helper for both bounds: first index with a[i] &gt; target - 1 + want
+private int bound(int[] a, int target, boolean wantFirst) {
+    int lo = 0, hi = a.length;
+    while (lo &lt; hi) {
+        int mid = lo + (hi - lo) / 2;
+        boolean moveRight = wantFirst ? a[mid] &lt; target : a[mid] &lt;= target;
+        if (moveRight) lo = mid + 1;
+        else hi = mid;
+    }
+    return lo;
+}
+int[] searchRange(int[] a, int target) {
+    int first = bound(a, target, true);
+    if (first == a.length || a[first] != target) return new int[]{-1, -1};
+    return new int[]{first, bound(a, target, false) - 1};
+}   // O(log n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="search-in-rotated-sorted-array-ii">
+    <h3><span class="pn">M8</span> Search in Rotated Sorted Array II <span class="pill">Medium</span> <span class="muted small">· rotation with duplicates</span></h3>
+    <p><b>Problem.</b> Like the rotated-array search, but values may repeat. Return true if the target appears anywhere in the array.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [2,5,6,0,0,1,2], target = 0
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [2,5,6,0,0,1,2], target = 3
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 5000; the array is a rotation of a sorted array and may contain duplicates; an answer of O(n) worst case is acceptable.</p>
+    <p><b>Approach.</b> Duplicates break the 'which half is sorted' test when a[lo] == a[mid] == a[hi]: nothing can be concluded, so shrink both ends by one and continue. That is the only new case, and it is why the worst case degrades to O(n) — worth saying out loud in an interview.</p>
+    <pre><code>// Same idea; equal ends give no information, so shrink them
+boolean search(int[] a, int target) {
+    int lo = 0, hi = a.length - 1;
+    while (lo &lt;= hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (a[mid] == target) return true;
+        if (a[lo] == a[mid] &amp;&amp; a[mid] == a[hi]) { lo++; hi--; continue; }   // ambiguous
+        if (a[lo] &lt;= a[mid]) {
+            if (a[lo] &lt;= target &amp;&amp; target &lt; a[mid]) hi = mid - 1;
+            else lo = mid + 1;
+        } else {
+            if (a[mid] &lt; target &amp;&amp; target &lt;= a[hi]) lo = mid + 1;
+            else hi = mid - 1;
+        }
+    }
+    return false;
+}   // O(log n) average, O(n) worst time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) average, O(n) worst time · O(1) space.</p>
+  </section>
+  <section class="sub" id="longest-increasing-subsequence">
+    <h3><span class="pn">M9</span> Longest Increasing Subsequence <span class="pill">Medium</span> <span class="muted small">· patience sorting / tails array</span></h3>
+    <p><b>Problem.</b> Return the length of the longest strictly increasing subsequence of the array (the elements need not be contiguous).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [10,9,2,5,3,7,101,18]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [0,1,0,3,2,3]
+Output: 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 2500; -10^4 &lt;= values &lt;= 10^4; the subsequence must keep the original order.</p>
+    <p><b>Approach.</b> Maintain an array <code>tails</code> where tails[k] is the smallest possible tail of an increasing subsequence of length k+1. It stays sorted, so each new value replaces the first tail that is &gt;= it — a binary search. The length of <code>tails</code> is the answer even though <code>tails</code> itself is not a valid subsequence; that subtlety is the usual interview follow-up.</p>
+    <pre><code>// tails[k] = smallest tail of an increasing subsequence of length k+1
+int lengthOfLIS(int[] a) {
+    int[] tails = new int[a.length];
+    int size = 0;
+    for (int v : a) {
+        int lo = 0, hi = size;                    // first index with tails[i] &gt;= v
+        while (lo &lt; hi) {
+            int mid = lo + (hi - lo) / 2;
+            if (tails[mid] &lt; v) lo = mid + 1;
+            else hi = mid;
+        }
+        tails[lo] = v;                            // extend or replace a tail
+        if (lo == size) size++;
+    }
+    return size;
+}   // O(n log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="search-a-2d-matrix-ii">
+    <h3><span class="pn">M10</span> Search a 2D Matrix II <span class="pill">Medium</span> <span class="muted small">· staircase elimination</span></h3>
+    <p><b>Problem.</b> Rows and columns are each sorted ascending. Count or find a target in O(rows + cols).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  matrix = [[1,4,7,11,15],[2,5,8,12,19],[3,6,9,16,22],[10,13,14,17,24],[18,21,23,26,30]], target = 5
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  same matrix, target = 20
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 300; -10^9 &lt;= values &lt;= 10^9; rows and columns are sorted but the matrix is not row-major sorted.</p>
+    <p><b>Approach.</b> Start at the top-right corner: every step discards an entire row or column, because values to the left are smaller and values below are larger. That single corner turns the search into at most rows + cols steps — no binary search needed, which is the point worth remembering.</p>
+    <pre><code>// Top-right corner: each step deletes a row or a column
+boolean searchMatrix(int[][] m, int target) {
+    int r = 0, c = m[0].length - 1;
+    while (r &lt; m.length &amp;&amp; c &gt;= 0) {
+        if (m[r][c] == target) return true;
+        if (m[r][c] &gt; target) c--;                // this column is too big
+        else r++;                                 // this row is too small
+    }
+    return false;
+}   // O(rows + cols) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows + cols) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="minimum-limit-of-balls-in-a-bag">
+    <h3><span class="pn">M11</span> Minimum Limit of Balls in a Bag <span class="pill">Medium</span> <span class="muted small">· binary search on the maximum size</span></h3>
+    <p><b>Problem.</b> Each operation splits one bag into two bags with the same total. With at most maxOperations splits, return the smallest possible maximum bag size.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [9], maxOperations = 2
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [2,4,8,2], maxOperations = 4
+Output: 2</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; 1 &lt;= values, maxOperations &lt;= 10^9; the answer is at least 1.</p>
+    <p><b>Approach.</b> Test a candidate maximum size m: a bag of size v needs ceil(v/m) - 1 splits to get every piece down to at most m, and the test is monotone in m. Summing that over all bags gives feasibility, and the search finds the smallest feasible m.</p>
+    <pre><code>// Splits needed for limit m: sum(ceil(v / m) - 1)
+int minimumSize(int[] nums, int maxOps) {
+    int lo = 1, hi = 0;
+    for (int v : nums) hi = Math.max(hi, v);
+    while (lo &lt; hi) {
+        int mid = lo + (hi - lo) / 2;
+        long ops = 0;
+        for (int v : nums) ops += (v + mid - 1) / mid - 1;
+        if (ops &lt;= maxOps) hi = mid;
+        else lo = mid + 1;
+    }
+    return lo;
+}   // O(n log max) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log max) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="minimum-days-to-make-bouquets">
+    <h3><span class="pn">M12</span> Minimum Days to Make Bouquets <span class="pill">Medium</span> <span class="muted small">· binary search on days</span></h3>
+    <p><b>Problem.</b> Flower i blooms on day bloomDay[i]. A bouquet needs m adjacent flowers that have already bloomed. Return the earliest day on which m bouquets of k adjacent flowers each can be made, or -1 if impossible.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  bloomDay = [1,10,3,10,2], m = 3, k = 1
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  bloomDay = [1,10,3,10,2], m = 3, k = 2
+Output: -1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  bloomDay = [7,7,7,7,12,7,7], m = 2, k = 3
+Output: 12</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; 1 &lt;= bloomDay, m, k &lt;= 10^9; the flowers used for a bouquet must be adjacent.</p>
+    <p><b>Approach.</b> For a candidate day, walk the array and count consecutive bloomed flowers, cutting a bouquet whenever the run reaches k. That count is non-decreasing in the day, so binary search it. Check the impossible case up front instead of writing a sentinel into the search.</p>
+    <pre><code>// Feasible(day) is monotone; bouquets grow with consecutive bloomed runs
+int minDays(int[] bloom, int m, int k) {
+    if ((long) m * k &gt; bloom.length) return -1;      // impossible
+    int lo = Integer.MAX_VALUE, hi = 0;
+    for (int d : bloom) { lo = Math.min(lo, d); hi = Math.max(hi, d); }
+    while (lo &lt; hi) {
+        int mid = lo + (hi - lo) / 2, made = 0, run = 0;
+        for (int d : bloom) {
+            if (d &lt;= mid) { if (++run == k) { made++; run = 0; } }
+            else run = 0;
+        }
+        if (made &gt;= m) hi = mid;
+        else lo = mid + 1;
+    }
+    return lo;
+}   // O(n log max) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log max) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="median-of-two-sorted-arrays">
+    <h3><span class="pn">H1</span> Median of Two Sorted Arrays <span class="pill hot">Hard</span> <span class="muted small">· partition the shorter array</span></h3>
+    <p><b>Problem.</b> Return the median of two sorted arrays, in O(log(min(n, m))) time.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  a = [1,3], b = [2]
+Output: 2.0</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  a = [1,2], b = [3,4]
+Output: 2.5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= len(a), len(b) &lt;= 1000; 1 &lt;= len(a) + len(b) &lt;= 2000; the combined time must be logarithmic, not linear.</p>
+    <p><b>Approach.</b> The median splits the merged data into a left half and a right half of fixed sizes. Guess how many elements of the left half come from the first array; that choice determines everything else. The guess is right when the biggest left element is not bigger than the smallest right element, so binary search that count — on the shorter array, so the search is as short as possible.</p>
+    <pre><code>// Search how many of the left half's elements come from a
+double findMedianSortedArrays(int[] a, int[] b) {
+    if (a.length &gt; b.length) { int[] t = a; a = b; b = t; }   // search the shorter
+    int n = a.length, m = b.length, half = (n + m + 1) / 2;
+    int lo = 0, hi = n;
+    while (lo &lt;= hi) {
+        int i = (lo + hi) / 2, j = half - i;     // i from a, j from b
+        int aL = i &gt; 0 ? a[i-1] : Integer.MIN_VALUE, aR = i &lt; n ? a[i] : Integer.MAX_VALUE;
+        int bL = j &gt; 0 ? b[j-1] : Integer.MIN_VALUE, bR = j &lt; m ? b[j] : Integer.MAX_VALUE;
+        if (aL &lt;= bR &amp;&amp; bL &lt;= aR) {               // correct split
+            if (((n + m) &amp; 1) == 1) return Math.max(aL, bL);
+            return (Math.max(aL, bL) + Math.min(aR, bR)) / 2.0;
+        }
+        if (aL &gt; bR) hi = i - 1;                  // took too many from a
+        else lo = i + 1;
+    }
+    return 0.0;
+}   // O(log min(n, m)) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log min(n, m)) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="find-minimum-in-rotated-sorted-array-ii">
+    <h3><span class="pn">H2</span> Find Minimum in Rotated Sorted Array II <span class="pill hot">Hard</span> <span class="muted small">· rotation + duplicates</span></h3>
+    <p><b>Problem.</b> A sorted array that may contain duplicates was rotated; return its minimum element.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,3,5]
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [2,2,2,0,1]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 5000; the array is a rotation of a sorted array with possible duplicates; an O(n) worst case is acceptable.</p>
+    <p><b>Approach.</b> The duplicate-free version compares a[mid] with a[hi]. With duplicates, equality carries no information, so the safe move is hi-- and retry. Each shrink either discards a copy of the minimum or keeps one, which is why the worst case is linear while the average stays logarithmic.</p>
+    <pre><code>// Equality with a[hi] says nothing: shrink hi and retry
+int findMin(int[] a) {
+    int lo = 0, hi = a.length - 1;
+    while (lo &lt; hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (a[mid] &gt; a[hi]) lo = mid + 1;        // minimum is strictly right
+        else if (a[mid] &lt; a[hi]) hi = mid;       // minimum is at mid or left
+        else hi--;                               // duplicates: discard one copy
+    }
+    return a[lo];
+}   // O(log n) average, O(n) worst time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) average, O(n) worst time · O(1) space.</p>
+  </section>
+  <section class="sub" id="split-array-largest-sum">
+    <h3><span class="pn">H3</span> Split Array Largest Sum <span class="pill hot">Hard</span> <span class="muted small">· binary search on the largest piece</span></h3>
+    <p><b>Problem.</b> Split the array into exactly k non-empty contiguous subarrays so that the largest subarray sum is as small as possible; return that smallest largest sum.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [7,2,5,10,8], k = 2
+Output: 18</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,2,3,4,5], k = 2
+Output: 9</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 1000; 1 &lt;= k &lt;= n; 0 &lt;= values &lt;= 10^6.</p>
+    <p><b>Approach.</b> Same shape as the shipping problem, with a twist: the number of pieces the greedy pass produces *decreases* as the allowed sum grows, so feasibility is 'pieces &lt;= k'. The answer must also be at least the largest single element — that lower bound is what rules out impossible configurations.</p>
+    <pre><code>// Feasible(limit) = greedy pass needs at most k pieces
+int splitArray(int[] a, int k) {
+    long lo = 0, hi = 0;
+    for (int v : a) { lo = Math.max(lo, v); hi += v; }     // must hold the biggest
+    while (lo &lt; hi) {
+        long mid = lo + (hi - lo) / 2;
+        int pieces = 1; long cur = 0;
+        for (int v : a) {
+            if (cur + v &gt; mid) { pieces++; cur = 0; }      // cut here
+            cur += v;
+        }
+        if (pieces &lt;= k) hi = mid;
+        else lo = mid + 1;
+    }
+    return (int) lo;
+}   // O(n log sum) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log sum) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="kth-smallest-number-in-multiplication-table">
+    <h3><span class="pn">H4</span> K-th Smallest Number in a Multiplication Table <span class="pill hot">Hard</span> <span class="muted small">· count elements &lt;= x</span></h3>
+    <p><b>Problem.</b> In the m × n multiplication table (row i holds i, 2i, 3i, ...), return the k-th smallest number.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  m = 3, n = 3, k = 5
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  m = 2, n = 3, k = 6
+Output: 6</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= m, n &lt;= 3 * 10^4; 1 &lt;= k &lt;= m * n; values fit in a 32-bit integer.</p>
+    <p><b>Approach.</b> Binary search the value, not a position: count how many table entries are &lt;= x with min(n, x / i) summed over rows. That count is monotone in x, and the first x whose count reaches k is the answer — even though x itself may not appear in the table, which is the subtle part of the argument.</p>
+    <pre><code>// Binary search the value; count entries &lt;= x with min(n, x / i)
+int findKthNumber(int m, int n, int k) {
+    int lo = 1, hi = m * n;
+    while (lo &lt; hi) {
+        int mid = lo + (hi - lo) / 2, cnt = 0;
+        for (int r = 1; r &lt;= m; r++) cnt += Math.min(n, mid / r);   // row r hits
+        if (cnt &gt;= k) hi = mid;
+        else lo = mid + 1;
+    }
+    return lo;
+}   // O(m log(m·n)) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m log(m · n)) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="find-k-th-smallest-pair-distance">
+    <h3><span class="pn">H5</span> K-th Smallest Pair Distance <span class="pill hot">Hard</span> <span class="muted small">· binary search a distance, count pairs</span></h3>
+    <p><b>Problem.</b> Return the k-th smallest distance among all pairs of elements of the array (distances counted with multiplicity).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,3,1], k = 1
+Output: 0</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,1,1], k = 2
+Output: 0</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [1,6,1], k = 3
+Output: 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= n &lt;= 10^4; 0 &lt;= values &lt;= 10^6; 1 &lt;= k &lt;= n · (n - 1) / 2.</p>
+    <p><b>Approach.</b> Sorting turns 'how many pairs are within distance d' into a two-pointer count in linear time, and that count is monotone in d. So binary search d over [0, max - min]: a distance is a valid answer exactly when at least k pairs are within it, and the pairs need never be enumerated.</p>
+    <pre><code>// Sort, then binary search d and two-pointer count pairs within d
+int smallestDistancePair(int[] a, int k) {
+    Arrays.sort(a);
+    int n = a.length, lo = 0, hi = a[n - 1] - a[0];
+    while (lo &lt; hi) {
+        int mid = lo + (hi - lo) / 2;
+        long cnt = 0;
+        for (int i = 0, j = 0; i &lt; n; i++) {
+            while (a[i] - a[j] &gt; mid) j++;        // shrink the window
+            cnt += i - j;                         // pairs ending at i, within mid
+        }
+        if (cnt &gt;= k) hi = mid;
+        else lo = mid + 1;
+    }
+    return lo;
+}   // O(n log n + n log maxDist) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n + n log maxDist) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="preimage-size-of-factorial-zeroes-function">
+    <h3><span class="pn">H6</span> Preimage Size of Factorial Zeroes Function <span class="pill hot">Hard</span> <span class="muted small">· monotone step function</span></h3>
+    <p><b>Problem.</b> Given k, count how many non-negative integers x satisfy: the number of trailing zeros of x! is exactly k.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  k = 0
+Output: 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  k = 5
+Output: 0</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  k = 3
+Output: 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= k &lt;= 10^9; trailing zeros of x! = floor(x/5) + floor(x/25) + ...; the answer is always 0 or 5.</p>
+    <p><b>Approach.</b> The trailing-zero count f(x) = Σ floor(x / 5^i) — a monotone step function that never increases by more than 1 per step and jumps by exactly 1 at multiples of 5. A value k therefore has either 5 preimages (a full block of consecutive x) or none. Binary search the smallest x with f(x) &gt;= k and test whether f(x) equals k.</p>
+    <pre><code>// f(x) is monotone and never skips 5 in a row; binary search it
+long trailingZeros(long x) {
+    long c = 0;
+    while (x &gt; 0) { x /= 5; c += x; }
+    return c;
+}
+int preimageSizeFZF(int k) {
+    long lo = 0, hi = (long) k * 5 + 5;
+    while (lo &lt; hi) {                             // smallest x with f(x) &gt;= k
+        long mid = lo + (hi - lo) / 2;
+        if (trailingZeros(mid) &lt; k) lo = mid + 1;
+        else hi = mid;
+    }
+    return trailingZeros(lo) == k ? 5 : 0;        // a block of 5, or nothing
+}   // O(log² k) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log² k) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="nth-magical-number">
+    <h3><span class="pn">H7</span> N-th Magical Number <span class="pill hot">Hard</span> <span class="muted small">· count multiples with inclusion-exclusion</span></h3>
+    <p><b>Problem.</b> A positive integer is magical if it is divisible by a or by b. Return the n-th magical number, modulo 10^9 + 7.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 1, a = 2, b = 3
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 4, a = 2, b = 3
+Output: 6</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^9; 2 &lt;= a, b &lt;= 4 * 10^4; the answer is reported modulo 10^9 + 7.</p>
+    <p><b>Approach.</b> Counting multiplies of a or b up to x is inclusion-exclusion: x/a + x/b - x/lcm(a, b). That count is monotone, so binary search the smallest x whose count reaches n, with an upper bound of n · min(a, b) — a multiple of min(a, b) supplies n magical numbers at most that far out.</p>
+    <pre><code>// Inclusion-exclusion count, then binary search the value
+int nthMagicalNumber(int n, int a, int b) {
+    final long MOD = 1000000007L;
+    long l = (long) a / gcd(a, b) * b;                     // lcm
+    long lo = 1, hi = (long) Math.min(a, b) * n;
+    while (lo &lt; hi) {
+        long mid = lo + (hi - lo) / 2;
+        long cnt = mid / a + mid / b - mid / l;            // magical &lt;= mid
+        if (cnt &gt;= n) hi = mid;
+        else lo = mid + 1;
+    }
+    return (int) (lo % MOD);
+}
+static int gcd(int x, int y) { return y == 0 ? x : gcd(y, x % y); }
+// O(log(n · min(a, b))) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log(n · min(a, b))) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="super-egg-drop">
+    <h3><span class="pn">H8</span> Super Egg Drop <span class="pill hot">Hard</span> <span class="muted small">· search on moves, not floors</span></h3>
+    <p><b>Problem.</b> With k identical eggs and n floors, return the minimum number of moves that guarantees finding the critical floor in the worst case.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  k = 1, n = 2
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  k = 2, n = 6
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  k = 3, n = 14
+Output: 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= k &lt;= 100; 1 &lt;= n &lt;= 10^4; a broken egg is lost; the worst case is what counts.</p>
+    <p><b>Approach.</b> Instead of asking 'how many floors can I solve with m moves', note that dropping an egg splits the remaining floors into the ones above (if it survives, with k eggs and m-1 moves) and the ones below (if it breaks, with k-1 eggs and m-1 moves). So dp[k][m] = dp[k][m-1] + dp[k-1][m-1] + 1, and the answer is the smallest m with dp[k][m] &gt;= n — an O(k log n) loop instead of the naive O(k n²) table.</p>
+    <pre><code>// dp[e] = floors resolvable with e eggs and the current move count
+int superEggDrop(int k, int n) {
+    int[] dp = new int[k + 1];                   // dp[e] for m moves so far
+    int moves = 0;
+    while (dp[k] &lt; n) {
+        for (int e = k; e &gt;= 1; e--)             // descending: use last move's values
+            dp[e] = dp[e] + dp[e - 1] + 1;       // survive + break + this floor
+        moves++;
+    }
+    return moves;
+}   // O(k log n) time (at most n moves) · O(k) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(k log n) time · O(k) space.</p>
+  </section>
+  <section class="sub" id="find-in-mountain-array">
+    <h3><span class="pn">H9</span> Find in a Mountain Array <span class="pill hot">Hard</span> <span class="muted small">· find the peak, then two searches</span></h3>
+    <p><b>Problem.</b> The array rises strictly to a peak and then falls strictly. Using only the API arr.get(i) (limited to 100 calls), return the smallest index holding the target, or -1.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  mountain = [1,2,3,4,5,3,1], target = 3
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  mountain = [0,1,2,4,2,1], target = 3
+Output: -1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 3 &lt;= n &lt;= 10^4; values are distinct around the peak; at most 100 calls to get().</p>
+    <p><b>Approach.</b> Three binary searches: one on the slope to find the peak, one ascending search on the left part and one descending search on the right part. Because you must return the *smallest* index, search the left part first and only fall through to the right if it fails.</p>
+    <pre><code>// Peak, then ascending search left, then descending search right
+interface MountainArray { int get(int index); int length(); }   // judge API
+int findInMountainArray(int target, MountainArray arr) {
+    int n = arr.length(), lo = 0, hi = n - 1;
+    while (lo &lt; hi) {                            // 1. find the peak
+        int mid = lo + (hi - lo) / 2;
+        if (arr.get(mid) &lt; arr.get(mid + 1)) lo = mid + 1;
+        else hi = mid;
+    }
+    int peak = lo;
+    lo = 0; hi = peak;
+    while (lo &lt;= hi) {                           // 2. ascending half
+        int mid = lo + (hi - lo) / 2, v = arr.get(mid);
+        if (v == target) return mid;
+        if (v &lt; target) lo = mid + 1;
+        else hi = mid - 1;
+    }
+    lo = peak + 1; hi = n - 1;
+    while (lo &lt;= hi) {                           // 3. descending half
+        int mid = lo + (hi - lo) / 2, v = arr.get(mid);
+        if (v == target) return mid;
+        if (v &gt; target) lo = mid + 1;            // reversed comparison
+        else hi = mid - 1;
+    }
+    return -1;
+}   // O(log n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="divide-chocolate">
+    <h3><span class="pn">H10</span> Divide Chocolate <span class="pill hot">Hard</span> <span class="muted small">· binary search + run counting</span></h3>
+    <p><b>Problem.</b> Split the chocolate pieces (in order) among k+1 people so that everybody gets one contiguous run, and maximise the minimum total sweetness anyone receives.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  sweetness = [1,2,3,4,5,6,7,8,9], k = 5
+Output: 6</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  sweetness = [5,6,7,8,9,1,2,3,4], k = 8
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  sweetness = [1,2,2,1,2,2,1,2,2], k = 2
+Output: 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^4; 0 &lt;= sweetness &lt;= 10^4; 0 &lt;= k &lt; n.</p>
+    <p><b>Approach.</b> Maximising the minimum is again monotone: test whether it is possible to hand out at least k+1 pieces each of sum &gt;= m, by greedily cutting as soon as a run reaches m. The search then takes the largest feasible m — the classic 'maximise the minimum / minimise the maximum' duality with the previous problems.</p>
+    <pre><code>// Greedily count pieces with sum &gt;= m; take the largest feasible m
+int maximizeSweetness(int[] s, int k) {
+    int lo = 0, hi = 0;
+    for (int v : s) hi += v;
+    while (lo &lt; hi) {
+        int mid = lo + (hi - lo + 1) / 2;            // upper mid: move lo up
+        int pieces = 0, run = 0;
+        for (int v : s) {
+            run += v;
+            if (run &gt;= mid) { pieces++; run = 0; }   // cut as soon as possible
+        }
+        if (pieces &gt;= k + 1) lo = mid;
+        else hi = mid - 1;
+    }
+    return lo;
+}   // O(n log sum) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log sum) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="k-th-smallest-in-lexicographical-order">
+    <h3><span class="pn">H11</span> K-th Smallest in Lexicographical Order <span class="pill hot">Hard</span> <span class="muted small">· prefix counting (trie walk)</span></h3>
+    <p><b>Problem.</b> Return the k-th smallest integer in the range 1..n when the numbers are ordered lexicographically (as strings).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 13, k = 2
+Output: 10</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 1, k = 1
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= k &lt;= n &lt;= 10^9; 0-based vs 1-based indexing is the usual trap here; an O(log n) walk is expected.</p>
+    <p><b>Approach.</b> The lexicographic order is a pre-order walk of a ten-ary tree of prefixes. For the current prefix, count how many nodes that prefix would contain (all numbers starting with it, level by level); if the count fits inside the remaining k, skip the whole subtree, otherwise step down into it by appending a zero.</p>
+    <pre><code>// Count nodes under a prefix; skip the subtree or descend into it
+long countSteps(long n, long first, long next) {
+    long steps = 0;
+    while (first &lt;= n) {
+        steps += Math.min(n, next - 1) - first + 1;   // whole level under it
+        first *= 10; next *= 10;
+    }
+    return steps;
+}
+int findKthNumber(int n, int k) {
+    long cur = 1;
+    k--;                                          // 1 is the first number
+    while (k &gt; 0) {
+        long steps = countSteps(n, cur, cur + 1);
+        if (steps &lt;= k) { k -= steps; cur++; }    // skip this whole subtree
+        else { cur *= 10; k--; }                  // descend one level
+    }
+    return (int) cur;
+}   // O(log² n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log² n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="maximum-running-time-of-n-computers">
+    <h3><span class="pn">H12</span> Maximum Running Time of N Computers <span class="pill hot">Hard</span> <span class="muted small">· binary search the runtime with a capped sum</span></h3>
+    <p><b>Problem.</b> n computers must run simultaneously, and the i-th battery holds batteries[i] minutes. Batteries can be plugged, unplugged and moved between computers at any moment. Return the maximum number of minutes all n computers can run together.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 2, batteries = [3,3,3]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 2, batteries = [1,1,1,1]
+Output: 2</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; 1 &lt;= batteries[i] &lt;= 10^9; each computer consumes one unit of battery per minute.</p>
+    <p><b>Approach.</b> Test a candidate runtime t: a battery can contribute at most t minutes (it cannot power two computers at once), so the total available is Σ min(battery, t), and t is feasible when that is at least n · t. The capped sum is monotone in t, so binary search it — a nice reminder that feasibility checks can ignore ordering rules when resources are freely reassignable.</p>
+    <pre><code>// Feasible(t): capped sum of batteries &gt;= n * t
+long maxRunTime(int n, int[] batteries) {
+    long lo = 0, total = 0;
+    for (int b : batteries) total += b;
+    long hi = total / n;
+    while (lo &lt; hi) {
+        long mid = lo + (hi - lo + 1) / 2, usable = 0;
+        for (int b : batteries) usable += Math.min(b, mid);   // cap each battery
+        if (usable &gt;= mid * n) lo = mid;
+        else hi = mid - 1;
+    }
+    return lo;
+}   // O(m log(sum/n)) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(len(batteries) · log(sum / n)) time · O(1) space.</p>
+  </section>
+</section>
 
   </main>
 </div>
 
 <footer>
-  <p><b>Java bank</b> — 120 problems across 4 topics, with complete solutions in
+  <p><b>Java bank</b> — 150 problems across 5 topics, with complete solutions in
   Java 21/25 solutions.</p>
   <p class="small">Same problems in every language:
     <a href="cpp-leetcode.html">C++</a> · <a href="java-leetcode.html">Java</a> · <a href="python-leetcode.html">Python</a>

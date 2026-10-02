@@ -3273,12 +3273,791 @@ Output: 20</code></pre></div>
     <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
   </section>
 </section>
+<section class="chapter" id="t05">
+  <h2><span class="num">5</span> Binary Search &amp; Sorted Structures</h2>
+  <p class="tagline">Halving the problem — and its more valuable cousin: binary searching an *answer* instead of an index.</p>
+  <div class="card"><p><b>What this topic trains.</b> Three skills. (1) Writing a correct loop and choosing the invariant so the boundary cases never bite. (2) 'Binary search on the answer': when a monotone feasibility test exists, search the value rather than the position. (3) Searching structures that are sorted in more than one direction — rotated arrays, matrices, mountains, and pairs whose k-th smallest statistic is wanted.</p>
+<p class="small muted">Ordering: easy 1–6 are plain index searches and integer roots; medium 1–4 are rotated arrays and sorted matrices, 5–7 turn a monotone predicate into an answer search (Koko, shipping, bouquets), 8–12 are boundaries, peaks, LIS and staircase search; hard 1–4 are medians, duplicated rotations and answer searches with a sharp edge case, 5–12 are k-th statistics and partition problems that only look impossible.</p></div>
+  <section class="sub" id="binary-search">
+    <h3><span class="pn">E1</span> Binary Search <span class="pill">Easy</span> <span class="muted small">· the canonical loop</span></h3>
+    <p><b>Problem.</b> Given a sorted array of distinct integers, return the index of the target or -1 if it is absent.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [-1,0,3,5,9,12], target = 9
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [-1,0,3,5,9,12], target = 2
+Output: -1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^4; the array is sorted ascending with distinct values; the algorithm must run in O(log n).</p>
+    <p><b>Approach.</b> Keep an inclusive range [lo, hi] and compare the middle element. Writing <code>lo + (hi - lo) // 2</code> rather than <code>(lo + hi) // 2</code> avoids overflow in fixed-width languages; writing <code>while lo &lt;= hi</code> with <code>hi = mid - 1</code> guarantees the range shrinks even when the target is absent.</p>
+    <pre><code>def search_sorted(a, target):
+    lo, hi = 0, len(a) - 1
+    while lo &lt;= hi:                 # inclusive bounds
+        mid = (lo + hi) // 2
+        if a[mid] == target:
+            return mid
+        if a[mid] &lt; target:
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return -1</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="search-insert-position">
+    <h3><span class="pn">E2</span> Search Insert Position <span class="pill">Easy</span> <span class="muted small">· lower bound</span></h3>
+    <p><b>Problem.</b> In a sorted array of distinct values, return the index of the target, or the index where it should be inserted to keep the array sorted.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,3,5,6], target = 5
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,3,5,6], target = 2
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [1,3,5,6], target = 7
+Output: 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^4; the array is sorted ascending with distinct values; the answer must be found in O(log n).</p>
+    <p><b>Approach.</b> This is the 'first index where the value is &gt;= target' search, also called lower bound. Return <code>lo</code> when the loop ends: it is simultaneously the insertion point and the answer, which is why lower-bound loops never need post-processing.</p>
+    <pre><code>def search_insert(a, target):
+    lo, hi = 0, len(a)                 # half-open range [lo, hi)
+    while lo &lt; hi:
+        mid = (lo + hi) // 2
+        if a[mid] &lt; target:
+            lo = mid + 1
+        else:
+            hi = mid
+    return lo                          # first index &gt;= target</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="sqrtx">
+    <h3><span class="pn">E3</span> Integer Square Root <span class="pill">Easy</span> <span class="muted small">· search on a monotone predicate</span></h3>
+    <p><b>Problem.</b> Given a non-negative integer x, return the integer part of its square root without using any power or square-root function.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  x = 4
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  x = 8
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  x = 0
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= x &lt;= 2^31 - 1; use only integer arithmetic; no built-in sqrt is allowed.</p>
+    <p><b>Approach.</b> Squares grow monotonically, so 'the largest m with m*m &lt;= x' is a search over a monotone predicate — the first taste of binary searching on the answer. Use a 64-bit type for m*m so the test itself cannot overflow.</p>
+    <pre><code>def my_sqrt(x):
+    lo, hi = 0, x
+    while lo &lt; hi:
+        mid = (lo + hi + 1) // 2        # upper mid so lo always advances
+        if mid * mid &lt;= x:
+            lo = mid
+        else:
+            hi = mid - 1
+    return lo</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log x) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="first-bad-version">
+    <h3><span class="pn">E4</span> First Bad Version <span class="pill">Easy</span> <span class="muted small">· lower bound on a hidden predicate</span></h3>
+    <p><b>Problem.</b> Versions 1..n are ordered so that all versions after the first bad one are also bad. Using only the API isBadVersion(v), find the first bad version with as few calls as possible.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 5, first bad = 4
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 1, first bad = 1
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 2^31 - 1; the predicate is monotone (false...false, true...true); the API is the only way to inspect a version.</p>
+    <p><b>Approach.</b> The predicate's monotonicity is the entire reason binary search applies: seeing *one* bad version rules out everything before it as the answer. This is the template for every 'find the boundary of a hidden property' question.</p>
+    <pre><code>def first_bad_version(n, is_bad_version):
+    lo, hi = 1, n
+    while lo &lt; hi:
+        mid = (lo + hi) // 2
+        if is_bad_version(mid):
+            hi = mid                  # mid may be the answer
+        else:
+            lo = mid + 1
+    return lo</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="valid-perfect-square">
+    <h3><span class="pn">E5</span> Valid Perfect Square <span class="pill">Easy</span> <span class="muted small">· exact-value search</span></h3>
+    <p><b>Problem.</b> Return true if the given positive integer is a perfect square, using no built-in square-root function.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  num = 16
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  num = 14
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= num &lt;= 2^31 - 1; integer arithmetic only; the answer must be exact, not approximate.</p>
+    <p><b>Approach.</b> Same search as the integer square root, but the predicate is exact equality: return true only when a mid hit the value squarely. Comparing mid*m*m == num inside the loop avoids relying on a floating-point sqrt and a rounding check.</p>
+    <pre><code>def is_perfect_square(num):
+    lo, hi = 1, num
+    while lo &lt;= hi:
+        mid = (lo + hi) // 2
+        sq = mid * mid
+        if sq == num:
+            return True
+        if sq &lt; num:
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return False</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log num) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="smallest-letter-greater-than-target">
+    <h3><span class="pn">E6</span> Smallest Letter Greater Than Target <span class="pill">Easy</span> <span class="muted small">· upper bound with wraparound</span></h3>
+    <p><b>Problem.</b> Given a sorted circular list of lowercase letters and a target letter, return the smallest letter in the list that is strictly greater than the target, wrapping around to the first letter if none is.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  letters = ["c","f","j"], target = "a"
+Output: "c"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  letters = ["c","f","j"], target = "j"
+Output: "c"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= n &lt;= 10^4; letters are lowercase and sorted, possibly repeating; the answer is always one of the letters.</p>
+    <p><b>Approach.</b> This is the upper bound: the first index whose letter is strictly greater than the target. If that index runs off the end, the circular order means the answer is index 0 — a single modulo converts the failure case into the success case.</p>
+    <pre><code>def next_greatest_letter(letters, target):
+    lo, hi = 0, len(letters)
+    while lo &lt; hi:
+        mid = (lo + hi) // 2
+        if letters[mid] &lt;= target:
+            lo = mid + 1         # strictly greater only
+        else:
+            hi = mid
+    return letters[lo % len(letters)]    # wrap around</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="search-in-rotated-sorted-array">
+    <h3><span class="pn">M1</span> Search in Rotated Sorted Array <span class="pill">Medium</span> <span class="muted small">· one half is always sorted</span></h3>
+    <p><b>Problem.</b> A sorted array of distinct values was rotated at some pivot; find the index of the target or return -1, in O(log n).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [4,5,6,7,0,1,2], target = 0
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [4,5,6,7,0,1,2], target = 3
+Output: -1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 5000; all values are distinct; the array is a rotation of a sorted array.</p>
+    <p><b>Approach.</b> Even after a rotation, at least one side of the midpoint is properly sorted. Identify that side by comparing a[lo] with a[mid], then decide in one comparison whether the target lies inside the sorted half — if it does, search there, otherwise search the other half.</p>
+    <pre><code>def search_rotated(a, target):
+    lo, hi = 0, len(a) - 1
+    while lo &lt;= hi:
+        mid = (lo + hi) // 2
+        if a[mid] == target:
+            return mid
+        if a[lo] &lt;= a[mid]:                 # left half is sorted
+            if a[lo] &lt;= target &lt; a[mid]:
+                hi = mid - 1
+            else:
+                lo = mid + 1
+        else:                               # right half is sorted
+            if a[mid] &lt; target &lt;= a[hi]:
+                lo = mid + 1
+            else:
+                hi = mid - 1
+    return -1</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="find-minimum-in-rotated-sorted-array">
+    <h3><span class="pn">M2</span> Find Minimum in Rotated Sorted Array <span class="pill">Medium</span> <span class="muted small">· compare with the right end</span></h3>
+    <p><b>Problem.</b> A sorted array of distinct values was rotated; return its minimum element in O(log n).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [3,4,5,1,2]
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [4,5,6,7,0,1,2]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 5000; all values are distinct; the array is a rotation of a sorted array.</p>
+    <p><b>Approach.</b> Compare the middle value with the rightmost one: if a[mid] is greater, the rotation point (and therefore the minimum) is to the right; otherwise it is at mid or to the left. This comparison is the one formulation that needs no special case for an array that was not rotated at all.</p>
+    <pre><code>def find_min_rotated(a):
+    lo, hi = 0, len(a) - 1
+    while lo &lt; hi:
+        mid = (lo + hi) // 2
+        if a[mid] &gt; a[hi]:
+            lo = mid + 1        # the minimum is strictly to the right
+        else:
+            hi = mid            # mid could be the minimum itself
+    return a[lo]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="search-a-2d-matrix">
+    <h3><span class="pn">M3</span> Search a 2D Matrix <span class="pill">Medium</span> <span class="muted small">· flatten the index</span></h3>
+    <p><b>Problem.</b> Rows are sorted left to right and the first value of each row is greater than the last value of the previous row. Decide whether a target appears in the matrix, in O(log(rows · cols)).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  matrix = [[1,3,5,7],[10,11,16,20],[23,30,34,60]], target = 3
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  same matrix, target = 13
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 100; -10^4 &lt;= values, target &lt;= 10^4; the whole matrix is sorted row-major.</p>
+    <p><b>Approach.</b> The row-major layout is itself sorted, so the matrix is a single sorted array stored in two dimensions: map an index k to row k/cols and column k%cols and run ordinary binary search. Recognising a layout as one sorted sequence is quicker than any two-level search.</p>
+    <pre><code>def search_matrix_flat(m, target):
+    R, C = len(m), len(m[0])
+    lo, hi = 0, R * C - 1
+    while lo &lt;= hi:
+        mid = (lo + hi) // 2
+        v = m[mid // C][mid % C]        # flatten the index
+        if v == target:
+            return True
+        if v &lt; target:
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return False</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log(rows · cols)) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="koko-eating-bananas">
+    <h3><span class="pn">M4</span> Koko Eating Bananas <span class="pill">Medium</span> <span class="muted small">· binary search on the answer</span></h3>
+    <p><b>Problem.</b> There are piles of bananas and h hours. Each hour Koko picks one pile and eats up to k bananas from it (finishing a pile before moving on). Return the smallest speed k that clears every pile within h hours.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  piles = [3,6,7,11], h = 8
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  piles = [30,11,23,4,20], h = 5
+Output: 30</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of piles &lt;= 10^4; h &gt;= number of piles; 1 &lt;= bananas per pile &lt;= 10^9.</p>
+    <p><b>Approach.</b> Slow speeds fail and fast speeds succeed — feasibility is monotone, so binary search the speed instead of a position. The check sums ceil(pile / k) over all piles; the first speed whose total is at most h is the answer. This 'search the answer space with a greedy feasibility test' pattern covers a whole family of problems.</p>
+    <pre><code>def min_eating_speed(piles, h):
+    def hours_needed(k):
+        return sum((p + k - 1) // k for p in piles)   # ceil(p / k)
+
+    lo, hi = 1, max(piles)
+    while lo &lt; hi:
+        mid = (lo + hi) // 2
+        if hours_needed(mid) &lt;= h:
+            hi = mid          # feasible: try a slower speed
+        else:
+            lo = mid + 1
+    return lo</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log max) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="capacity-to-ship-packages-within-d-days">
+    <h3><span class="pn">M5</span> Ship Packages Within D Days <span class="pill">Medium</span> <span class="muted small">· binary search on capacity</span></h3>
+    <p><b>Problem.</b> Packages must be shipped in the given order within d days, loading each day's packages consecutively. Return the smallest ship capacity that finishes in time.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  weights = [1,2,3,4,5,6,7,8,9,10], days = 5
+Output: 15</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  weights = [3,2,2,4,1,4], days = 3
+Output: 6</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 5 * 10^4; 1 &lt;= weights, days &lt;= 5 * 10^4; the order of the packages may not change.</p>
+    <p><b>Approach.</b> Same answer-search shape: capacity is monotone (bigger is never worse), and the feasibility test is one greedy pass that fills each day until the next package would exceed the capacity. The lower bound is the heaviest package and the upper bound is the total weight — bounding the search tightly is what keeps it fast.</p>
+    <pre><code>def ship_within_days(w, days):
+    def fits(cap):
+        used, load = 1, 0
+        for x in w:
+            if load + x &gt; cap:
+                used += 1            # start a new day
+                load = 0
+            load += x
+        return used &lt;= days
+
+    lo, hi = max(w), sum(w)          # tight bounds
+    while lo &lt; hi:
+        mid = (lo + hi) // 2
+        if fits(mid):
+            hi = mid
+        else:
+            lo = mid + 1
+    return lo</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log total) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="find-peak-element">
+    <h3><span class="pn">M6</span> Find Peak Element <span class="pill">Medium</span> <span class="muted small">· climb the slope</span></h3>
+    <p><b>Problem.</b> An element is a peak if it is strictly greater than its neighbours (out-of-range neighbours count as negative infinity). Return the index of any peak, in O(log n).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,2,3,1]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,2,1,3,5,6,4]
+Output: 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 1000; adjacent values are never equal; any valid peak index is accepted.</p>
+    <p><b>Approach.</b> If the middle element is smaller than its right neighbour, a peak must exist to the right (the sequence has to come down somewhere); otherwise a peak exists at mid or to the left. Following the uphill direction never gets stuck, which is why this search needs no sorted input at all.</p>
+    <pre><code>def find_peak_element(a):
+    lo, hi = 0, len(a) - 1
+    while lo &lt; hi:
+        mid = (lo + hi) // 2
+        if a[mid] &lt; a[mid + 1]:
+            lo = mid + 1        # uphill: a peak is guaranteed to the right
+        else:
+            hi = mid            # downhill: the peak is at mid or to the left
+    return lo</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="find-first-and-last-position">
+    <h3><span class="pn">M7</span> First and Last Position of a Target <span class="pill">Medium</span> <span class="muted small">· lower bound + upper bound</span></h3>
+    <p><b>Problem.</b> In a sorted array (with duplicates), return the first and last index of the target, or [-1,-1] if it is absent. The algorithm must run in O(log n).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [5,7,7,8,8,10], target = 8
+Output: [3,4]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [5,7,7,8,8,10], target = 6
+Output: [-1,-1]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= n &lt;= 10^5; the array is sorted ascending; O(log n) is required, so linear scanning is not allowed.</p>
+    <p><b>Approach.</b> Two boundary searches on the same array: the first index with value &gt;= target, and the first index with value &gt; target (then subtract one). Factoring both into one helper that takes a 'wanted' flag keeps them consistent — most wrong answers here come from two hand-edited copies that drifted apart.</p>
+    <pre><code>def search_range(a, target):
+    def bound(want_first):
+        lo, hi = 0, len(a)
+        while lo &lt; hi:
+            mid = (lo + hi) // 2
+            move_right = a[mid] &lt; target if want_first else a[mid] &lt;= target
+            if move_right:
+                lo = mid + 1
+            else:
+                hi = mid
+        return lo                     # first index where the test stops holding
+
+    first = bound(True)
+    if first == len(a) or a[first] != target:
+        return [-1, -1]
+    return [first, bound(False) - 1]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="search-in-rotated-sorted-array-ii">
+    <h3><span class="pn">M8</span> Search in Rotated Sorted Array II <span class="pill">Medium</span> <span class="muted small">· rotation with duplicates</span></h3>
+    <p><b>Problem.</b> Like the rotated-array search, but values may repeat. Return true if the target appears anywhere in the array.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [2,5,6,0,0,1,2], target = 0
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [2,5,6,0,0,1,2], target = 3
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 5000; the array is a rotation of a sorted array and may contain duplicates; an answer of O(n) worst case is acceptable.</p>
+    <p><b>Approach.</b> Duplicates break the 'which half is sorted' test when a[lo] == a[mid] == a[hi]: nothing can be concluded, so shrink both ends by one and continue. That is the only new case, and it is why the worst case degrades to O(n) — worth saying out loud in an interview.</p>
+    <pre><code>def search_rotated_duplicates(a, target):
+    lo, hi = 0, len(a) - 1
+    while lo &lt;= hi:
+        mid = (lo + hi) // 2
+        if a[mid] == target:
+            return True
+        if a[lo] == a[mid] == a[hi]:     # no usable information: shrink
+            lo += 1
+            hi -= 1
+            continue
+        if a[lo] &lt;= a[mid]:              # left half is sorted
+            if a[lo] &lt;= target &lt; a[mid]:
+                hi = mid - 1
+            else:
+                lo = mid + 1
+        else:                            # right half is sorted
+            if a[mid] &lt; target &lt;= a[hi]:
+                lo = mid + 1
+            else:
+                hi = mid - 1
+    return False</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) average, O(n) worst time · O(1) space.</p>
+  </section>
+  <section class="sub" id="longest-increasing-subsequence">
+    <h3><span class="pn">M9</span> Longest Increasing Subsequence <span class="pill">Medium</span> <span class="muted small">· patience sorting / tails array</span></h3>
+    <p><b>Problem.</b> Return the length of the longest strictly increasing subsequence of the array (the elements need not be contiguous).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [10,9,2,5,3,7,101,18]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [0,1,0,3,2,3]
+Output: 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 2500; -10^4 &lt;= values &lt;= 10^4; the subsequence must keep the original order.</p>
+    <p><b>Approach.</b> Maintain an array <code>tails</code> where tails[k] is the smallest possible tail of an increasing subsequence of length k+1. It stays sorted, so each new value replaces the first tail that is &gt;= it — a binary search. The length of <code>tails</code> is the answer even though <code>tails</code> itself is not a valid subsequence; that subtlety is the usual interview follow-up.</p>
+    <pre><code>import bisect
+
+def length_of_lis(a):
+    tails = []                      # tails[k] = smallest tail of a length k+1 run
+    for v in a:
+        i = bisect.bisect_left(tails, v)   # first tail &gt;= v
+        if i == len(tails):
+            tails.append(v)             # v extends the longest run
+        else:
+            tails[i] = v                # v is a smaller tail for that length
+    return len(tails)</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="search-a-2d-matrix-ii">
+    <h3><span class="pn">M10</span> Search a 2D Matrix II <span class="pill">Medium</span> <span class="muted small">· staircase elimination</span></h3>
+    <p><b>Problem.</b> Rows and columns are each sorted ascending. Count or find a target in O(rows + cols).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  matrix = [[1,4,7,11,15],[2,5,8,12,19],[3,6,9,16,22],[10,13,14,17,24],[18,21,23,26,30]], target = 5
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  same matrix, target = 20
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 300; -10^9 &lt;= values &lt;= 10^9; rows and columns are sorted but the matrix is not row-major sorted.</p>
+    <p><b>Approach.</b> Start at the top-right corner: every step discards an entire row or column, because values to the left are smaller and values below are larger. That single corner turns the search into at most rows + cols steps — no binary search needed, which is the point worth remembering.</p>
+    <pre><code>def search_matrix_staircase(m, target):
+    r, c = 0, len(m[0]) - 1            # start at the top-right corner
+    while r &lt; len(m) and c &gt;= 0:
+        if m[r][c] == target:
+            return True
+        if m[r][c] &gt; target:
+            c -= 1                     # this column is too big
+        else:
+            r += 1                     # this row is too small
+    return False</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows + cols) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="minimum-limit-of-balls-in-a-bag">
+    <h3><span class="pn">M11</span> Minimum Limit of Balls in a Bag <span class="pill">Medium</span> <span class="muted small">· binary search on the maximum size</span></h3>
+    <p><b>Problem.</b> Each operation splits one bag into two bags with the same total. With at most maxOperations splits, return the smallest possible maximum bag size.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [9], maxOperations = 2
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [2,4,8,2], maxOperations = 4
+Output: 2</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; 1 &lt;= values, maxOperations &lt;= 10^9; the answer is at least 1.</p>
+    <p><b>Approach.</b> Test a candidate maximum size m: a bag of size v needs ceil(v/m) - 1 splits to get every piece down to at most m, and the test is monotone in m. Summing that over all bags gives feasibility, and the search finds the smallest feasible m.</p>
+    <pre><code>def minimum_size(nums, max_ops):
+    def splits_needed(m):
+        return sum((v + m - 1) // m - 1 for v in nums)   # ceil(v/m) - 1 per bag
+
+    lo, hi = 1, max(nums)
+    while lo &lt; hi:
+        mid = (lo + hi) // 2
+        if splits_needed(mid) &lt;= max_ops:
+            hi = mid
+        else:
+            lo = mid + 1
+    return lo</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log max) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="minimum-days-to-make-bouquets">
+    <h3><span class="pn">M12</span> Minimum Days to Make Bouquets <span class="pill">Medium</span> <span class="muted small">· binary search on days</span></h3>
+    <p><b>Problem.</b> Flower i blooms on day bloomDay[i]. A bouquet needs m adjacent flowers that have already bloomed. Return the earliest day on which m bouquets of k adjacent flowers each can be made, or -1 if impossible.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  bloomDay = [1,10,3,10,2], m = 3, k = 1
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  bloomDay = [1,10,3,10,2], m = 3, k = 2
+Output: -1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  bloomDay = [7,7,7,7,12,7,7], m = 2, k = 3
+Output: 12</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; 1 &lt;= bloomDay, m, k &lt;= 10^9; the flowers used for a bouquet must be adjacent.</p>
+    <p><b>Approach.</b> For a candidate day, walk the array and count consecutive bloomed flowers, cutting a bouquet whenever the run reaches k. That count is non-decreasing in the day, so binary search it. Check the impossible case up front instead of writing a sentinel into the search.</p>
+    <pre><code>def min_days(bloom, m, k):
+    if m * k &gt; len(bloom):
+        return -1                     # impossible even if all flowers bloom
+    def bouquets(day):
+        made = run = 0
+        for d in bloom:
+            if d &lt;= day:
+                run += 1
+                if run == k:          # k adjacent bloomed flowers
+                    made += 1
+                    run = 0
+            else:
+                run = 0
+        return made
+
+    lo, hi = min(bloom), max(bloom)
+    while lo &lt; hi:
+        mid = (lo + hi) // 2
+        if bouquets(mid) &gt;= m:
+            hi = mid
+        else:
+            lo = mid + 1
+    return lo</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log max) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="median-of-two-sorted-arrays">
+    <h3><span class="pn">H1</span> Median of Two Sorted Arrays <span class="pill hot">Hard</span> <span class="muted small">· partition the shorter array</span></h3>
+    <p><b>Problem.</b> Return the median of two sorted arrays, in O(log(min(n, m))) time.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  a = [1,3], b = [2]
+Output: 2.0</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  a = [1,2], b = [3,4]
+Output: 2.5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= len(a), len(b) &lt;= 1000; 1 &lt;= len(a) + len(b) &lt;= 2000; the combined time must be logarithmic, not linear.</p>
+    <p><b>Approach.</b> The median splits the merged data into a left half and a right half of fixed sizes. Guess how many elements of the left half come from the first array; that choice determines everything else. The guess is right when the biggest left element is not bigger than the smallest right element, so binary search that count — on the shorter array, so the search is as short as possible.</p>
+    <pre><code>def find_median_sorted_arrays(a, b):
+    if len(a) &gt; len(b):
+        a, b = b, a                  # search the shorter array
+    n, m = len(a), len(b)
+    half = (n + m + 1) // 2
+    lo, hi = 0, n
+    while lo &lt;= hi:
+        i = (lo + hi) // 2           # how many of the left half come from a
+        j = half - i
+        aL = a[i-1] if i else float('-inf')
+        aR = a[i] if i &lt; n else float('inf')
+        bL = b[j-1] if j else float('-inf')
+        bR = b[j] if j &lt; m else float('inf')
+        if aL &lt;= bR and bL &lt;= aR:    # correct split
+            if (n + m) % 2:
+                return float(max(aL, bL))
+            return (max(aL, bL) + min(aR, bR)) / 2.0
+        if aL &gt; bR:
+            hi = i - 1               # took too many from a
+        else:
+            lo = i + 1
+    return 0.0</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log min(n, m)) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="find-minimum-in-rotated-sorted-array-ii">
+    <h3><span class="pn">H2</span> Find Minimum in Rotated Sorted Array II <span class="pill hot">Hard</span> <span class="muted small">· rotation + duplicates</span></h3>
+    <p><b>Problem.</b> A sorted array that may contain duplicates was rotated; return its minimum element.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,3,5]
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [2,2,2,0,1]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 5000; the array is a rotation of a sorted array with possible duplicates; an O(n) worst case is acceptable.</p>
+    <p><b>Approach.</b> The duplicate-free version compares a[mid] with a[hi]. With duplicates, equality carries no information, so the safe move is hi-- and retry. Each shrink either discards a copy of the minimum or keeps one, which is why the worst case is linear while the average stays logarithmic.</p>
+    <pre><code>def find_min_rotated_duplicates(a):
+    lo, hi = 0, len(a) - 1
+    while lo &lt; hi:
+        mid = (lo + hi) // 2
+        if a[mid] &gt; a[hi]:
+            lo = mid + 1            # the minimum is strictly to the right
+        elif a[mid] &lt; a[hi]:
+            hi = mid                # the minimum is at mid or to the left
+        else:
+            hi -= 1                 # duplicates: discard one copy and retry
+    return a[lo]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) average, O(n) worst time · O(1) space.</p>
+  </section>
+  <section class="sub" id="split-array-largest-sum">
+    <h3><span class="pn">H3</span> Split Array Largest Sum <span class="pill hot">Hard</span> <span class="muted small">· binary search on the largest piece</span></h3>
+    <p><b>Problem.</b> Split the array into exactly k non-empty contiguous subarrays so that the largest subarray sum is as small as possible; return that smallest largest sum.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [7,2,5,10,8], k = 2
+Output: 18</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,2,3,4,5], k = 2
+Output: 9</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 1000; 1 &lt;= k &lt;= n; 0 &lt;= values &lt;= 10^6.</p>
+    <p><b>Approach.</b> Same shape as the shipping problem, with a twist: the number of pieces the greedy pass produces *decreases* as the allowed sum grows, so feasibility is 'pieces &lt;= k'. The answer must also be at least the largest single element — that lower bound is what rules out impossible configurations.</p>
+    <pre><code>def split_array(a, k):
+    def fits(limit):
+        pieces, cur = 1, 0
+        for v in a:
+            if cur + v &gt; limit:
+                pieces += 1        # cut here
+                cur = 0
+            cur += v
+        return pieces &lt;= k
+
+    lo, hi = max(a), sum(a)        # the biggest element must fit somewhere
+    while lo &lt; hi:
+        mid = (lo + hi) // 2
+        if fits(mid):
+            hi = mid
+        else:
+            lo = mid + 1
+    return lo</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log sum) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="kth-smallest-number-in-multiplication-table">
+    <h3><span class="pn">H4</span> K-th Smallest Number in a Multiplication Table <span class="pill hot">Hard</span> <span class="muted small">· count elements &lt;= x</span></h3>
+    <p><b>Problem.</b> In the m × n multiplication table (row i holds i, 2i, 3i, ...), return the k-th smallest number.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  m = 3, n = 3, k = 5
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  m = 2, n = 3, k = 6
+Output: 6</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= m, n &lt;= 3 * 10^4; 1 &lt;= k &lt;= m * n; values fit in a 32-bit integer.</p>
+    <p><b>Approach.</b> Binary search the value, not a position: count how many table entries are &lt;= x with min(n, x / i) summed over rows. That count is monotone in x, and the first x whose count reaches k is the answer — even though x itself may not appear in the table, which is the subtle part of the argument.</p>
+    <pre><code>def find_kth_in_table(m, n, k):
+    def count_le(x):
+        return sum(min(n, x // r) for r in range(1, m + 1))   # row r hits
+
+    lo, hi = 1, m * n
+    while lo &lt; hi:
+        mid = (lo + hi) // 2
+        if count_le(mid) &gt;= k:
+            hi = mid               # the k-th value is at most mid
+        else:
+            lo = mid + 1
+    return lo</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m log(m · n)) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="find-k-th-smallest-pair-distance">
+    <h3><span class="pn">H5</span> K-th Smallest Pair Distance <span class="pill hot">Hard</span> <span class="muted small">· binary search a distance, count pairs</span></h3>
+    <p><b>Problem.</b> Return the k-th smallest distance among all pairs of elements of the array (distances counted with multiplicity).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,3,1], k = 1
+Output: 0</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,1,1], k = 2
+Output: 0</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [1,6,1], k = 3
+Output: 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= n &lt;= 10^4; 0 &lt;= values &lt;= 10^6; 1 &lt;= k &lt;= n · (n - 1) / 2.</p>
+    <p><b>Approach.</b> Sorting turns 'how many pairs are within distance d' into a two-pointer count in linear time, and that count is monotone in d. So binary search d over [0, max - min]: a distance is a valid answer exactly when at least k pairs are within it, and the pairs need never be enumerated.</p>
+    <pre><code>def smallest_distance_pair(a, k):
+    a.sort()
+    n = len(a)
+    lo, hi = 0, a[-1] - a[0]
+    while lo &lt; hi:
+        mid = (lo + hi) // 2
+        cnt, j = 0, 0
+        for i in range(n):
+            while a[i] - a[j] &gt; mid:
+                j += 1                  # shrink the window
+            cnt += i - j                # pairs ending at i within mid
+        if cnt &gt;= k:
+            hi = mid
+        else:
+            lo = mid + 1
+    return lo</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n + n log maxDist) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="preimage-size-of-factorial-zeroes-function">
+    <h3><span class="pn">H6</span> Preimage Size of Factorial Zeroes Function <span class="pill hot">Hard</span> <span class="muted small">· monotone step function</span></h3>
+    <p><b>Problem.</b> Given k, count how many non-negative integers x satisfy: the number of trailing zeros of x! is exactly k.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  k = 0
+Output: 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  k = 5
+Output: 0</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  k = 3
+Output: 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= k &lt;= 10^9; trailing zeros of x! = floor(x/5) + floor(x/25) + ...; the answer is always 0 or 5.</p>
+    <p><b>Approach.</b> The trailing-zero count f(x) = Σ floor(x / 5^i) — a monotone step function that never increases by more than 1 per step and jumps by exactly 1 at multiples of 5. A value k therefore has either 5 preimages (a full block of consecutive x) or none. Binary search the smallest x with f(x) &gt;= k and test whether f(x) equals k.</p>
+    <pre><code>def preimage_size_fzf(k):
+    def trailing_zeros(x):
+        c = 0
+        while x:
+            x //= 5
+            c += x
+        return c
+
+    lo, hi = 0, k * 5 + 5
+    while lo &lt; hi:                    # smallest x with f(x) &gt;= k
+        mid = (lo + hi) // 2
+        if trailing_zeros(mid) &lt; k:
+            lo = mid + 1
+        else:
+            hi = mid
+    return 5 if trailing_zeros(lo) == k else 0   # a block of 5, or nothing</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log² k) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="nth-magical-number">
+    <h3><span class="pn">H7</span> N-th Magical Number <span class="pill hot">Hard</span> <span class="muted small">· count multiples with inclusion-exclusion</span></h3>
+    <p><b>Problem.</b> A positive integer is magical if it is divisible by a or by b. Return the n-th magical number, modulo 10^9 + 7.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 1, a = 2, b = 3
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 4, a = 2, b = 3
+Output: 6</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^9; 2 &lt;= a, b &lt;= 4 * 10^4; the answer is reported modulo 10^9 + 7.</p>
+    <p><b>Approach.</b> Counting multiplies of a or b up to x is inclusion-exclusion: x/a + x/b - x/lcm(a, b). That count is monotone, so binary search the smallest x whose count reaches n, with an upper bound of n · min(a, b) — a multiple of min(a, b) supplies n magical numbers at most that far out.</p>
+    <pre><code>from math import gcd
+
+def nth_magical_number(n, a, b):
+    MOD = 10**9 + 7
+    l = a // gcd(a, b) * b              # lcm
+    lo, hi = 1, min(a, b) * n
+    while lo &lt; hi:
+        mid = (lo + hi) // 2
+        cnt = mid // a + mid // b - mid // l     # magical numbers &lt;= mid
+        if cnt &gt;= n:
+            hi = mid
+        else:
+            lo = mid + 1
+    return lo % MOD</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log(n · min(a, b))) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="super-egg-drop">
+    <h3><span class="pn">H8</span> Super Egg Drop <span class="pill hot">Hard</span> <span class="muted small">· search on moves, not floors</span></h3>
+    <p><b>Problem.</b> With k identical eggs and n floors, return the minimum number of moves that guarantees finding the critical floor in the worst case.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  k = 1, n = 2
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  k = 2, n = 6
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  k = 3, n = 14
+Output: 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= k &lt;= 100; 1 &lt;= n &lt;= 10^4; a broken egg is lost; the worst case is what counts.</p>
+    <p><b>Approach.</b> Instead of asking 'how many floors can I solve with m moves', note that dropping an egg splits the remaining floors into the ones above (if it survives, with k eggs and m-1 moves) and the ones below (if it breaks, with k-1 eggs and m-1 moves). So dp[k][m] = dp[k][m-1] + dp[k-1][m-1] + 1, and the answer is the smallest m with dp[k][m] &gt;= n — an O(k log n) loop instead of the naive O(k n²) table.</p>
+    <pre><code>def super_egg_drop(k, n):
+    dp = [0] * (k + 1)             # dp[e] = floors resolvable with e eggs, m moves
+    moves = 0
+    while dp[k] &lt; n:
+        for e in range(k, 0, -1):  # descending keeps the previous move's values
+            dp[e] = dp[e] + dp[e - 1] + 1   # survive + break + this floor
+        moves += 1
+    return moves</code></pre>
+    <p class="cx"><b>Complexity:</b> O(k log n) time · O(k) space.</p>
+  </section>
+  <section class="sub" id="find-in-mountain-array">
+    <h3><span class="pn">H9</span> Find in a Mountain Array <span class="pill hot">Hard</span> <span class="muted small">· find the peak, then two searches</span></h3>
+    <p><b>Problem.</b> The array rises strictly to a peak and then falls strictly. Using only the API arr.get(i) (limited to 100 calls), return the smallest index holding the target, or -1.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  mountain = [1,2,3,4,5,3,1], target = 3
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  mountain = [0,1,2,4,2,1], target = 3
+Output: -1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 3 &lt;= n &lt;= 10^4; values are distinct around the peak; at most 100 calls to get().</p>
+    <p><b>Approach.</b> Three binary searches: one on the slope to find the peak, one ascending search on the left part and one descending search on the right part. Because you must return the *smallest* index, search the left part first and only fall through to the right if it fails.</p>
+    <pre><code>def find_in_mountain_array(target, arr):
+    n = arr.length()
+    lo, hi = 0, n - 1
+    while lo &lt; hi:                        # 1. find the peak
+        mid = (lo + hi) // 2
+        if arr.get(mid) &lt; arr.get(mid + 1):
+            lo = mid + 1
+        else:
+            hi = mid
+    peak = lo
+    lo, hi = 0, peak
+    while lo &lt;= hi:                       # 2. ascending half
+        mid = (lo + hi) // 2
+        v = arr.get(mid)
+        if v == target:
+            return mid
+        if v &lt; target:
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    lo, hi = peak + 1, n - 1
+    while lo &lt;= hi:                       # 3. descending half
+        mid = (lo + hi) // 2
+        v = arr.get(mid)
+        if v == target:
+            return mid
+        if v &gt; target:                    # reversed comparison
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return -1</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="divide-chocolate">
+    <h3><span class="pn">H10</span> Divide Chocolate <span class="pill hot">Hard</span> <span class="muted small">· binary search + run counting</span></h3>
+    <p><b>Problem.</b> Split the chocolate pieces (in order) among k+1 people so that everybody gets one contiguous run, and maximise the minimum total sweetness anyone receives.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  sweetness = [1,2,3,4,5,6,7,8,9], k = 5
+Output: 6</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  sweetness = [5,6,7,8,9,1,2,3,4], k = 8
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  sweetness = [1,2,2,1,2,2,1,2,2], k = 2
+Output: 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^4; 0 &lt;= sweetness &lt;= 10^4; 0 &lt;= k &lt; n.</p>
+    <p><b>Approach.</b> Maximising the minimum is again monotone: test whether it is possible to hand out at least k+1 pieces each of sum &gt;= m, by greedily cutting as soon as a run reaches m. The search then takes the largest feasible m — the classic 'maximise the minimum / minimise the maximum' duality with the previous problems.</p>
+    <pre><code>def maximize_sweetness(s, k):
+    def pieces_at_least(m):
+        pieces = run = 0
+        for v in s:
+            run += v
+            if run &gt;= m:              # cut as soon as somebody is satisfied
+                pieces += 1
+                run = 0
+        return pieces
+
+    lo, hi = 0, sum(s)
+    while lo &lt; hi:
+        mid = (lo + hi + 1) // 2      # upper mid so lo can move up
+        if pieces_at_least(mid) &gt;= k + 1:
+            lo = mid
+        else:
+            hi = mid - 1
+    return lo</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log sum) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="k-th-smallest-in-lexicographical-order">
+    <h3><span class="pn">H11</span> K-th Smallest in Lexicographical Order <span class="pill hot">Hard</span> <span class="muted small">· prefix counting (trie walk)</span></h3>
+    <p><b>Problem.</b> Return the k-th smallest integer in the range 1..n when the numbers are ordered lexicographically (as strings).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 13, k = 2
+Output: 10</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 1, k = 1
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= k &lt;= n &lt;= 10^9; 0-based vs 1-based indexing is the usual trap here; an O(log n) walk is expected.</p>
+    <p><b>Approach.</b> The lexicographic order is a pre-order walk of a ten-ary tree of prefixes. For the current prefix, count how many nodes that prefix would contain (all numbers starting with it, level by level); if the count fits inside the remaining k, skip the whole subtree, otherwise step down into it by appending a zero.</p>
+    <pre><code>def find_kth_lexicographic(n, k):
+    def count_steps(first, nxt):
+        steps = 0
+        while first &lt;= n:
+            steps += min(n, nxt - 1) - first + 1   # everything on this level
+            first *= 10
+            nxt *= 10
+        return steps
+
+    cur = 1
+    k -= 1                       # 1 is the first number in the order
+    while k &gt; 0:
+        steps = count_steps(cur, cur + 1)
+        if steps &lt;= k:
+            k -= steps           # skip the whole prefix subtree
+            cur += 1
+        else:
+            cur *= 10            # descend one level
+            k -= 1
+    return cur</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log² n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="maximum-running-time-of-n-computers">
+    <h3><span class="pn">H12</span> Maximum Running Time of N Computers <span class="pill hot">Hard</span> <span class="muted small">· binary search the runtime with a capped sum</span></h3>
+    <p><b>Problem.</b> n computers must run simultaneously, and the i-th battery holds batteries[i] minutes. Batteries can be plugged, unplugged and moved between computers at any moment. Return the maximum number of minutes all n computers can run together.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 2, batteries = [3,3,3]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 2, batteries = [1,1,1,1]
+Output: 2</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; 1 &lt;= batteries[i] &lt;= 10^9; each computer consumes one unit of battery per minute.</p>
+    <p><b>Approach.</b> Test a candidate runtime t: a battery can contribute at most t minutes (it cannot power two computers at once), so the total available is Σ min(battery, t), and t is feasible when that is at least n · t. The capped sum is monotone in t, so binary search it — a nice reminder that feasibility checks can ignore ordering rules when resources are freely reassignable.</p>
+    <pre><code>def max_run_time(n, batteries):
+    def feasible(t):
+        usable = sum(min(b, t) for b in batteries)   # cap each battery at t
+        return usable &gt;= t * n
+
+    lo, hi = 0, sum(batteries) // n
+    while lo &lt; hi:
+        mid = (lo + hi + 1) // 2
+        if feasible(mid):
+            lo = mid
+        else:
+            hi = mid - 1
+    return lo</code></pre>
+    <p class="cx"><b>Complexity:</b> O(len(batteries) · log(sum / n)) time · O(1) space.</p>
+  </section>
+</section>
 
   </main>
 </div>
 
 <footer>
-  <p><b>Python bank</b> — 120 problems across 4 topics, with complete solutions in
+  <p><b>Python bank</b> — 150 problems across 5 topics, with complete solutions in
   Python 3.12+ solutions.</p>
   <p class="small">Same problems in every language:
     <a href="cpp-leetcode.html">C++</a> · <a href="java-leetcode.html">Java</a> · <a href="python-leetcode.html">Python</a>

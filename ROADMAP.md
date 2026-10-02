@@ -10,7 +10,7 @@ _Last updated: 2026-10-02_
 | **C++ for LeetCode** (16 chapters, STL-first) | `site/cpp-guide.html` (168 KB) | ✅ 0 parser errors, 34 snippets compile-checked with g++ 14 / C++20 |
 | **Java for LeetCode** (16 chapters, Collections-first) | `site/java-guide.html` (248 KB) | ✅ 0 parser errors, 63 snippets compile-checked with javac 11, 13 SVG figures |
 | Site hub | `site/index.html` | ✅ all internal links resolve |
-| **Question banks, topics 1–4** — Arrays & Strings, Two Pointers & Sliding Window, Hashing & Frequency Maps, Stacks/Queues/Monotonic Structures · 120 problems (24 easy · 48 medium · 48 hard) | `site/{cpp,java,python}-leetcode.html` | ✅ **all 120 C++ and 120 Java solutions compile**; Python solutions pass 190 example checks plus thousands of randomised brute-force comparisons (monotonic stacks, parsers, ring buffer, stock spanner, car fleets) |
+| **Question banks, topics 1–5** — Arrays & Strings · Two Pointers & Sliding Window · Hashing & Frequency Maps · Stacks, Queues & Monotonic Structures · Binary Search & Sorted Structures · 150 problems (30 easy · 60 medium · 60 hard) | `site/{cpp,java,python}-leetcode.html` | ✅ **all 150 C++ and 150 Java solutions compile** (judge-API stubs included so every snippet is self-contained); Python solutions pass 250 example checks plus thousands of randomised brute-force comparisons; documented example inputs cross-checked against LeetCode where they were transcribed from memory |
 | GitHub Pages workflow | `.github/workflows/pages.yml` | ✅ pages artifact + deploy job |
 | One-command publisher | `push.sh` | ✅ ready (needs a token, see below) |
 | Rebuild script | `site/build-all.sh` | ✅ regenerates both guides + the three banks |
@@ -20,9 +20,8 @@ _Last updated: 2026-10-02_
 The bank engine is finished: `site/leetcode/build.py` renders **one** authored bank into the three
 language pages, so each problem is written once and appears with C++, Java and Python solutions.
 
-**Topics 5–16 still to author** (360 problems per language):
+**Topics 6–16 still to author** (330 problems per language):
 
-5. Binary Search & Sorted Structures
 6. Linked Lists
 7. Trees & BSTs
 8. Graphs & Union-Find
