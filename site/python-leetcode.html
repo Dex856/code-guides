@@ -5675,12 +5675,883 @@ def closest_k_values(root, target, k):
     <p class="cx"><b>Complexity:</b> O(n log k) time · O(h + k) space.</p>
   </section>
 </section>
+<section class="chapter" id="t08">
+  <h2><span class="num">8</span> Graphs &amp; Union-Find</h2>
+  <p class="tagline">Build the adjacency list, pick a traversal, and know the four questions: components, cycles, orderings, and shortest paths.</p>
+  <div class="card"><p><b>What this topic trains.</b> The whole topic is a decision tree of four questions. Components and flood fills: any traversal. Cycles and connectivity: union-find or coloured DFS. Dependencies and orderings: topological sort. Weighted distances: Dijkstra, Bellman-Ford or Floyd-Warshall depending on the shape of the weights. Hard problems mix two of these ideas or add a proof (bridges, MST, path counting).</p>
+<p class="small muted">Ordering: easy 1–6 are single traversals on grids and small graphs; medium 1–4 are components, clones and cycle detection, 5–8 are multi-source flood fills on grids, 9–12 are union-find applications; hard 1–4 are BFS over generated states and topological sort, 5–8 are the shortest-path family (Dijkstra, Bellman-Ford, MST), 9–12 are bridges, path counting and Floyd-Warshall.</p></div>
+  <section class="sub" id="flood-fill">
+    <h3><span class="pn">E1</span> Flood Fill <span class="pill">Easy</span> <span class="muted small">· grid DFS/BFS recolouring</span></h3>
+    <p><b>Problem.</b> Starting from a pixel, repaint the starting colour and every pixel of the same colour reachable through up/down/left/right neighbours with the new colour.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  image = [[1,1,1],[1,1,0],[1,0,1]], sr = 1, sc = 1, color = 2
+Output: [[2,2,2],[2,2,0],[2,0,1]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  image = [[0,0,0],[0,0,0]], sr = 0, sc = 0, color = 0
+Output: the image unchanged</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 50; 0 &lt;= colour values &lt;= 2^16 - 1; 4-directional adjacency only.</p>
+    <p><b>Approach.</b> A traversal that visits four neighbours at a time and repaints as it goes. The only trap is the case where the new colour equals the old one: without an early return the frontier never shrinks and the recursion loops forever.</p>
+    <pre><code>def flood_fill(image, sr, sc, color):
+    old = image[sr][sc]
+    if old == color:
+        return image                 # without this the frontier never stops
+    R, C = len(image), len(image[0])
+    stack = [(sr, sc)]
+    image[sr][sc] = color
+    while stack:
+        r, c = stack.pop()
+        for nr, nc in ((r+1,c), (r-1,c), (r,c+1), (r,c-1)):
+            if 0 &lt;= nr &lt; R and 0 &lt;= nc &lt; C and image[nr][nc] == old:
+                image[nr][nc] = color
+                stack.append((nr, nc))
+    return image</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · cols) time · O(rows · cols) space.</p>
+  </section>
+  <section class="sub" id="find-if-path-exists-in-graph">
+    <h3><span class="pn">E2</span> Find If a Path Exists <span class="pill">Easy</span> <span class="muted small">· adjacency list + BFS</span></h3>
+    <p><b>Problem.</b> Given n nodes and a list of undirected edges, decide whether a path connects source to destination.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 3, edges = [[0,1],[1,2],[2,0]], source = 0, destination = 2
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 6, edges = [[0,1],[0,2],[3,5],[5,4],[4,3]], source = 0, destination = 5
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 2 * 10^5; 0 &lt;= edges &lt;= 2 * 10^5; no self-loops or repeated edges.</p>
+    <p><b>Approach.</b> Build the adjacency list once, then walk from the source starting with only the source in the visited set. Reaching the destination ends the walk early — a visited set is what keeps the traversal linear instead of exponential on dense graphs.</p>
+    <pre><code>def valid_path(n, edges, src, dst):
+    adj = [[] for _ in range(n)]
+    for a, b in edges:                # undirected: both directions
+        adj[a].append(b)
+        adj[b].append(a)
+    seen = [False] * n
+    stack = [src]
+    seen[src] = True
+    while stack:
+        u = stack.pop()
+        if u == dst:
+            return True               # early exit
+        for v in adj[u]:
+            if not seen[v]:
+                seen[v] = True
+                stack.append(v)
+    return False</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n + m) time · O(n + m) space.</p>
+  </section>
+  <section class="sub" id="find-the-town-judge">
+    <h3><span class="pn">E3</span> Find the Town Judge <span class="pill">Easy</span> <span class="muted small">· degree counting</span></h3>
+    <p><b>Problem.</b> In a town of n people, trust[i] = [a, b] means a trusts b. The judge trusts nobody and is trusted by everyone else. Return the judge's label, or -1.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 2, trust = [[1,2]]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 3, trust = [[1,3],[2,3],[3,1]]
+Output: -1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 1000; 0 &lt;= number of trust pairs &lt;= 10^4; there is at most one judge.</p>
+    <p><b>Approach.</b> Two degree arrays, out and in: the judge is the person with out-degree zero and in-degree n-1. One pass over the trust list fills both — this is the simplest possible example of turning an edge list into per-vertex facts.</p>
+    <pre><code>def find_judge(n, trust):
+    indeg = [0] * (n + 1)
+    outdeg = [0] * (n + 1)
+    for a, b in trust:
+        outdeg[a] += 1
+        indeg[b] += 1
+    for p in range(1, n + 1):
+        if outdeg[p] == 0 and indeg[p] == n - 1:
+            return p
+    return -1</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n + m) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="find-center-of-star-graph">
+    <h3><span class="pn">E4</span> Centre of a Star Graph <span class="pill">Easy</span> <span class="muted small">· shared endpoint</span></h3>
+    <p><b>Problem.</b> A star graph has one centre connected to every other node. Given its edges, return the centre.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  edges = [[1,2],[2,3],[4,2]]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  edges = [[1,2],[5,1],[1,3],[1,4]]
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 3 &lt;= n &lt;= 10^5; the graph is always a star; edges are given in any order.</p>
+    <p><b>Approach.</b> The centre is the only vertex shared by all edges, so it appears in every edge — two edges are enough to identify it: whichever endpoint the first two edges have in common is the centre. Constant time and a nice reminder to look for a stronger guarantee before writing a traversal.</p>
+    <pre><code>def find_center(edges):
+    a, b = edges[0]
+    return a if a in edges[1] else b      # the centre appears in every edge</code></pre>
+    <p class="cx"><b>Complexity:</b> O(1) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="island-perimeter">
+    <h3><span class="pn">E5</span> Island Perimeter <span class="pill">Easy</span> <span class="muted small">· count land edges</span></h3>
+    <p><b>Problem.</b> A grid contains one island of 1s surrounded by water. Return the length of its perimeter.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  grid = [[0,1,0,0],[1,1,1,0],[0,1,0,0],[1,1,0,0]]
+Output: 16</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  grid = [[1]]
+Output: 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 100; cells are 0 or 1; there is exactly one island and it has no lakes.</p>
+    <p><b>Approach.</b> Every land cell starts with four sides; each shared edge between two land cells removes two sides. Counting the shared edges right and down only avoids the double count — no traversal needed at all.</p>
+    <pre><code>def island_perimeter(grid):
+    R, C, perimeter = len(grid), len(grid[0]), 0
+    for r in range(R):
+        for c in range(C):
+            if grid[r][c]:
+                perimeter += 4                        # the full outline
+                if r + 1 &lt; R and grid[r+1][c]:
+                    perimeter -= 2                    # shared edge below
+                if c + 1 &lt; C and grid[r][c+1]:
+                    perimeter -= 2                    # shared edge to the right
+    return perimeter</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · cols) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="destination-city">
+    <h3><span class="pn">E6</span> Destination City <span class="pill">Easy</span> <span class="muted small">· hash set of sources (out-degree zero)</span></h3>
+    <p><b>Problem.</b> Each pair paths[i] = [from, to] is a direct one-way path between two cities, and together they form a single line with no loops. Return the city that has no outgoing path.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  paths = [["London","New York"],["New York","Lima"],["Lima","Sao Paulo"]]
+Output: "Sao Paulo"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  paths = [["B","C"],["D","B"],["C","A"]]
+Output: "A"</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  paths = [["A","Z"]]
+Output: "Z"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= paths.length &lt;= 100; paths[i].length == 2; 1 &lt;= city name length &lt;= 10; the paths form a line, so exactly one destination exists.</p>
+    <p><b>Approach.</b> Collect every city that starts a path into a hash set; the destination is the only city that never appears in it. That is the out-degree-zero condition, and the set turns it into one linear pass instead of a search.</p>
+    <pre><code>def dest_city(paths):
+    outgoing = {a for a, b in paths}     # cities that start a path
+    for a, b in paths:
+        if b not in outgoing:            # never a source: the destination
+            return b
+    return ''</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="number-of-islands">
+    <h3><span class="pn">M1</span> Number of Islands <span class="pill">Medium</span> <span class="muted small">· component counting on a grid</span></h3>
+    <p><b>Problem.</b> A grid of '1' (land) and '0' (water) contains islands of 4-directionally connected land. Return how many islands there are.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  grid = [["1","1","1","1","0"],["1","1","0","1","0"],["1","1","0","0","0"],["0","0","0","0","0"]]
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  grid = [["1","1","0","0","0"],["1","1","0","0","0"],["0","0","1","0","0"],["0","0","0","1","1"]]
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 300; cells are the characters '0' and '1'; islands are counted with 4-directional connectivity.</p>
+    <p><b>Approach.</b> Scan every cell; each unvisited land cell starts a new island, and a flood fill (or a union-find pass) marks the whole component. Incrementing the counter exactly at the start of each fill is what guarantees one count per island.</p>
+    <pre><code>def num_islands(grid):
+    R, C = len(grid), len(grid[0])
+    islands = 0
+    for r in range(R):
+        for c in range(C):
+            if grid[r][c] != '1':
+                continue
+            islands += 1                  # a fresh component starts here
+            stack = [(r, c)]
+            grid[r][c] = '0'              # sink the cell as we visit it
+            while stack:
+                y, x = stack.pop()
+                for ny, nx in ((y+1,x), (y-1,x), (y,x+1), (y,x-1)):
+                    if 0 &lt;= ny &lt; R and 0 &lt;= nx &lt; C and grid[ny][nx] == '1':
+                        grid[ny][nx] = '0'
+                        stack.append((ny, nx))
+    return islands</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · cols) time · O(rows · cols) space.</p>
+  </section>
+  <section class="sub" id="clone-graph">
+    <h3><span class="pn">M2</span> Clone a Graph <span class="pill">Medium</span> <span class="muted small">· DFS with old-to-new map</span></h3>
+    <p><b>Problem.</b> Given a node of a connected undirected graph, return a deep copy of the whole graph.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  adjList = [[2,4],[1,3],[2,4],[1,3]]
+Output: an identical independent graph</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  adjList = [[]]
+Output: a single node with no neighbours</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 100; node values are unique; the graph may contain cycles.</p>
+    <p><b>Approach.</b> Create a clone the moment you first meet a node, record it in a map before recursing, and reuse that clone for every later reference. Creating the clone early is what stops the cycle from being copied forever — the same pattern as copying a linked list with random pointers.</p>
+    <pre><code>def clone_graph(node):
+    made = {}                        # original -&gt; copy
+    def dfs(n):
+        if not n:
+            return None
+        if n in made:
+            return made[n]           # already copied: reuse it
+        copy = Node(n.val)
+        made[n] = copy               # register BEFORE recursing
+        copy.neighbors = [dfs(nb) for nb in n.neighbors]
+        return copy
+
+    return dfs(node)</code></pre>
+    <p class="cx"><b>Complexity:</b> O(V + E) time · O(V) space.</p>
+  </section>
+  <section class="sub" id="course-schedule">
+    <h3><span class="pn">M3</span> Course Schedule <span class="pill">Medium</span> <span class="muted small">· cycle detection in a directed graph</span></h3>
+    <p><b>Problem.</b> prerequisites[i] = [a, b] means course b must be taken before course a. Decide whether all courses can be finished.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  numCourses = 2, prerequisites = [[1,0]]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  numCourses = 2, prerequisites = [[1,0],[0,1]]
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= numCourses &lt;= 2000; 0 &lt;= prerequisites &lt;= 5000; all pairs are distinct.</p>
+    <p><b>Approach.</b> This is exactly 'does the dependency graph have a cycle?'. A three-colour DFS answers it: white = untouched, grey = on the current stack, black = finished. Meeting a grey node means a cycle, and the colours are essential — a plain visited set cannot tell a cycle from a diamond.</p>
+    <pre><code>def can_finish(num_courses, prerequisites):
+    adj = [[] for _ in range(num_courses)]
+    for a, b in prerequisites:
+        adj[b].append(a)              # b must come before a
+    state = [0] * num_courses         # 0 white, 1 grey, 2 black
+
+    def has_cycle(u):
+        state[u] = 1                  # grey: on the current path
+        for v in adj[u]:
+            if state[v] == 1:
+                return True           # back edge
+            if state[v] == 0 and has_cycle(v):
+                return True
+        state[u] = 2                  # black: finished
+        return False
+
+    return not any(state[u] == 0 and has_cycle(u) for u in range(num_courses))</code></pre>
+    <p class="cx"><b>Complexity:</b> O(V + E) time · O(V + E) space.</p>
+  </section>
+  <section class="sub" id="course-schedule-ii">
+    <h3><span class="pn">M4</span> Course Schedule II <span class="pill">Medium</span> <span class="muted small">· topological sort (Kahn)</span></h3>
+    <p><b>Problem.</b> Return one valid order in which all courses can be taken, or an empty array if that is impossible.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  numCourses = 2, prerequisites = [[1,0]]
+Output: [0,1]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  numCourses = 4, prerequisites = [[1,0],[2,0],[3,1],[3,2]]
+Output: [0,1,2,3] (or similar)</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= numCourses &lt;= 2000; 0 &lt;= prerequisites &lt;= 5000; any valid order is accepted.</p>
+    <p><b>Approach.</b> Kahn's algorithm: start with every course that has no prerequisites, then repeatedly take one out and decrement its dependents' counts. If the produced order is shorter than the course count, some cycle blocked the rest — so the same pass detects impossibility for free.</p>
+    <pre><code>from collections import deque
+
+def find_order(num_courses, prerequisites):
+    adj = [[] for _ in range(num_courses)]
+    indeg = [0] * num_courses
+    for a, b in prerequisites:
+        adj[b].append(a)
+        indeg[a] += 1
+    ready = deque(u for u in range(num_courses) if indeg[u] == 0)
+    order = []
+    while ready:
+        u = ready.popleft()
+        order.append(u)                  # take this course now
+        for v in adj[u]:
+            indeg[v] -= 1
+            if indeg[v] == 0:
+                ready.append(v)
+    return order if len(order) == num_courses else []   # short means cycle</code></pre>
+    <p class="cx"><b>Complexity:</b> O(V + E) time · O(V + E) space.</p>
+  </section>
+  <section class="sub" id="pacific-atlantic-water-flow">
+    <h3><span class="pn">M5</span> Pacific Atlantic Water Flow <span class="pill">Medium</span> <span class="muted small">· multi-source DFS from the borders</span></h3>
+    <p><b>Problem.</b> Water flows from a cell to a neighbour of equal or lower height. Return every cell from which water can reach both the top-left and bottom-right oceans.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  heights = [[1,2,2,3,5],[3,2,3,4,4],[2,4,5,3,1],[6,7,1,4,5],[5,1,1,2,4]]
+Output: [[0,4],[1,3],[1,4],[2,2],[3,0],[3,1],[4,0]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  heights = [[1]]
+Output: [[0,0]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 200; 0 &lt;= heights &lt;= 10^5; the two oceans border the top/left and bottom/right edges.</p>
+    <p><b>Approach.</b> Searching forward from every cell is expensive; searching *backwards* from each ocean's border finds, for each ocean, all cells that drain into it — and uphill reverse traversal is a simple 'neighbour is not lower' test. Intersecting the two sets is the answer.</p>
+    <pre><code>def pacific_atlantic(heights):
+    R, C = len(heights), len(heights[0])
+
+    def flow(seen, r, c):
+        seen[r][c] = True
+        for nr, nc in ((r+1,c), (r-1,c), (r,c+1), (r,c-1)):
+            if 0 &lt;= nr &lt; R and 0 &lt;= nc &lt; C and not seen[nr][nc]:
+                if heights[nr][nc] &gt;= heights[r][c]:   # uphill in reverse
+                    flow(seen, nr, nc)
+
+    pac = [[False] * C for _ in range(R)]
+    atl = [[False] * C for _ in range(R)]
+    for r in range(R):
+        flow(pac, r, 0); flow(atl, r, C - 1)      # left and right borders
+    for c in range(C):
+        flow(pac, 0, c); flow(atl, R - 1, c)      # top and bottom borders
+    return [[r, c] for r in range(R) for c in range(C) if pac[r][c] and atl[r][c]]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · cols) time · O(rows · cols) space.</p>
+  </section>
+  <section class="sub" id="surrounded-regions">
+    <h3><span class="pn">M6</span> Surrounded Regions <span class="pill">Medium</span> <span class="muted small">· mark from the border inward</span></h3>
+    <p><b>Problem.</b> Flip every region of 'O' fully surrounded by 'X' into 'X'; regions touching the border are never flipped.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  board = [["X","X","X","X"],["X","O","O","X"],["X","X","O","X"],["X","O","X","X"]]
+Output: [["X","X","X","X"],["X","X","X","X"],["X","X","X","X"],["X","O","X","X"]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  board = [["X"]]
+Output: [["X"]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 200; cells are the characters 'X' and 'O'; the board is modified in place.</p>
+    <p><b>Approach.</b> Identifying surrounded regions directly is awkward; identifying safe regions is easy. Flood from every border 'O', mark those cells as safe, then sweep once: unmarked 'O' becomes 'X' and marked cells return to 'O'. Deciding the complement is a recurring trick in grid problems.</p>
+    <pre><code>def solve(board):
+    R, C = len(board), len(board[0])
+
+    def mark_safe(r, c):
+        if not (0 &lt;= r &lt; R and 0 &lt;= c &lt; C) or board[r][c] != 'O':
+            return
+        board[r][c] = 'S'             # temporarily safe
+        mark_safe(r+1, c); mark_safe(r-1, c)
+        mark_safe(r, c+1); mark_safe(r, c-1)
+
+    for r in range(R):
+        mark_safe(r, 0); mark_safe(r, C - 1)
+    for c in range(C):
+        mark_safe(0, c); mark_safe(R - 1, c)
+    for r in range(R):
+        for c in range(C):
+            board[r][c] = 'O' if board[r][c] == 'S' else 'X'</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · cols) time · O(rows · cols) space.</p>
+  </section>
+  <section class="sub" id="rotting-oranges">
+    <h3><span class="pn">M7</span> Rotting Oranges <span class="pill">Medium</span> <span class="muted small">· multi-source BFS by layers</span></h3>
+    <p><b>Problem.</b> In a grid, 0 is empty, 1 is a fresh orange and 2 is rotten. Every minute each rotten orange rots its 4-neighbours. Return the minutes until no fresh orange remains, or -1 if some never rot.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  grid = [[2,1,1],[1,1,0],[0,1,1]]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  grid = [[2,1,1],[0,1,1],[1,0,1]]
+Output: -1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  grid = [[0,2]]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 10; cells are 0, 1 or 2; all rotten oranges start at minute 0.</p>
+    <p><b>Approach.</b> Seed a queue with *every* rotten orange and process it level by level; each level is one minute. Counting fresh oranges up front and decrementing on each infection lets a single check at the end decide between the minute count and -1.</p>
+    <pre><code>from collections import deque
+
+def oranges_rotting(grid):
+    R, C = len(grid), len(grid[0])
+    q, fresh = deque(), 0
+    for r in range(R):
+        for c in range(C):
+            if grid[r][c] == 2:
+                q.append((r, c))       # every source at minute 0
+            elif grid[r][c] == 1:
+                fresh += 1
+    minutes = 0
+    while q and fresh:
+        minutes += 1                   # one layer is one minute
+        for _ in range(len(q)):
+            r, c = q.popleft()
+            for nr, nc in ((r+1,c), (r-1,c), (r,c+1), (r,c-1)):
+                if 0 &lt;= nr &lt; R and 0 &lt;= nc &lt; C and grid[nr][nc] == 1:
+                    grid[nr][nc] = 2
+                    fresh -= 1
+                    q.append((nr, nc))
+    return minutes if fresh == 0 else -1</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · cols) time · O(rows · cols) space.</p>
+  </section>
+  <section class="sub" id="walls-and-gates">
+    <h3><span class="pn">M8</span> Walls and Gates <span class="pill">Medium</span> <span class="muted small">· multi-source BFS from all gates</span></h3>
+    <p><b>Problem.</b> Fill every empty room with its distance to the nearest gate: 0 is a gate, -1 is a wall, and INF (2^31 - 1) marks an empty room. Rooms that cannot reach any gate keep INF.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  rooms = [[inf,-1,0,inf],[inf,inf,inf,-1],[inf,-1,inf,-1],[0,-1,inf,inf]] with inf = 2147483647
+Output: [[3,-1,0,1],[2,2,1,-1],[1,-1,2,-1],[0,-1,3,4]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  rooms = [[-1]]
+Output: [[-1]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 250; cells are -1 (wall), 0 (gate) or 2^31 - 1 (empty); the grid is modified in place.</p>
+    <p><b>Approach.</b> A BFS from a single gate would have to be repeated per gate; starting from all gates at once fills every room with the distance to the *nearest* gate in one pass. Level order is what makes the distances correct, exactly as in the rotting-oranges problem.</p>
+    <pre><code>from collections import deque
+
+def walls_and_gates(rooms):
+    R, C = len(rooms), len(rooms[0])
+    INF = 2 ** 31 - 1
+    q = deque((r, c) for r in range(R) for c in range(C) if rooms[r][c] == 0)
+    while q:                                  # one BFS, every gate a source
+        r, c = q.popleft()
+        for nr, nc in ((r+1,c), (r-1,c), (r,c+1), (r,c-1)):
+            if 0 &lt;= nr &lt; R and 0 &lt;= nc &lt; C and rooms[nr][nc] == INF:
+                rooms[nr][nc] = rooms[r][c] + 1   # first visit is the nearest
+                q.append((nr, nc))</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · cols) time · O(rows · cols) space.</p>
+  </section>
+  <section class="sub" id="number-of-provinces">
+    <h3><span class="pn">M9</span> Number of Provinces <span class="pill">Medium</span> <span class="muted small">· connected components (matrix input)</span></h3>
+    <p><b>Problem.</b> isConnected[i][j] = 1 means city i and city j are directly connected. Return the number of provinces (connected components).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  isConnected = [[1,1,0],[1,1,0],[0,0,1]]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  isConnected = [[1,0,0],[0,1,0],[0,0,1]]
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 200; isConnected is symmetric with a 1 on the diagonal; connections are transitive.</p>
+    <p><b>Approach.</b> Count components: scan for an unvisited city, run a traversal from it, and increase the counter. An adjacency matrix is fine at this size — the same scan on a 10^6-node problem would need union-find or adjacency lists instead.</p>
+    <pre><code>def find_circle_num(is_connected):
+    n = len(is_connected)
+    seen = [False] * n
+    provinces = 0
+    for start in range(n):
+        if seen[start]:
+            continue
+        provinces += 1                # a new province begins here
+        stack = [start]
+        seen[start] = True
+        while stack:
+            u = stack.pop()
+            for v in range(n):
+                if is_connected[u][v] and not seen[v]:
+                    seen[v] = True
+                    stack.append(v)
+    return provinces</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="redundant-connection">
+    <h3><span class="pn">M10</span> Redundant Connection <span class="pill">Medium</span> <span class="muted small">· union-find cycle detection</span></h3>
+    <p><b>Problem.</b> A tree was turned into a graph by adding one extra edge; return that edge, choosing the last one in the input order if several would work.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  edges = [[1,2],[1,3],[2,3]]
+Output: [2,3]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  edges = [[1,2],[2,3],[3,4],[1,4],[1,5]]
+Output: [1,4]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 3 &lt;= n &lt;= 1000; edges describe a connected graph with exactly one cycle; the answer is unique in the given order.</p>
+    <p><b>Approach.</b> Union-find: add each edge, and the first edge whose two ends are already in the same set is the one that closes the cycle. Path compression keeps each operation effectively constant, and processing in input order gives the required 'last valid' choice.</p>
+    <pre><code>def find_redundant_connection(edges):
+    parent = list(range(len(edges) + 1))
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]    # path compression
+            x = parent[x]
+        return x
+
+    for a, b in edges:
+        ra, rb = find(a), find(b)
+        if ra == rb:
+            return [a, b]                    # this edge closes the cycle
+        parent[ra] = rb
+    return []</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n · α(n)) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="accounts-merge">
+    <h3><span class="pn">M11</span> Accounts Merge <span class="pill">Medium</span> <span class="muted small">· union-find over emails</span></h3>
+    <p><b>Problem.</b> Each account is [name, email1, email2, ...]. Accounts sharing any email belong to the same person; merge them and return each merged account as [name, sorted emails].</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  accounts = [["John","johnsmith@mail.com","john_newyork@mail.com"],["John","johnsmith@mail.com","john00@mail.com"],["Mary","mary@mail.com"],["John","johnnybravo@mail.com"]]
+Output: [["John","john00@mail.com","john_newyork@mail.com","johnsmith@mail.com"],["Mary","mary@mail.com"],["John","johnnybravo@mail.com"]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of accounts &lt;= 1000; 1 &lt;= emails per account &lt;= 10; names are not unique but emails identify a person.</p>
+    <p><b>Approach.</b> Emails are the real vertices, so union every email in an account with the account's first email. Then group emails by their root, attach the name from any member, and sort — unioning through a representative avoids comparing accounts pairwise.</p>
+    <pre><code>def accounts_merge(accounts):
+    parent = {}                       # email -&gt; parent email
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]      # path compression
+            x = parent[x]
+        return x
+
+    owner = {}                        # email -&gt; name
+    for acc in accounts:
+        for email in acc[1:]:
+            parent.setdefault(email, email)
+            owner[email] = acc[0]
+            parent[find(email)] = find(acc[1])   # union with the first email
+
+    groups = {}
+    for email in parent:
+        groups.setdefault(find(email), []).append(email)
+    return [[owner[root]] + sorted(emails) for root, emails in groups.items()]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(total emails · α) time · O(total emails) space.</p>
+  </section>
+  <section class="sub" id="graph-valid-tree">
+    <h3><span class="pn">M12</span> Graph Valid Tree <span class="pill">Medium</span> <span class="muted small">· n-1 edges + no cycle</span></h3>
+    <p><b>Problem.</b> Given n nodes and a list of undirected edges, decide whether they form a valid tree.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 5, edges = [[0,1],[0,2],[0,3],[1,4]]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 5, edges = [[0,1],[1,2],[2,3],[1,3],[1,4]]
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 2000; 0 &lt;= edges &lt;= 5000; a tree has exactly n-1 edges and no cycle.</p>
+    <p><b>Approach.</b> A tree is connected *and* acyclic, which for a graph with n vertices is equivalent to having exactly n-1 edges and no cycle. Union-find checks both in one pass: reject an edge that joins two already-connected nodes, and count the edges taken.</p>
+    <pre><code>def valid_tree(n, edges):
+    if len(edges) != n - 1:
+        return False                 # too few edges means disconnected
+    parent = list(range(n))
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for a, b in edges:
+        ra, rb = find(a), find(b)
+        if ra == rb:
+            return False             # a cycle
+        parent[ra] = rb
+    return True                      # n-1 edges and no cycle ⇒ connected tree</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n · α(n)) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="word-ladder">
+    <h3><span class="pn">H1</span> Word Ladder <span class="pill hot">Hard</span> <span class="muted small">· BFS over generated wildcard states</span></h3>
+    <p><b>Problem.</b> Change one letter at a time from beginWord to endWord, where every intermediate word must be in the dictionary. Return the number of words in the shortest such sequence, or 0 if none exists.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  beginWord = "hit", endWord = "cog", wordList = ["hot","dot","dog","lot","log","cog"]
+Output: 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  beginWord = "hit", endWord = "cog", wordList = ["hot","dot","dog","lot","log"]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= word length &lt;= 10; 1 &lt;= wordList size &lt;= 5000; all words have the same length and lowercase letters.</p>
+    <p><b>Approach.</b> Comparing every pair of words costs O(n² · L); instead bucket words by their wildcard patterns (h*t, *ot, ...) once, and the BFS then moves between words that share a pattern. The bucket index *is* the adjacency list, and building it once is the whole optimisation.</p>
+    <pre><code>from collections import deque
+
+def ladder_length(begin, end, words):
+    if end not in words:
+        return 0
+    buckets = {}                     # "*ot" -&gt; words matching that pattern
+    for w in words:
+        for i in range(len(w)):
+            buckets.setdefault(w[:i] + '*' + w[i+1:], []).append(w)
+    seen = {begin}
+    q = deque([(begin, 1)])
+    while q:
+        word, steps = q.popleft()
+        if word == end:
+            return steps
+        for i in range(len(word)):
+            key = word[:i] + '*' + word[i+1:]
+            for nb in buckets.get(key, ()):        # one letter away
+                if nb not in seen:
+                    seen.add(nb)
+                    q.append((nb, steps + 1))
+    return 0</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n · L²) time · O(n · L) space.</p>
+  </section>
+  <section class="sub" id="alien-dictionary">
+    <h3><span class="pn">H2</span> Alien Dictionary <span class="pill hot">Hard</span> <span class="muted small">· topological sort from adjacent words</span></h3>
+    <p><b>Problem.</b> The words are sorted by an unknown alphabet. Derive a valid character order, or return the empty string if none exists.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  words = ["wrt","wrf","er","ett","rftt"]
+Output: "wertf"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  words = ["z","x"]
+Output: "zx"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of words &lt;= 100; 1 &lt;= word length &lt;= 100; the order may be impossible, e.g. ["abc","ab"].</p>
+    <p><b>Approach.</b> Comparing each pair of adjacent words reveals exactly one ordering constraint — the first position where they differ. Collect those edges, topologically sort the resulting character graph, and return "" if a cycle appears or a prefix word comes later than its extension.</p>
+    <pre><code>from collections import deque
+
+def alien_order(words):
+    adj = {c: set() for w in words for c in w}     # character graph
+    indeg = {c: 0 for w in words for c in w}
+    for a, b in zip(words, words[1:]):
+        j = 0
+        while j &lt; len(a) and j &lt; len(b) and a[j] == b[j]:
+            j += 1
+        if j == len(b) and j &lt; len(a):
+            return ''                # e.g. "abc" before "ab": impossible
+        if j &lt; len(a) and j &lt; len(b) and b[j] not in adj[a[j]]:
+            adj[a[j]].add(b[j])      # a[j] comes before b[j]
+            indeg[b[j]] += 1
+    ready = deque(c for c, d in indeg.items() if d == 0)
+    order = []
+    while ready:
+        u = ready.popleft()
+        order.append(u)
+        for v in adj[u]:
+            indeg[v] -= 1
+            if indeg[v] == 0:
+                ready.append(v)
+    return ''.join(order) if len(order) == len(indeg) else ''   # cycle ⇒ ''</code></pre>
+    <p class="cx"><b>Complexity:</b> O(total characters) time · O(unique characters) space.</p>
+  </section>
+  <section class="sub" id="network-delay-time">
+    <h3><span class="pn">H3</span> Network Delay Time <span class="pill hot">Hard</span> <span class="muted small">· Dijkstra with a priority queue</span></h3>
+    <p><b>Problem.</b> Signals travel along directed edges with given travel times. Starting from node k, return the time for all n nodes to receive the signal, or -1 if some node never does.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  times = [[2,1,1],[2,3,1],[3,4,1]], n = 4, k = 2
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  times = [[1,2,1]], n = 2, k = 2
+Output: -1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= k &lt;= n &lt;= 100; 1 &lt;= number of edges &lt;= 6000; edge weights are positive, so Dijkstra applies.</p>
+    <p><b>Approach.</b> Dijkstra: repeatedly settle the nearest unsettled node with a min-heap, relaxing its outgoing edges. The answer is the largest settled distance — if any node is left unsettled, some are unreachable and the answer is -1. The heap is what keeps the extract-min step logarithmic.</p>
+    <pre><code>import heapq
+
+def network_delay_time(times, n, k):
+    adj = [[] for _ in range(n + 1)]        # u -&gt; [(v, weight)]
+    for u, v, w in times:
+        adj[u].append((v, w))
+    dist = [float('inf')] * (n + 1)
+    dist[k] = 0
+    pq = [(0, k)]                           # (distance, node), a min-heap
+    while pq:
+        d, u = heapq.heappop(pq)
+        if d &gt; dist[u]:
+            continue                        # stale entry
+        for v, w in adj[u]:
+            if d + w &lt; dist[v]:             # relax the edge
+                dist[v] = d + w
+                heapq.heappush(pq, (dist[v], v))
+    worst = max(dist[1:])
+    return -1 if worst == float('inf') else worst</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m log n) time · O(n + m) space.</p>
+  </section>
+  <section class="sub" id="cheapest-flights-within-k-stops">
+    <h3><span class="pn">H4</span> Cheapest Flights Within K Stops <span class="pill hot">Hard</span> <span class="muted small">· Bellman-Ford limited to k+1 rounds</span></h3>
+    <p><b>Problem.</b> Find the cheapest price from src to dst using at most k stops, or -1 if there is none.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 4, flights = [[0,1,100],[1,2,100],[2,0,100],[1,3,600],[2,3,200]], src = 0, dst = 3, k = 1
+Output: 700</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  same flights, k = 0
+Output: -1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 100; 0 &lt;= flights &lt;= n²; 0 &lt;= price &lt;= 10^4; a node may be revisited with fewer stops.</p>
+    <p><b>Approach.</b> Dijkstra alone fails here because a cheaper-but-longer path can violate the stop limit. Bellman-Ford with exactly k+1 rounds counts the edges along each path: relaxing from a *snapshot* of the previous round (never from values updated this round) is what enforces the limit.</p>
+    <pre><code>def find_cheapest_price(n, flights, src, dst, k):
+    INF = float('inf')
+    dist = [INF] * n
+    dist[src] = 0
+    for _ in range(k + 1):                 # at most k+1 edges may be used
+        nxt = dist[:]                      # snapshot: only one extra edge per round
+        for u, v, w in flights:
+            if dist[u] != INF and dist[u] + w &lt; nxt[v]:
+                nxt[v] = dist[u] + w
+        dist = nxt
+    return -1 if dist[dst] == INF else dist[dst]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(k · m) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="min-cost-to-connect-all-points">
+    <h3><span class="pn">H5</span> Minimum Cost to Connect All Points <span class="pill hot">Hard</span> <span class="muted small">· minimum spanning tree (Prim)</span></h3>
+    <p><b>Problem.</b> Given points in the plane, connect them all so that the total Manhattan distance of the edges is minimal, and return that cost.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  points = [[0,0],[2,2],[3,10],[5,2],[7,0]]
+Output: 20</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  points = [[3,12],[-2,5],[-4,1]]
+Output: 18</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 1000; -10^6 &lt;= coordinates &lt;= 10^6; the graph is complete, so every pair is an edge.</p>
+    <p><b>Approach.</b> Prim's MST: grow a tree from one point, always adding the cheapest edge that leaves the tree. With a complete graph the distances can be computed on the fly, so O(n²) time and no edge list is needed — that is why Prim fits this shape better than Kruskal.</p>
+    <pre><code>def min_cost_connect_points(points):
+    n = len(points)
+    best = [float('inf')] * n        # cheapest edge into the growing tree
+    in_tree = [False] * n
+    best[0] = 0
+    total = 0
+    for _ in range(n):
+        u = min((i for i in range(n) if not in_tree[i]), key=lambda i: best[i])
+        in_tree[u] = True
+        total += best[u]             # attach u to the tree
+        for v in range(n):
+            if in_tree[v]:
+                continue
+            d = abs(points[u][0] - points[v][0]) + abs(points[u][1] - points[v][1])
+            if d &lt; best[v]:
+                best[v] = d          # relax the frontier
+    return total</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="swim-in-rising-water">
+    <h3><span class="pn">H6</span> Swim in Rising Water <span class="pill hot">Hard</span> <span class="muted small">· Dijkstra on a bottleneck cost</span></h3>
+    <p><b>Problem.</b> The grid gives the elevation of each cell; at time t the water level is t and you may swim between cells of height at most t. Return the earliest time at which (0,0) and (n-1,n-1) become connected.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  grid = [[0,2],[1,3]]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  grid = [[0,1,2,3,4],[24,23,22,21,5],[12,13,14,15,16],[11,17,18,19,20],[10,9,8,7,6]]
+Output: 16</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 50; the grid is a permutation of 0..n²-1; movement is 4-directional.</p>
+    <p><b>Approach.</b> The cost of a path is the *largest* cell on it, and the answer is the smallest such largest cell over all paths. Dijkstra works with max instead of sum because the cost is monotone: relax a neighbour with max(current, neighbour height), the same priority-queue shape with a different combine step.</p>
+    <pre><code>import heapq
+
+def swim_in_water(grid):
+    n = len(grid)
+    best = [[float('inf')] * n for _ in range(n)]
+    best[0][0] = grid[0][0]
+    pq = [(grid[0][0], 0, 0)]        # (bottleneck cost, r, c)
+    while pq:
+        cost, r, c = heapq.heappop(pq)
+        if r == n - 1 and c == n - 1:
+            return cost
+        if cost &gt; best[r][c]:
+            continue                 # stale entry
+        for nr, nc in ((r+1,c), (r-1,c), (r,c+1), (r,c-1)):
+            if 0 &lt;= nr &lt; n and 0 &lt;= nc &lt; n:
+                nxt = max(cost, grid[nr][nc])      # bottleneck, not a sum
+                if nxt &lt; best[nr][nc]:
+                    best[nr][nc] = nxt
+                    heapq.heappush(pq, (nxt, nr, nc))
+    return best[n-1][n-1]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n² log n) time · O(n²) space.</p>
+  </section>
+  <section class="sub" id="path-with-minimum-effort">
+    <h3><span class="pn">H7</span> Path With Minimum Effort <span class="pill hot">Hard</span> <span class="muted small">· Dijkstra on absolute differences</span></h3>
+    <p><b>Problem.</b> The effort of a path is the largest absolute height difference between consecutive cells. Return the minimum effort over all paths from the top-left to the bottom-right.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  heights = [[1,2,2],[3,8,2],[5,3,5]]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  heights = [[1,2,3],[3,8,4],[5,3,5]]
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 100; 1 &lt;= heights &lt;= 10^6; movement is 4-directional.</p>
+    <p><b>Approach.</b> Identical to the rising-water problem with a different bottleneck: the edge weight is the absolute difference between neighbouring cells, and the path cost is the maximum such weight. Recognising that the two problems share one template is the point of the pair.</p>
+    <pre><code>import heapq
+
+def minimum_effort_path(heights):
+    R, C = len(heights), len(heights[0])
+    best = [[float('inf')] * C for _ in range(R)]
+    best[0][0] = 0
+    pq = [(0, 0, 0)]                 # (effort, r, c)
+    while pq:
+        effort, r, c = heapq.heappop(pq)
+        if r == R - 1 and c == C - 1:
+            return effort
+        if effort &gt; best[r][c]:
+            continue                 # stale entry
+        for nr, nc in ((r+1,c), (r-1,c), (r,c+1), (r,c-1)):
+            if 0 &lt;= nr &lt; R and 0 &lt;= nc &lt; C:
+                nxt = max(effort, abs(heights[nr][nc] - heights[r][c]))
+                if nxt &lt; best[nr][nc]:
+                    best[nr][nc] = nxt
+                    heapq.heappush(pq, (nxt, nr, nc))
+    return best[R-1][C-1]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(R·C log(R·C)) time · O(R·C) space.</p>
+  </section>
+  <section class="sub" id="critical-connections-in-a-network">
+    <h3><span class="pn">H8</span> Critical Connections (Bridges) <span class="pill hot">Hard</span> <span class="muted small">· Tarjan bridges via DFS discovery times</span></h3>
+    <p><b>Problem.</b> Return every edge whose removal disconnects the network (a bridge), in any order.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 4, connections = [[0,1],[1,2],[2,0],[1,3]]
+Output: [[1,3]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 2, connections = [[0,1]]
+Output: [[0,1]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= n &lt;= 10^5; n - 1 &lt;= connections &lt;= 10^5; the graph is connected with no repeated edges.</p>
+    <p><b>Approach.</b> An edge (u, v) is a bridge exactly when the subtree under v has no way back to u or above it. The DFS records a discovery time and a low-link value per node; if low[v] &gt; disc[u], nothing below v reaches u, so the edge is critical. The parent edge must be skipped by *edge id*, not by node, because parallel edges would otherwise be mistaken for the parent.</p>
+    <pre><code>import sys
+
+def critical_connections(n, connections):
+    sys.setrecursionlimit(300000)
+    adj = [[] for _ in range(n)]      # (neighbour, edge id)
+    for i, (a, b) in enumerate(connections):
+        adj[a].append((b, i))
+        adj[b].append((a, i))
+    disc = [0] * n                    # discovery times
+    low = [0] * n                     # earliest reachable discovery time
+    bridges = []
+    timer = 0
+
+    def dfs(u, parent_edge):
+        nonlocal timer
+        timer += 1
+        disc[u] = low[u] = timer
+        for v, eid in adj[u]:
+            if eid == parent_edge:
+                continue              # skip the edge we arrived on
+            if disc[v]:
+                low[u] = min(low[u], disc[v])      # back edge
+            else:
+                dfs(v, eid)
+                low[u] = min(low[u], low[v])
+                if low[v] &gt; disc[u]:
+                    bridges.append([u, v])         # nothing below reaches u
+
+    for u in range(n):
+        if not disc[u]:
+            dfs(u, -1)
+    return bridges</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n + m) time · O(n + m) space.</p>
+  </section>
+  <section class="sub" id="remove-max-number-of-edges-to-keep-graph-fully-traversable">
+    <h3><span class="pn">H9</span> Remove Max Number of Edges to Keep Graph Fully Traversable <span class="pill hot">Hard</span> <span class="muted small">· one union-find per traveller, shared edges first</span></h3>
+    <p><b>Problem.</b> Alice may walk type 1 and type 3 edges, Bob type 2 and type 3, and every edge is undirected. Return the maximum number of edges that can be removed so that each of them can still travel between any two nodes, or -1 if that is impossible.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 4, edges = [[3,1,2],[3,2,3],[1,1,3],[1,2,4],[1,1,2],[2,3,4]]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 4, edges = [[3,1,2],[3,2,3],[1,1,4],[2,1,4]]
+Output: 0</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  n = 4, edges = [[3,2,3],[1,1,2],[2,3,4]]
+Output: -1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; 1 &lt;= edges.length &lt;= 10^5; type 1 belongs to Alice, type 2 to Bob, type 3 to both; edges[i] = [type, u, v] with 1 &lt;= u, v &lt;= n and u != v.</p>
+    <p><b>Approach.</b> Alice and Bob need separate union-find structures, because an edge may be useful to one and pointless to the other. Process the type 3 edges first — they are the most valuable, since they can serve both travellers — and count one as removable only when *neither* structure needed it. Then do the same for the private type 1 and type 2 edges. Finally both structures must reduce to a single component; otherwise one of the two is stuck and the answer is -1.</p>
+    <pre><code>def max_num_edges_to_remove(n, edges):
+    parent_a = list(range(n + 1))     # Alice's forest
+    parent_b = list(range(n + 1))     # Bob's forest
+
+    def find(parent, x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def unite(parent, a, b):
+        ra, rb = find(parent, a), find(parent, b)
+        if ra == rb:
+            return False
+        parent[ra] = rb
+        return True
+
+    removed = 0
+    for typ, u, v in edges:              # shared edges are the most valuable
+        if typ == 3:
+            a = unite(parent_a, u, v)
+            b = unite(parent_b, u, v)
+            if not a and not b:
+                removed += 1             # useful to neither traveller
+    for typ, u, v in edges:
+        if typ == 1 and not unite(parent_a, u, v):
+            removed += 1
+        if typ == 2 and not unite(parent_b, u, v):
+            removed += 1
+    root_a, root_b = find(parent_a, 1), find(parent_b, 1)
+    for u in range(2, n + 1):
+        if find(parent_a, u) != root_a or find(parent_b, u) != root_b:
+            return -1                    # someone cannot reach every node
+    return removed</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m · α(n)) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="number-of-ways-to-arrive-at-destination">
+    <h3><span class="pn">H10</span> Number of Ways to Arrive at Destination <span class="pill hot">Hard</span> <span class="muted small">· Dijkstra with path counting</span></h3>
+    <p><b>Problem.</b> Count the paths from node 0 to node n-1 that have the shortest total travel time, modulo 10^9 + 7.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 7, roads = [[0,6,7],[0,1,2],[1,2,3],[1,3,3],[6,3,3],[3,5,1],[6,5,1],[2,5,1],[0,4,5],[4,6,2]]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 2, roads = [[1,0,10]]
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 200; 0 &lt;= roads &lt;= n · (n - 1) / 2; weights are positive; the graph is connected.</p>
+    <p><b>Approach.</b> Run Dijkstra, but maintain two arrays: the shortest distance and the number of shortest paths reaching each node. When a relaxation finds a strictly shorter route the count is *replaced*; when it finds an equal-length route the count is *added*. That distinction is the entire problem.</p>
+    <pre><code>import heapq
+
+def count_paths(n, roads):
+    MOD = 10 ** 9 + 7
+    adj = [[] for _ in range(n)]     # u -&gt; [(v, time)]
+    for u, v, w in roads:
+        adj[u].append((v, w))
+        adj[v].append((u, w))
+    dist = [float('inf')] * n
+    ways = [0] * n
+    dist[0], ways[0] = 0, 1
+    pq = [(0, 0)]
+    while pq:
+        d, u = heapq.heappop(pq)
+        if d &gt; dist[u]:
+            continue                 # stale entry
+        for v, w in adj[u]:
+            if d + w &lt; dist[v]:      # shorter: replace the count
+                dist[v] = d + w
+                ways[v] = ways[u]
+                heapq.heappush(pq, (dist[v], v))
+            elif d + w == dist[v]:   # equal: add the count
+                ways[v] = (ways[v] + ways[u]) % MOD
+    return ways[n - 1]</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m log n) time · O(n + m) space.</p>
+  </section>
+  <section class="sub" id="find-the-city-with-the-smallest-number-of-neighbors-at-a-threshold-distance">
+    <h3><span class="pn">H11</span> City With the Fewest Reachable Neighbours <span class="pill hot">Hard</span> <span class="muted small">· all-pairs shortest paths (Floyd-Warshall)</span></h3>
+    <p><b>Problem.</b> Given weighted bidirectional edges and a distance threshold, return the city with the fewest other cities within that distance, breaking ties by the largest index.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 4, edges = [[0,1,3],[1,2,1],[1,3,4],[2,3,1]], distanceThreshold = 4
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 5, edges = [[0,1,2],[0,4,8],[1,2,3],[1,4,2],[2,3,1],[3,4,1]], distanceThreshold = 2
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= n &lt;= 100; 1 &lt;= edges &lt;= n · (n - 1) / 2; weights are positive.</p>
+    <p><b>Approach.</b> Every pair of cities needs a distance, which is exactly what Floyd-Warshall computes with three nested loops over a matrix: try every intermediate node k and relax the pair (i, j). With n &lt;= 100 the O(n³) table is small enough, and the alternative of running Dijkstra from every node is more code for no benefit.</p>
+    <pre><code>def find_the_city(n, edges, threshold):
+    INF = float('inf')
+    d = [[INF] * n for _ in range(n)]
+    for i in range(n):
+        d[i][i] = 0
+    for u, v, w in edges:
+        d[u][v] = d[v][u] = w
+    for k in range(n):               # every possible intermediate city
+        for i in range(n):
+            dik = d[i][k]
+            if dik == INF:
+                continue
+            for j in range(n):
+                if dik + d[k][j] &lt; d[i][j]:
+                    d[i][j] = dik + d[k][j]
+    best_city, best_count = -1, n
+    for i in range(n - 1, -1, -1):   # descending so ties keep the larger index
+        reachable = sum(1 for j in range(n) if i != j and d[i][j] &lt;= threshold)
+        if reachable &lt; best_count:
+            best_count, best_city = reachable, i
+    return best_city</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n³) time · O(n²) space.</p>
+  </section>
+  <section class="sub" id="largest-color-value-in-a-directed-graph">
+    <h3><span class="pn">H12</span> Largest Colour Value in a Directed Graph <span class="pill hot">Hard</span> <span class="muted small">· topological order + per-node colour counts</span></h3>
+    <p><b>Problem.</b> Each node has a colour. The colour value of a path is the number of times its most frequent colour appears on it. Return the largest colour value over all paths, or -1 if the graph has a cycle.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  colors = "abaca", edges = [[0,1],[0,2],[2,3],[3,4]]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  colors = "a", edges = [[0,0]]
+Output: -1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; 1 &lt;= edges &lt;= 10^5; there are at most 26 colours.</p>
+    <p><b>Approach.</b> Process nodes in topological order so every predecessor is finished before its successors. Each node stores 26 counters: the best count of each colour along any path ending there, computed by copying the best predecessor and adding its own colour. A cycle (fewer processed nodes than n) makes the answer -1.</p>
+    <pre><code>from collections import deque
+
+def largest_path_value(colors, edges):
+    n = len(colors)
+    adj = [[] for _ in range(n)]
+    indeg = [0] * n
+    for a, b in edges:
+        adj[a].append(b)
+        indeg[b] += 1
+    dp = [[0] * 26 for _ in range(n)]     # per-colour best counts
+    ready = deque(u for u in range(n) if indeg[u] == 0)
+    processed = best = 0
+    while ready:
+        u = ready.popleft()
+        processed += 1
+        c = ord(colors[u]) - 97
+        dp[u][c] += 1                     # count this node's colour
+        best = max(best, dp[u][c])
+        for v in adj[u]:
+            dv, du = dp[v], dp[u]
+            for k in range(26):           # hand the better counts forward
+                if du[k] &gt; dv[k]:
+                    dv[k] = du[k]
+            indeg[v] -= 1
+            if indeg[v] == 0:
+                ready.append(v)
+    return best if processed == n else -1   # fewer than n: a cycle</code></pre>
+    <p class="cx"><b>Complexity:</b> O(26 · (n + m)) time · O(26 · n) space.</p>
+  </section>
+</section>
 
   </main>
 </div>
 
 <footer>
-  <p><b>Python bank</b> — 210 problems across 7 topics, with complete solutions in
+  <p><b>Python bank</b> — 240 problems across 8 topics, with complete solutions in
   Python 3.12+ solutions.</p>
   <p class="small">Same problems in every language:
     <a href="cpp-leetcode.html">C++</a> · <a href="java-leetcode.html">Java</a> · <a href="python-leetcode.html">Python</a>

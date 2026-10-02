@@ -5663,12 +5663,940 @@ vector&lt;int&gt; closestKValues(TreeNode* root, double target, int k) {
     <p class="cx"><b>Complexity:</b> O(n log k) time · O(h + k) space.</p>
   </section>
 </section>
+<section class="chapter" id="t08">
+  <h2><span class="num">8</span> Graphs &amp; Union-Find</h2>
+  <p class="tagline">Build the adjacency list, pick a traversal, and know the four questions: components, cycles, orderings, and shortest paths.</p>
+  <div class="card"><p><b>What this topic trains.</b> The whole topic is a decision tree of four questions. Components and flood fills: any traversal. Cycles and connectivity: union-find or coloured DFS. Dependencies and orderings: topological sort. Weighted distances: Dijkstra, Bellman-Ford or Floyd-Warshall depending on the shape of the weights. Hard problems mix two of these ideas or add a proof (bridges, MST, path counting).</p>
+<p class="small muted">Ordering: easy 1–6 are single traversals on grids and small graphs; medium 1–4 are components, clones and cycle detection, 5–8 are multi-source flood fills on grids, 9–12 are union-find applications; hard 1–4 are BFS over generated states and topological sort, 5–8 are the shortest-path family (Dijkstra, Bellman-Ford, MST), 9–12 are bridges, path counting and Floyd-Warshall.</p></div>
+  <section class="sub" id="flood-fill">
+    <h3><span class="pn">E1</span> Flood Fill <span class="pill">Easy</span> <span class="muted small">· grid DFS/BFS recolouring</span></h3>
+    <p><b>Problem.</b> Starting from a pixel, repaint the starting colour and every pixel of the same colour reachable through up/down/left/right neighbours with the new colour.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  image = [[1,1,1],[1,1,0],[1,0,1]], sr = 1, sc = 1, color = 2
+Output: [[2,2,2],[2,2,0],[2,0,1]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  image = [[0,0,0],[0,0,0]], sr = 0, sc = 0, color = 0
+Output: the image unchanged</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 50; 0 &lt;= colour values &lt;= 2^16 - 1; 4-directional adjacency only.</p>
+    <p><b>Approach.</b> A traversal that visits four neighbours at a time and repaints as it goes. The only trap is the case where the new colour equals the old one: without an early return the frontier never shrinks and the recursion loops forever.</p>
+    <pre><code>// Visit four neighbours, repaint on the way in
+vector&lt;vector&lt;int&gt;&gt; floodFill(vector&lt;vector&lt;int&gt;&gt;&amp; img, int sr, int sc, int color) {
+    int old = img[sr][sc];
+    if (old == color) return img;                // required: otherwise no termination
+    int R = img.size(), C = img[0].size();
+    vector&lt;pair&lt;int,int&gt;&gt; st{{sr, sc}};
+    img[sr][sc] = color;
+    while (!st.empty()) {
+        auto [r, c] = st.back(); st.pop_back();
+        int dr[4] = {1,-1,0,0}, dc[4] = {0,0,1,-1};
+        for (int d = 0; d &lt; 4; d++) {
+            int nr = r + dr[d], nc = c + dc[d];
+            if (nr &gt;= 0 &amp;&amp; nr &lt; R &amp;&amp; nc &gt;= 0 &amp;&amp; nc &lt; C &amp;&amp; img[nr][nc] == old) {
+                img[nr][nc] = color;
+                st.push_back({nr, nc});
+            }
+        }
+    }
+    return img;
+}   // O(R·C) time · O(R·C) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · cols) time · O(rows · cols) space.</p>
+  </section>
+  <section class="sub" id="find-if-path-exists-in-graph">
+    <h3><span class="pn">E2</span> Find If a Path Exists <span class="pill">Easy</span> <span class="muted small">· adjacency list + BFS</span></h3>
+    <p><b>Problem.</b> Given n nodes and a list of undirected edges, decide whether a path connects source to destination.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 3, edges = [[0,1],[1,2],[2,0]], source = 0, destination = 2
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 6, edges = [[0,1],[0,2],[3,5],[5,4],[4,3]], source = 0, destination = 5
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 2 * 10^5; 0 &lt;= edges &lt;= 2 * 10^5; no self-loops or repeated edges.</p>
+    <p><b>Approach.</b> Build the adjacency list once, then walk from the source starting with only the source in the visited set. Reaching the destination ends the walk early — a visited set is what keeps the traversal linear instead of exponential on dense graphs.</p>
+    <pre><code>// Adjacency list, then visit reachable nodes from the source
+bool validPath(int n, vector&lt;vector&lt;int&gt;&gt;&amp; edges, int src, int dst) {
+    vector&lt;vector&lt;int&gt;&gt; adj(n);
+    for (auto&amp; e : edges) {                       // undirected: both directions
+        adj[e[0]].push_back(e[1]);
+        adj[e[1]].push_back(e[0]);
+    }
+    vector&lt;bool&gt; seen(n, false);
+    vector&lt;int&gt; st{src};
+    seen[src] = true;
+    while (!st.empty()) {
+        int u = st.back(); st.pop_back();
+        if (u == dst) return true;                // early exit
+        for (int v : adj[u]) if (!seen[v]) { seen[v] = true; st.push_back(v); }
+    }
+    return false;
+}   // O(n + m) time · O(n + m) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n + m) time · O(n + m) space.</p>
+  </section>
+  <section class="sub" id="find-the-town-judge">
+    <h3><span class="pn">E3</span> Find the Town Judge <span class="pill">Easy</span> <span class="muted small">· degree counting</span></h3>
+    <p><b>Problem.</b> In a town of n people, trust[i] = [a, b] means a trusts b. The judge trusts nobody and is trusted by everyone else. Return the judge's label, or -1.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 2, trust = [[1,2]]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 3, trust = [[1,3],[2,3],[3,1]]
+Output: -1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 1000; 0 &lt;= number of trust pairs &lt;= 10^4; there is at most one judge.</p>
+    <p><b>Approach.</b> Two degree arrays, out and in: the judge is the person with out-degree zero and in-degree n-1. One pass over the trust list fills both — this is the simplest possible example of turning an edge list into per-vertex facts.</p>
+    <pre><code>// Judge: trusts nobody (out 0) and is trusted by everyone (in n-1)
+int findJudge(int n, vector&lt;vector&lt;int&gt;&gt;&amp; trust) {
+    vector&lt;int&gt; in(n + 1, 0), out(n + 1, 0);
+    for (auto&amp; t : trust) { out[t[0]]++; in[t[1]]++; }
+    for (int p = 1; p &lt;= n; p++)
+        if (out[p] == 0 &amp;&amp; in[p] == n - 1) return p;
+    return -1;
+}   // O(n + m) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n + m) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="find-center-of-star-graph">
+    <h3><span class="pn">E4</span> Centre of a Star Graph <span class="pill">Easy</span> <span class="muted small">· shared endpoint</span></h3>
+    <p><b>Problem.</b> A star graph has one centre connected to every other node. Given its edges, return the centre.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  edges = [[1,2],[2,3],[4,2]]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  edges = [[1,2],[5,1],[1,3],[1,4]]
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 3 &lt;= n &lt;= 10^5; the graph is always a star; edges are given in any order.</p>
+    <p><b>Approach.</b> The centre is the only vertex shared by all edges, so it appears in every edge — two edges are enough to identify it: whichever endpoint the first two edges have in common is the centre. Constant time and a nice reminder to look for a stronger guarantee before writing a traversal.</p>
+    <pre><code>// Two edges are enough: the centre is their shared endpoint
+int findCenter(vector&lt;vector&lt;int&gt;&gt;&amp; edges) {
+    int a = edges[0][0], b = edges[0][1];
+    return (edges[1][0] == a || edges[1][1] == a) ? a : b;
+}   // O(1) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(1) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="island-perimeter">
+    <h3><span class="pn">E5</span> Island Perimeter <span class="pill">Easy</span> <span class="muted small">· count land edges</span></h3>
+    <p><b>Problem.</b> A grid contains one island of 1s surrounded by water. Return the length of its perimeter.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  grid = [[0,1,0,0],[1,1,1,0],[0,1,0,0],[1,1,0,0]]
+Output: 16</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  grid = [[1]]
+Output: 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 100; cells are 0 or 1; there is exactly one island and it has no lakes.</p>
+    <p><b>Approach.</b> Every land cell starts with four sides; each shared edge between two land cells removes two sides. Counting the shared edges right and down only avoids the double count — no traversal needed at all.</p>
+    <pre><code>// 4 sides per land cell, minus 2 for every shared edge
+int islandPerimeter(vector&lt;vector&lt;int&gt;&gt;&amp; g) {
+    int R = g.size(), C = g[0].size(), perimeter = 0;
+    for (int r = 0; r &lt; R; r++)
+        for (int c = 0; c &lt; C; c++) {
+            if (!g[r][c]) continue;
+            perimeter += 4;                       // start with the full outline
+            if (r + 1 &lt; R &amp;&amp; g[r+1][c]) perimeter -= 2;   // shared edge below
+            if (c + 1 &lt; C &amp;&amp; g[r][c+1]) perimeter -= 2;   // shared edge to the right
+        }
+    return perimeter;
+}   // O(R·C) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · cols) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="destination-city">
+    <h3><span class="pn">E6</span> Destination City <span class="pill">Easy</span> <span class="muted small">· hash set of sources (out-degree zero)</span></h3>
+    <p><b>Problem.</b> Each pair paths[i] = [from, to] is a direct one-way path between two cities, and together they form a single line with no loops. Return the city that has no outgoing path.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  paths = [["London","New York"],["New York","Lima"],["Lima","Sao Paulo"]]
+Output: "Sao Paulo"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  paths = [["B","C"],["D","B"],["C","A"]]
+Output: "A"</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  paths = [["A","Z"]]
+Output: "Z"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= paths.length &lt;= 100; paths[i].length == 2; 1 &lt;= city name length &lt;= 10; the paths form a line, so exactly one destination exists.</p>
+    <p><b>Approach.</b> Collect every city that starts a path into a hash set; the destination is the only city that never appears in it. That is the out-degree-zero condition, and the set turns it into one linear pass instead of a search.</p>
+    <pre><code>// The destination is the only city that never starts a path
+string destCity(vector&lt;vector&lt;string&gt;&gt;&amp; paths) {
+    unordered_set&lt;string&gt; outgoing;              // every city that starts a path
+    for (auto&amp; p : paths) outgoing.insert(p[0]);
+    for (auto&amp; p : paths)
+        if (!outgoing.count(p[1])) return p[1];  // never a source: the answer
+    return "";
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="number-of-islands">
+    <h3><span class="pn">M1</span> Number of Islands <span class="pill">Medium</span> <span class="muted small">· component counting on a grid</span></h3>
+    <p><b>Problem.</b> A grid of '1' (land) and '0' (water) contains islands of 4-directionally connected land. Return how many islands there are.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  grid = [["1","1","1","1","0"],["1","1","0","1","0"],["1","1","0","0","0"],["0","0","0","0","0"]]
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  grid = [["1","1","0","0","0"],["1","1","0","0","0"],["0","0","1","0","0"],["0","0","0","1","1"]]
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 300; cells are the characters '0' and '1'; islands are counted with 4-directional connectivity.</p>
+    <p><b>Approach.</b> Scan every cell; each unvisited land cell starts a new island, and a flood fill (or a union-find pass) marks the whole component. Incrementing the counter exactly at the start of each fill is what guarantees one count per island.</p>
+    <pre><code>// Each flood fill is one island
+int numIslands(vector&lt;vector&lt;char&gt;&gt;&amp; g) {
+    int R = g.size(), C = g[0].size(), islands = 0;
+    for (int r = 0; r &lt; R; r++)
+        for (int c = 0; c &lt; C; c++) {
+            if (g[r][c] != '1') continue;
+            islands++;                            // a fresh component starts here
+            vector&lt;pair&lt;int,int&gt;&gt; st{{r, c}};
+            g[r][c] = '0';                        // sink it as we go
+            while (!st.empty()) {
+                auto [y, x] = st.back(); st.pop_back();
+                int dy[4] = {1,-1,0,0}, dx[4] = {0,0,1,-1};
+                for (int d = 0; d &lt; 4; d++) {
+                    int ny = y + dy[d], nx = x + dx[d];
+                    if (ny &gt;= 0 &amp;&amp; ny &lt; R &amp;&amp; nx &gt;= 0 &amp;&amp; nx &lt; C &amp;&amp; g[ny][nx] == '1') {
+                        g[ny][nx] = '0';
+                        st.push_back({ny, nx});
+                    }
+                }
+            }
+        }
+    return islands;
+}   // O(R·C) time · O(R·C) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · cols) time · O(rows · cols) space.</p>
+  </section>
+  <section class="sub" id="clone-graph">
+    <h3><span class="pn">M2</span> Clone a Graph <span class="pill">Medium</span> <span class="muted small">· DFS with old-to-new map</span></h3>
+    <p><b>Problem.</b> Given a node of a connected undirected graph, return a deep copy of the whole graph.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  adjList = [[2,4],[1,3],[2,4],[1,3]]
+Output: an identical independent graph</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  adjList = [[]]
+Output: a single node with no neighbours</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of nodes &lt;= 100; node values are unique; the graph may contain cycles.</p>
+    <p><b>Approach.</b> Create a clone the moment you first meet a node, record it in a map before recursing, and reuse that clone for every later reference. Creating the clone early is what stops the cycle from being copied forever — the same pattern as copying a linked list with random pointers.</p>
+    <pre><code>// Create the clone before recursing so cycles terminate
+class Node { public: int val; vector&lt;Node*&gt; neighbors; Node(int v = 0) : val(v) {} };
+Node* dfs(Node* node, unordered_map&lt;Node*, Node*&gt;&amp; made) {
+    if (!node) return nullptr;
+    if (made.count(node)) return made[node];     // already copied: reuse it
+    Node* copy = new Node(node-&gt;val);
+    made[node] = copy;                           // register BEFORE recursing
+    for (Node* nb : node-&gt;neighbors) copy-&gt;neighbors.push_back(dfs(nb, made));
+    return copy;
+}
+Node* cloneGraph(Node* node) {
+    unordered_map&lt;Node*, Node*&gt; made;
+    return dfs(node, made);
+}   // O(V + E) time · O(V) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(V + E) time · O(V) space.</p>
+  </section>
+  <section class="sub" id="course-schedule">
+    <h3><span class="pn">M3</span> Course Schedule <span class="pill">Medium</span> <span class="muted small">· cycle detection in a directed graph</span></h3>
+    <p><b>Problem.</b> prerequisites[i] = [a, b] means course b must be taken before course a. Decide whether all courses can be finished.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  numCourses = 2, prerequisites = [[1,0]]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  numCourses = 2, prerequisites = [[1,0],[0,1]]
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= numCourses &lt;= 2000; 0 &lt;= prerequisites &lt;= 5000; all pairs are distinct.</p>
+    <p><b>Approach.</b> This is exactly 'does the dependency graph have a cycle?'. A three-colour DFS answers it: white = untouched, grey = on the current stack, black = finished. Meeting a grey node means a cycle, and the colours are essential — a plain visited set cannot tell a cycle from a diamond.</p>
+    <pre><code>// Three-colour DFS: grey = on the current path
+bool dfs(int u, vector&lt;vector&lt;int&gt;&gt;&amp; adj, vector&lt;int&gt;&amp; state) {
+    state[u] = 1;                                // grey: being explored
+    for (int v : adj[u]) {
+        if (state[v] == 1) return true;          // back edge: a cycle
+        if (state[v] == 0 &amp;&amp; dfs(v, adj, state)) return true;
+    }
+    state[u] = 2;                                // black: finished
+    return false;
+}
+bool canFinish(int n, vector&lt;vector&lt;int&gt;&gt;&amp; pre) {
+    vector&lt;vector&lt;int&gt;&gt; adj(n);
+    for (auto&amp; p : pre) adj[p[1]].push_back(p[0]);   // b -&gt; a
+    vector&lt;int&gt; state(n, 0);
+    for (int u = 0; u &lt; n; u++)
+        if (state[u] == 0 &amp;&amp; dfs(u, adj, state)) return false;
+    return true;
+}   // O(V + E) time · O(V + E) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(V + E) time · O(V + E) space.</p>
+  </section>
+  <section class="sub" id="course-schedule-ii">
+    <h3><span class="pn">M4</span> Course Schedule II <span class="pill">Medium</span> <span class="muted small">· topological sort (Kahn)</span></h3>
+    <p><b>Problem.</b> Return one valid order in which all courses can be taken, or an empty array if that is impossible.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  numCourses = 2, prerequisites = [[1,0]]
+Output: [0,1]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  numCourses = 4, prerequisites = [[1,0],[2,0],[3,1],[3,2]]
+Output: [0,1,2,3] (or similar)</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= numCourses &lt;= 2000; 0 &lt;= prerequisites &lt;= 5000; any valid order is accepted.</p>
+    <p><b>Approach.</b> Kahn's algorithm: start with every course that has no prerequisites, then repeatedly take one out and decrement its dependents' counts. If the produced order is shorter than the course count, some cycle blocked the rest — so the same pass detects impossibility for free.</p>
+    <pre><code>// Kahn: queue of zero-in-degree nodes, peeling edge by edge
+vector&lt;int&gt; findOrder(int n, vector&lt;vector&lt;int&gt;&gt;&amp; pre) {
+    vector&lt;vector&lt;int&gt;&gt; adj(n);
+    vector&lt;int&gt; indeg(n, 0);
+    for (auto&amp; p : pre) { adj[p[1]].push_back(p[0]); indeg[p[0]]++; }
+    queue&lt;int&gt; ready;
+    for (int u = 0; u &lt; n; u++) if (indeg[u] == 0) ready.push(u);
+    vector&lt;int&gt; order;
+    while (!ready.empty()) {
+        int u = ready.front(); ready.pop();
+        order.push_back(u);                      // take this course now
+        for (int v : adj[u]) if (--indeg[v] == 0) ready.push(v);
+    }
+    return (int)order.size() == n ? order : vector&lt;int&gt;{};   // short means cycle
+}   // O(V + E) time · O(V + E) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(V + E) time · O(V + E) space.</p>
+  </section>
+  <section class="sub" id="pacific-atlantic-water-flow">
+    <h3><span class="pn">M5</span> Pacific Atlantic Water Flow <span class="pill">Medium</span> <span class="muted small">· multi-source DFS from the borders</span></h3>
+    <p><b>Problem.</b> Water flows from a cell to a neighbour of equal or lower height. Return every cell from which water can reach both the top-left and bottom-right oceans.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  heights = [[1,2,2,3,5],[3,2,3,4,4],[2,4,5,3,1],[6,7,1,4,5],[5,1,1,2,4]]
+Output: [[0,4],[1,3],[1,4],[2,2],[3,0],[3,1],[4,0]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  heights = [[1]]
+Output: [[0,0]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 200; 0 &lt;= heights &lt;= 10^5; the two oceans border the top/left and bottom/right edges.</p>
+    <p><b>Approach.</b> Searching forward from every cell is expensive; searching *backwards* from each ocean's border finds, for each ocean, all cells that drain into it — and uphill reverse traversal is a simple 'neighbour is not lower' test. Intersecting the two sets is the answer.</p>
+    <pre><code>// Reverse DFS from each ocean's border, then intersect
+void flow(vector&lt;vector&lt;int&gt;&gt;&amp; h, vector&lt;vector&lt;bool&gt;&gt;&amp; seen, int r, int c) {
+    int R = h.size(), C = h[0].size();
+    seen[r][c] = true;
+    int dr[4] = {1,-1,0,0}, dc[4] = {0,0,1,-1};
+    for (int d = 0; d &lt; 4; d++) {
+        int nr = r + dr[d], nc = c + dc[d];
+        if (nr &lt; 0 || nr &gt;= R || nc &lt; 0 || nc &gt;= C || seen[nr][nc]) continue;
+        if (h[nr][nc] &gt;= h[r][c]) flow(h, seen, nr, nc);   // can flow back downhill
+    }
+}
+vector&lt;vector&lt;int&gt;&gt; pacificAtlantic(vector&lt;vector&lt;int&gt;&gt;&amp; h) {
+    int R = h.size(), C = h[0].size();
+    vector&lt;vector&lt;bool&gt;&gt; pac(R, vector&lt;bool&gt;(C, false)), atl(R, vector&lt;bool&gt;(C, false));
+    for (int r = 0; r &lt; R; r++) { flow(h, pac, r, 0); flow(h, atl, r, C-1); }
+    for (int c = 0; c &lt; C; c++) { flow(h, pac, 0, c); flow(h, atl, R-1, c); }
+    vector&lt;vector&lt;int&gt;&gt; out;
+    for (int r = 0; r &lt; R; r++)
+        for (int c = 0; c &lt; C; c++)
+            if (pac[r][c] &amp;&amp; atl[r][c]) out.push_back({r, c});
+    return out;
+}   // O(R·C) time · O(R·C) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · cols) time · O(rows · cols) space.</p>
+  </section>
+  <section class="sub" id="surrounded-regions">
+    <h3><span class="pn">M6</span> Surrounded Regions <span class="pill">Medium</span> <span class="muted small">· mark from the border inward</span></h3>
+    <p><b>Problem.</b> Flip every region of 'O' fully surrounded by 'X' into 'X'; regions touching the border are never flipped.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  board = [["X","X","X","X"],["X","O","O","X"],["X","X","O","X"],["X","O","X","X"]]
+Output: [["X","X","X","X"],["X","X","X","X"],["X","X","X","X"],["X","O","X","X"]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  board = [["X"]]
+Output: [["X"]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 200; cells are the characters 'X' and 'O'; the board is modified in place.</p>
+    <p><b>Approach.</b> Identifying surrounded regions directly is awkward; identifying safe regions is easy. Flood from every border 'O', mark those cells as safe, then sweep once: unmarked 'O' becomes 'X' and marked cells return to 'O'. Deciding the complement is a recurring trick in grid problems.</p>
+    <pre><code>// Mark border-connected 'O's safe, then flip the rest
+void safe(vector&lt;vector&lt;char&gt;&gt;&amp; b, int r, int c) {
+    int R = b.size(), C = b[0].size();
+    if (r &lt; 0 || r &gt;= R || c &lt; 0 || c &gt;= C || b[r][c] != 'O') return;
+    b[r][c] = 'S';                               // temporarily marked safe
+    safe(b, r+1, c); safe(b, r-1, c); safe(b, r, c+1); safe(b, r, c-1);
+}
+void solve(vector&lt;vector&lt;char&gt;&gt;&amp; b) {
+    int R = b.size(), C = b[0].size();
+    for (int r = 0; r &lt; R; r++) { safe(b, r, 0); safe(b, r, C-1); }
+    for (int c = 0; c &lt; C; c++) { safe(b, 0, c); safe(b, R-1, c); }
+    for (int r = 0; r &lt; R; r++)
+        for (int c = 0; c &lt; C; c++)
+            b[r][c] = (b[r][c] == 'S') ? 'O' : 'X';   // flip the enclosed ones
+}   // O(R·C) time · O(R·C) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · cols) time · O(rows · cols) space.</p>
+  </section>
+  <section class="sub" id="rotting-oranges">
+    <h3><span class="pn">M7</span> Rotting Oranges <span class="pill">Medium</span> <span class="muted small">· multi-source BFS by layers</span></h3>
+    <p><b>Problem.</b> In a grid, 0 is empty, 1 is a fresh orange and 2 is rotten. Every minute each rotten orange rots its 4-neighbours. Return the minutes until no fresh orange remains, or -1 if some never rot.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  grid = [[2,1,1],[1,1,0],[0,1,1]]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  grid = [[2,1,1],[0,1,1],[1,0,1]]
+Output: -1</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  grid = [[0,2]]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 10; cells are 0, 1 or 2; all rotten oranges start at minute 0.</p>
+    <p><b>Approach.</b> Seed a queue with *every* rotten orange and process it level by level; each level is one minute. Counting fresh oranges up front and decrementing on each infection lets a single check at the end decide between the minute count and -1.</p>
+    <pre><code>// All rotten cells at once; each BFS layer is one minute
+int orangesRotting(vector&lt;vector&lt;int&gt;&gt;&amp; g) {
+    int R = g.size(), C = g[0].size(), fresh = 0;
+    queue&lt;pair&lt;int,int&gt;&gt; q;
+    for (int r = 0; r &lt; R; r++)
+        for (int c = 0; c &lt; C; c++) {
+            if (g[r][c] == 2) q.push({r, c});     // every source at minute 0
+            else if (g[r][c] == 1) fresh++;
+        }
+    int minutes = 0;
+    int dr[4] = {1,-1,0,0}, dc[4] = {0,0,1,-1};
+    while (!q.empty() &amp;&amp; fresh &gt; 0) {
+        int size = q.size();
+        minutes++;                                // one layer = one minute
+        while (size--) {
+            auto [r, c] = q.front(); q.pop();
+            for (int d = 0; d &lt; 4; d++) {
+                int nr = r + dr[d], nc = c + dc[d];
+                if (nr &gt;= 0 &amp;&amp; nr &lt; R &amp;&amp; nc &gt;= 0 &amp;&amp; nc &lt; C &amp;&amp; g[nr][nc] == 1) {
+                    g[nr][nc] = 2; fresh--;
+                    q.push({nr, nc});
+                }
+            }
+        }
+    }
+    return fresh == 0 ? minutes : -1;
+}   // O(R·C) time · O(R·C) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · cols) time · O(rows · cols) space.</p>
+  </section>
+  <section class="sub" id="walls-and-gates">
+    <h3><span class="pn">M8</span> Walls and Gates <span class="pill">Medium</span> <span class="muted small">· multi-source BFS from all gates</span></h3>
+    <p><b>Problem.</b> Fill every empty room with its distance to the nearest gate: 0 is a gate, -1 is a wall, and INF (2^31 - 1) marks an empty room. Rooms that cannot reach any gate keep INF.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  rooms = [[inf,-1,0,inf],[inf,inf,inf,-1],[inf,-1,inf,-1],[0,-1,inf,inf]] with inf = 2147483647
+Output: [[3,-1,0,1],[2,2,1,-1],[1,-1,2,-1],[0,-1,3,4]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  rooms = [[-1]]
+Output: [[-1]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 250; cells are -1 (wall), 0 (gate) or 2^31 - 1 (empty); the grid is modified in place.</p>
+    <p><b>Approach.</b> A BFS from a single gate would have to be repeated per gate; starting from all gates at once fills every room with the distance to the *nearest* gate in one pass. Level order is what makes the distances correct, exactly as in the rotting-oranges problem.</p>
+    <pre><code>// One BFS with every gate as a source
+const int INF = 2147483647;
+void wallsAndGates(vector&lt;vector&lt;int&gt;&gt;&amp; rooms) {
+    int R = rooms.size(), C = rooms[0].size();
+    queue&lt;pair&lt;int,int&gt;&gt; q;
+    for (int r = 0; r &lt; R; r++)
+        for (int c = 0; c &lt; C; c++) if (rooms[r][c] == 0) q.push({r, c});
+    int dr[4] = {1,-1,0,0}, dc[4] = {0,0,1,-1};
+    while (!q.empty()) {
+        auto [r, c] = q.front(); q.pop();
+        for (int d = 0; d &lt; 4; d++) {
+            int nr = r + dr[d], nc = c + dc[d];
+            if (nr &gt;= 0 &amp;&amp; nr &lt; R &amp;&amp; nc &gt;= 0 &amp;&amp; nc &lt; C &amp;&amp; rooms[nr][nc] == INF) {
+                rooms[nr][nc] = rooms[r][c] + 1;   // first visit = nearest gate
+                q.push({nr, nc});
+            }
+        }
+    }
+}   // O(R·C) time · O(R·C) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · cols) time · O(rows · cols) space.</p>
+  </section>
+  <section class="sub" id="number-of-provinces">
+    <h3><span class="pn">M9</span> Number of Provinces <span class="pill">Medium</span> <span class="muted small">· connected components (matrix input)</span></h3>
+    <p><b>Problem.</b> isConnected[i][j] = 1 means city i and city j are directly connected. Return the number of provinces (connected components).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  isConnected = [[1,1,0],[1,1,0],[0,0,1]]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  isConnected = [[1,0,0],[0,1,0],[0,0,1]]
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 200; isConnected is symmetric with a 1 on the diagonal; connections are transitive.</p>
+    <p><b>Approach.</b> Count components: scan for an unvisited city, run a traversal from it, and increase the counter. An adjacency matrix is fine at this size — the same scan on a 10^6-node problem would need union-find or adjacency lists instead.</p>
+    <pre><code>// Count components with one DFS per unvisited city
+int findCircleNum(vector&lt;vector&lt;int&gt;&gt;&amp; conn) {
+    int n = conn.size(), provinces = 0;
+    vector&lt;bool&gt; seen(n, false);
+    for (int start = 0; start &lt; n; start++) {
+        if (seen[start]) continue;
+        provinces++;                             // a new province begins here
+        vector&lt;int&gt; st{start};
+        seen[start] = true;
+        while (!st.empty()) {
+            int u = st.back(); st.pop_back();
+            for (int v = 0; v &lt; n; v++)
+                if (conn[u][v] &amp;&amp; !seen[v]) { seen[v] = true; st.push_back(v); }
+        }
+    }
+    return provinces;
+}   // O(n²) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="redundant-connection">
+    <h3><span class="pn">M10</span> Redundant Connection <span class="pill">Medium</span> <span class="muted small">· union-find cycle detection</span></h3>
+    <p><b>Problem.</b> A tree was turned into a graph by adding one extra edge; return that edge, choosing the last one in the input order if several would work.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  edges = [[1,2],[1,3],[2,3]]
+Output: [2,3]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  edges = [[1,2],[2,3],[3,4],[1,4],[1,5]]
+Output: [1,4]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 3 &lt;= n &lt;= 1000; edges describe a connected graph with exactly one cycle; the answer is unique in the given order.</p>
+    <p><b>Approach.</b> Union-find: add each edge, and the first edge whose two ends are already in the same set is the one that closes the cycle. Path compression keeps each operation effectively constant, and processing in input order gives the required 'last valid' choice.</p>
+    <pre><code>// Union-find: the edge that joins two known nodes closes the cycle
+struct DSU {
+    vector&lt;int&gt; parent, rank_;
+    DSU(int n) : parent(n + 1), rank_(n + 1, 0) { iota(parent.begin(), parent.end(), 0); }
+    int find(int x) { return parent[x] == x ? x : parent[x] = find(parent[x]); }   // path compression
+    bool unite(int a, int b) {
+        a = find(a); b = find(b);
+        if (a == b) return false;                // already connected
+        if (rank_[a] &lt; rank_[b]) swap(a, b);
+        parent[b] = a;
+        if (rank_[a] == rank_[b]) rank_[a]++;
+        return true;
+    }
+};
+vector&lt;int&gt; findRedundantConnection(vector&lt;vector&lt;int&gt;&gt;&amp; edges) {
+    DSU dsu(edges.size());
+    for (auto&amp; e : edges)
+        if (!dsu.unite(e[0], e[1])) return e;    // this edge closes a cycle
+    return {};
+}   // O(n · α(n)) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n · α(n)) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="accounts-merge">
+    <h3><span class="pn">M11</span> Accounts Merge <span class="pill">Medium</span> <span class="muted small">· union-find over emails</span></h3>
+    <p><b>Problem.</b> Each account is [name, email1, email2, ...]. Accounts sharing any email belong to the same person; merge them and return each merged account as [name, sorted emails].</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  accounts = [["John","johnsmith@mail.com","john_newyork@mail.com"],["John","johnsmith@mail.com","john00@mail.com"],["Mary","mary@mail.com"],["John","johnnybravo@mail.com"]]
+Output: [["John","john00@mail.com","john_newyork@mail.com","johnsmith@mail.com"],["Mary","mary@mail.com"],["John","johnnybravo@mail.com"]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of accounts &lt;= 1000; 1 &lt;= emails per account &lt;= 10; names are not unique but emails identify a person.</p>
+    <p><b>Approach.</b> Emails are the real vertices, so union every email in an account with the account's first email. Then group emails by their root, attach the name from any member, and sort — unioning through a representative avoids comparing accounts pairwise.</p>
+    <pre><code>// Union the emails inside each account; group by root
+struct DSU {
+    unordered_map&lt;string, string&gt; parent;        // email -&gt; parent email
+    string find(const string&amp; x) {
+        if (parent[x] != x) parent[x] = find(parent[x]);   // path compression
+        return parent[x];
+    }
+};
+vector&lt;vector&lt;string&gt;&gt; accountsMerge(vector&lt;vector&lt;string&gt;&gt;&amp; accounts) {
+    DSU dsu;
+    unordered_map&lt;string, string&gt; owner;         // email -&gt; name
+    for (auto&amp; acc : accounts)
+        for (int i = 1; i &lt; (int)acc.size(); i++) {
+            if (!dsu.parent.count(acc[i])) dsu.parent[acc[i]] = acc[i];
+            owner[acc[i]] = acc[0];
+            dsu.parent[dsu.find(acc[i])] = dsu.find(acc[1]);   // union with the first
+        }
+    unordered_map&lt;string, vector&lt;string&gt;&gt; groups;   // root -&gt; emails
+    for (auto&amp; [email, _] : dsu.parent) groups[dsu.find(email)].push_back(email);
+    vector&lt;vector&lt;string&gt;&gt; out;
+    for (auto&amp; [root, emails] : groups) {
+        sort(emails.begin(), emails.end());
+        vector&lt;string&gt; merged{owner[root]};       // the name comes from any member
+        merged.insert(merged.end(), emails.begin(), emails.end());
+        out.push_back(merged);
+    }
+    return out;
+}   // O(E · α) time · O(E) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(total emails · α) time · O(total emails) space.</p>
+  </section>
+  <section class="sub" id="graph-valid-tree">
+    <h3><span class="pn">M12</span> Graph Valid Tree <span class="pill">Medium</span> <span class="muted small">· n-1 edges + no cycle</span></h3>
+    <p><b>Problem.</b> Given n nodes and a list of undirected edges, decide whether they form a valid tree.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 5, edges = [[0,1],[0,2],[0,3],[1,4]]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 5, edges = [[0,1],[1,2],[2,3],[1,3],[1,4]]
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 2000; 0 &lt;= edges &lt;= 5000; a tree has exactly n-1 edges and no cycle.</p>
+    <p><b>Approach.</b> A tree is connected *and* acyclic, which for a graph with n vertices is equivalent to having exactly n-1 edges and no cycle. Union-find checks both in one pass: reject an edge that joins two already-connected nodes, and count the edges taken.</p>
+    <pre><code>// Tree ⇔ exactly n-1 edges and never a cycle
+struct DSU {
+    vector&lt;int&gt; parent;
+    DSU(int n) : parent(n) { iota(parent.begin(), parent.end(), 0); }
+    int find(int x) { return parent[x] == x ? x : parent[x] = find(parent[x]); }
+};
+bool validTree(int n, vector&lt;vector&lt;int&gt;&gt;&amp; edges) {
+    if ((int)edges.size() != n - 1) return false;   // too few or too many
+    DSU dsu(n);
+    for (auto&amp; e : edges) {
+        int a = dsu.find(e[0]), b = dsu.find(e[1]);
+        if (a == b) return false;                   // a cycle
+        dsu.parent[a] = b;
+    }
+    return true;                                    // n-1 edges, no cycle ⇒ tree
+}   // O(n · α(n)) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n · α(n)) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="word-ladder">
+    <h3><span class="pn">H1</span> Word Ladder <span class="pill hot">Hard</span> <span class="muted small">· BFS over generated wildcard states</span></h3>
+    <p><b>Problem.</b> Change one letter at a time from beginWord to endWord, where every intermediate word must be in the dictionary. Return the number of words in the shortest such sequence, or 0 if none exists.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  beginWord = "hit", endWord = "cog", wordList = ["hot","dot","dog","lot","log","cog"]
+Output: 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  beginWord = "hit", endWord = "cog", wordList = ["hot","dot","dog","lot","log"]
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= word length &lt;= 10; 1 &lt;= wordList size &lt;= 5000; all words have the same length and lowercase letters.</p>
+    <p><b>Approach.</b> Comparing every pair of words costs O(n² · L); instead bucket words by their wildcard patterns (h*t, *ot, ...) once, and the BFS then moves between words that share a pattern. The bucket index *is* the adjacency list, and building it once is the whole optimisation.</p>
+    <pre><code>// Wildcard buckets act as the adjacency list
+int ladderLength(string begin, string end, vector&lt;string&gt;&amp; words) {
+    unordered_set&lt;string&gt; dict(words.begin(), words.end());
+    if (!dict.count(end)) return 0;
+    unordered_map&lt;string, vector&lt;string&gt;&gt; buckets;      // "*ot" -&gt; words
+    for (const string&amp; w : words)
+        for (int i = 0; i &lt; (int)w.size(); i++) {
+            string key = w; key[i] = '*';
+            buckets[key].push_back(w);
+        }
+    unordered_set&lt;string&gt; seen{begin};
+    queue&lt;pair&lt;string, int&gt;&gt; q; q.push({begin, 1});
+    while (!q.empty()) {
+        auto [word, steps] = q.front(); q.pop();
+        if (word == end) return steps;
+        for (int i = 0; i &lt; (int)word.size(); i++) {
+            string key = word; key[i] = '*';
+            for (const string&amp; nb : buckets[key])            // one letter away
+                if (seen.insert(nb).second) q.push({nb, steps + 1});
+        }
+    }
+    return 0;
+}   // O(n · L²) time · O(n · L) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n · L²) time · O(n · L) space.</p>
+  </section>
+  <section class="sub" id="alien-dictionary">
+    <h3><span class="pn">H2</span> Alien Dictionary <span class="pill hot">Hard</span> <span class="muted small">· topological sort from adjacent words</span></h3>
+    <p><b>Problem.</b> The words are sorted by an unknown alphabet. Derive a valid character order, or return the empty string if none exists.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  words = ["wrt","wrf","er","ett","rftt"]
+Output: "wertf"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  words = ["z","x"]
+Output: "zx"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of words &lt;= 100; 1 &lt;= word length &lt;= 100; the order may be impossible, e.g. ["abc","ab"].</p>
+    <p><b>Approach.</b> Comparing each pair of adjacent words reveals exactly one ordering constraint — the first position where they differ. Collect those edges, topologically sort the resulting character graph, and return "" if a cycle appears or a prefix word comes later than its extension.</p>
+    <pre><code>// Adjacent pairs give one order edge; topologically sort them
+string alienOrder(vector&lt;string&gt;&amp; words) {
+    unordered_map&lt;char, unordered_set&lt;char&gt;&gt; adj;
+    unordered_map&lt;char, int&gt; indeg;
+    for (const string&amp; w : words) for (char c : w) indeg[c] = indeg[c];   // ensure keys
+    for (size_t i = 0; i + 1 &lt; words.size(); i++) {
+        const string&amp; a = words[i]; const string&amp; b = words[i + 1];
+        size_t j = 0;
+        while (j &lt; a.size() &amp;&amp; j &lt; b.size() &amp;&amp; a[j] == b[j]) j++;
+        if (j == b.size() &amp;&amp; j &lt; a.size()) return "";   // "abc" before "ab": invalid
+        if (j &lt; a.size() &amp;&amp; j &lt; b.size() &amp;&amp; !adj[a[j]].count(b[j])) {
+            adj[a[j]].insert(b[j]);                     // a[j] comes before b[j]
+            indeg[b[j]]++;
+        }
+    }
+    queue&lt;char&gt; ready;
+    for (auto&amp; [ch, d] : indeg) if (d == 0) ready.push(ch);
+    string order;
+    while (!ready.empty()) {
+        char u = ready.front(); ready.pop();
+        order += u;
+        for (char v : adj[u]) if (--indeg[v] == 0) ready.push(v);
+    }
+    return order.size() == indeg.size() ? order : "";   // cycle ⇒ impossible
+}   // O(total characters) time · O(1) space (26 letters)</code></pre>
+    <p class="cx"><b>Complexity:</b> O(total characters) time · O(unique characters) space.</p>
+  </section>
+  <section class="sub" id="network-delay-time">
+    <h3><span class="pn">H3</span> Network Delay Time <span class="pill hot">Hard</span> <span class="muted small">· Dijkstra with a priority queue</span></h3>
+    <p><b>Problem.</b> Signals travel along directed edges with given travel times. Starting from node k, return the time for all n nodes to receive the signal, or -1 if some node never does.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  times = [[2,1,1],[2,3,1],[3,4,1]], n = 4, k = 2
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  times = [[1,2,1]], n = 2, k = 2
+Output: -1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= k &lt;= n &lt;= 100; 1 &lt;= number of edges &lt;= 6000; edge weights are positive, so Dijkstra applies.</p>
+    <p><b>Approach.</b> Dijkstra: repeatedly settle the nearest unsettled node with a min-heap, relaxing its outgoing edges. The answer is the largest settled distance — if any node is left unsettled, some are unreachable and the answer is -1. The heap is what keeps the extract-min step logarithmic.</p>
+    <pre><code>// Dijkstra: settle the nearest node, relax its edges
+int networkDelayTime(vector&lt;vector&lt;int&gt;&gt;&amp; times, int n, int k) {
+    vector&lt;vector&lt;pair&lt;int,int&gt;&gt;&gt; adj(n + 1);    // u -&gt; (v, weight)
+    for (auto&amp; t : times) adj[t[0]].push_back({t[1], t[2]});
+    vector&lt;int&gt; dist(n + 1, INT_MAX);
+    priority_queue&lt;pair&lt;int,int&gt;, vector&lt;pair&lt;int,int&gt;&gt;, greater&lt;&gt;&gt; pq;   // min-heap
+    dist[k] = 0;
+    pq.push({0, k});                             // (distance, node)
+    while (!pq.empty()) {
+        auto [d, u] = pq.top(); pq.pop();
+        if (d &gt; dist[u]) continue;               // stale entry: skip it
+        for (auto [v, w] : adj[u])
+            if (d + w &lt; dist[v]) {               // relax the edge
+                dist[v] = d + w;
+                pq.push({dist[v], v});
+            }
+    }
+    int worst = 0;
+    for (int u = 1; u &lt;= n; u++) {
+        if (dist[u] == INT_MAX) return -1;        // unreachable node
+        worst = max(worst, dist[u]);
+    }
+    return worst;
+}   // O(m log n) time · O(n + m) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m log n) time · O(n + m) space.</p>
+  </section>
+  <section class="sub" id="cheapest-flights-within-k-stops">
+    <h3><span class="pn">H4</span> Cheapest Flights Within K Stops <span class="pill hot">Hard</span> <span class="muted small">· Bellman-Ford limited to k+1 rounds</span></h3>
+    <p><b>Problem.</b> Find the cheapest price from src to dst using at most k stops, or -1 if there is none.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 4, flights = [[0,1,100],[1,2,100],[2,0,100],[1,3,600],[2,3,200]], src = 0, dst = 3, k = 1
+Output: 700</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  same flights, k = 0
+Output: -1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 100; 0 &lt;= flights &lt;= n²; 0 &lt;= price &lt;= 10^4; a node may be revisited with fewer stops.</p>
+    <p><b>Approach.</b> Dijkstra alone fails here because a cheaper-but-longer path can violate the stop limit. Bellman-Ford with exactly k+1 rounds counts the edges along each path: relaxing from a *snapshot* of the previous round (never from values updated this round) is what enforces the limit.</p>
+    <pre><code>// k+1 relaxation rounds; each round works from a snapshot
+int findCheapestPrice(int n, vector&lt;vector&lt;int&gt;&gt;&amp; flights, int src, int dst, int k) {
+    const int INF = 1e9;
+    vector&lt;int&gt; dist(n, INF);
+    dist[src] = 0;
+    for (int round = 0; round &lt;= k; round++) {
+        vector&lt;int&gt; next = dist;                 // snapshot: at most one extra edge
+        for (auto&amp; f : flights) {
+            int u = f[0], v = f[1], w = f[2];
+            if (dist[u] != INF &amp;&amp; dist[u] + w &lt; next[v]) next[v] = dist[u] + w;
+        }
+        dist = move(next);
+    }
+    return dist[dst] == INF ? -1 : dist[dst];
+}   // O(k · m) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(k · m) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="min-cost-to-connect-all-points">
+    <h3><span class="pn">H5</span> Minimum Cost to Connect All Points <span class="pill hot">Hard</span> <span class="muted small">· minimum spanning tree (Prim)</span></h3>
+    <p><b>Problem.</b> Given points in the plane, connect them all so that the total Manhattan distance of the edges is minimal, and return that cost.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  points = [[0,0],[2,2],[3,10],[5,2],[7,0]]
+Output: 20</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  points = [[3,12],[-2,5],[-4,1]]
+Output: 18</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 1000; -10^6 &lt;= coordinates &lt;= 10^6; the graph is complete, so every pair is an edge.</p>
+    <p><b>Approach.</b> Prim's MST: grow a tree from one point, always adding the cheapest edge that leaves the tree. With a complete graph the distances can be computed on the fly, so O(n²) time and no edge list is needed — that is why Prim fits this shape better than Kruskal.</p>
+    <pre><code>// Prim: repeatedly attach the nearest unvisited point
+int minCostConnectPoints(vector&lt;vector&lt;int&gt;&gt;&amp; pts) {
+    int n = pts.size();
+    vector&lt;int&gt; best(n, INT_MAX);                // cheapest edge into the tree
+    vector&lt;bool&gt; inTree(n, false);
+    best[0] = 0;
+    int total = 0;
+    for (int it = 0; it &lt; n; it++) {
+        int u = -1;                              // pick the nearest outside point
+        for (int i = 0; i &lt; n; i++)
+            if (!inTree[i] &amp;&amp; (u == -1 || best[i] &lt; best[u])) u = i;
+        inTree[u] = true;
+        total += best[u];                        // attach it
+        for (int v = 0; v &lt; n; v++) {
+            if (inTree[v]) continue;
+            int d = abs(pts[u][0] - pts[v][0]) + abs(pts[u][1] - pts[v][1]);
+            best[v] = min(best[v], d);           // relax the frontier
+        }
+    }
+    return total;
+}   // O(n²) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="swim-in-rising-water">
+    <h3><span class="pn">H6</span> Swim in Rising Water <span class="pill hot">Hard</span> <span class="muted small">· Dijkstra on a bottleneck cost</span></h3>
+    <p><b>Problem.</b> The grid gives the elevation of each cell; at time t the water level is t and you may swim between cells of height at most t. Return the earliest time at which (0,0) and (n-1,n-1) become connected.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  grid = [[0,2],[1,3]]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  grid = [[0,1,2,3,4],[24,23,22,21,5],[12,13,14,15,16],[11,17,18,19,20],[10,9,8,7,6]]
+Output: 16</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 50; the grid is a permutation of 0..n²-1; movement is 4-directional.</p>
+    <p><b>Approach.</b> The cost of a path is the *largest* cell on it, and the answer is the smallest such largest cell over all paths. Dijkstra works with max instead of sum because the cost is monotone: relax a neighbour with max(current, neighbour height), the same priority-queue shape with a different combine step.</p>
+    <pre><code>// Dijkstra where the path cost is the maximum cell instead of a sum
+int swimInWater(vector&lt;vector&lt;int&gt;&gt;&amp; g) {
+    int n = g.size();
+    vector&lt;vector&lt;int&gt;&gt; best(n, vector&lt;int&gt;(n, INT_MAX));
+    priority_queue&lt;array&lt;int,3&gt;, vector&lt;array&lt;int,3&gt;&gt;, greater&lt;&gt;&gt; pq;   // (cost, r, c)
+    best[0][0] = g[0][0];
+    pq.push({g[0][0], 0, 0});
+    int dr[4] = {1,-1,0,0}, dc[4] = {0,0,1,-1};
+    while (!pq.empty()) {
+        auto [cost, r, c] = pq.top(); pq.pop();
+        if (r == n - 1 &amp;&amp; c == n - 1) return cost;
+        if (cost &gt; best[r][c]) continue;         // stale entry
+        for (int d = 0; d &lt; 4; d++) {
+            int nr = r + dr[d], nc = c + dc[d];
+            if (nr &lt; 0 || nr &gt;= n || nc &lt; 0 || nc &gt;= n) continue;
+            int next = max(cost, g[nr][nc]);     // bottleneck, not sum
+            if (next &lt; best[nr][nc]) { best[nr][nc] = next; pq.push({next, nr, nc}); }
+        }
+    }
+    return best[n-1][n-1];
+}   // O(n² log n) time · O(n²) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n² log n) time · O(n²) space.</p>
+  </section>
+  <section class="sub" id="path-with-minimum-effort">
+    <h3><span class="pn">H7</span> Path With Minimum Effort <span class="pill hot">Hard</span> <span class="muted small">· Dijkstra on absolute differences</span></h3>
+    <p><b>Problem.</b> The effort of a path is the largest absolute height difference between consecutive cells. Return the minimum effort over all paths from the top-left to the bottom-right.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  heights = [[1,2,2],[3,8,2],[5,3,5]]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  heights = [[1,2,3],[3,8,4],[5,3,5]]
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 100; 1 &lt;= heights &lt;= 10^6; movement is 4-directional.</p>
+    <p><b>Approach.</b> Identical to the rising-water problem with a different bottleneck: the edge weight is the absolute difference between neighbouring cells, and the path cost is the maximum such weight. Recognising that the two problems share one template is the point of the pair.</p>
+    <pre><code>// Same bottleneck Dijkstra, with edge weight |difference|
+int minimumEffortPath(vector&lt;vector&lt;int&gt;&gt;&amp; h) {
+    int R = h.size(), C = h[0].size();
+    vector&lt;vector&lt;int&gt;&gt; best(R, vector&lt;int&gt;(C, INT_MAX));
+    priority_queue&lt;array&lt;int,3&gt;, vector&lt;array&lt;int,3&gt;&gt;, greater&lt;&gt;&gt; pq;   // (effort, r, c)
+    best[0][0] = 0;
+    pq.push({0, 0, 0});
+    int dr[4] = {1,-1,0,0}, dc[4] = {0,0,1,-1};
+    while (!pq.empty()) {
+        auto [effort, r, c] = pq.top(); pq.pop();
+        if (r == R - 1 &amp;&amp; c == C - 1) return effort;
+        if (effort &gt; best[r][c]) continue;       // stale entry
+        for (int d = 0; d &lt; 4; d++) {
+            int nr = r + dr[d], nc = c + dc[d];
+            if (nr &lt; 0 || nr &gt;= R || nc &lt; 0 || nc &gt;= C) continue;
+            int next = max(effort, abs(h[nr][nc] - h[r][c]));   // bottleneck
+            if (next &lt; best[nr][nc]) { best[nr][nc] = next; pq.push({next, nr, nc}); }
+        }
+    }
+    return best[R-1][C-1];
+}   // O(R·C log(R·C)) time · O(R·C) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(R·C log(R·C)) time · O(R·C) space.</p>
+  </section>
+  <section class="sub" id="critical-connections-in-a-network">
+    <h3><span class="pn">H8</span> Critical Connections (Bridges) <span class="pill hot">Hard</span> <span class="muted small">· Tarjan bridges via DFS discovery times</span></h3>
+    <p><b>Problem.</b> Return every edge whose removal disconnects the network (a bridge), in any order.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 4, connections = [[0,1],[1,2],[2,0],[1,3]]
+Output: [[1,3]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 2, connections = [[0,1]]
+Output: [[0,1]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= n &lt;= 10^5; n - 1 &lt;= connections &lt;= 10^5; the graph is connected with no repeated edges.</p>
+    <p><b>Approach.</b> An edge (u, v) is a bridge exactly when the subtree under v has no way back to u or above it. The DFS records a discovery time and a low-link value per node; if low[v] &gt; disc[u], nothing below v reaches u, so the edge is critical. The parent edge must be skipped by *edge id*, not by node, because parallel edges would otherwise be mistaken for the parent.</p>
+    <pre><code>// Bridges: low[child] &gt; disc[parent] means the edge is critical
+class Solver {
+public:
+    vector&lt;vector&lt;pair&lt;int,int&gt;&gt;&gt; adj;           // (neighbour, edge id)
+    vector&lt;int&gt; disc, low;
+    vector&lt;vector&lt;int&gt;&gt; bridges;
+    int timer = 0;
+    void dfs(int u, int parentEdge) {
+        disc[u] = low[u] = ++timer;
+        for (auto [v, id] : adj[u]) {
+            if (id == parentEdge) continue;      // skip the edge we came from
+            if (disc[v]) low[u] = min(low[u], disc[v]);       // back edge
+            else {
+                dfs(v, id);
+                low[u] = min(low[u], low[v]);
+                if (low[v] &gt; disc[u]) bridges.push_back({u, v});   // bridge
+            }
+        }
+    }
+    vector&lt;vector&lt;int&gt;&gt; criticalConnections(int n, vector&lt;vector&lt;int&gt;&gt;&amp; conn) {
+        adj.assign(n, {});
+        for (int i = 0; i &lt; (int)conn.size(); i++) {          // give every edge an id
+            adj[conn[i][0]].push_back({conn[i][1], i});
+            adj[conn[i][1]].push_back({conn[i][0], i});
+        }
+        disc.assign(n, 0); low.assign(n, 0);
+        bridges.clear(); timer = 0;
+        for (int u = 0; u &lt; n; u++) if (!disc[u]) dfs(u, -1);
+        return bridges;
+    }
+};   // O(n + m) time · O(n + m) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n + m) time · O(n + m) space.</p>
+  </section>
+  <section class="sub" id="remove-max-number-of-edges-to-keep-graph-fully-traversable">
+    <h3><span class="pn">H9</span> Remove Max Number of Edges to Keep Graph Fully Traversable <span class="pill hot">Hard</span> <span class="muted small">· one union-find per traveller, shared edges first</span></h3>
+    <p><b>Problem.</b> Alice may walk type 1 and type 3 edges, Bob type 2 and type 3, and every edge is undirected. Return the maximum number of edges that can be removed so that each of them can still travel between any two nodes, or -1 if that is impossible.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 4, edges = [[3,1,2],[3,2,3],[1,1,3],[1,2,4],[1,1,2],[2,3,4]]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 4, edges = [[3,1,2],[3,2,3],[1,1,4],[2,1,4]]
+Output: 0</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  n = 4, edges = [[3,2,3],[1,1,2],[2,3,4]]
+Output: -1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; 1 &lt;= edges.length &lt;= 10^5; type 1 belongs to Alice, type 2 to Bob, type 3 to both; edges[i] = [type, u, v] with 1 &lt;= u, v &lt;= n and u != v.</p>
+    <p><b>Approach.</b> Alice and Bob need separate union-find structures, because an edge may be useful to one and pointless to the other. Process the type 3 edges first — they are the most valuable, since they can serve both travellers — and count one as removable only when *neither* structure needed it. Then do the same for the private type 1 and type 2 edges. Finally both structures must reduce to a single component; otherwise one of the two is stuck and the answer is -1.</p>
+    <pre><code>// One DSU per traveller; shared edges first, then private ones
+struct DSU {
+    vector&lt;int&gt; parent, rank_;
+    int components;
+    DSU(int n) : parent(n + 1), rank_(n + 1, 0), components(n) {
+        iota(parent.begin(), parent.end(), 0);
+    }
+    int find(int x) { return parent[x] == x ? x : parent[x] = find(parent[x]); }
+    bool unite(int a, int b) {
+        a = find(a); b = find(b);
+        if (a == b) return false;
+        if (rank_[a] &lt; rank_[b]) swap(a, b);
+        parent[b] = a;
+        if (rank_[a] == rank_[b]) rank_[a]++;
+        components--;                            // one merge, one fewer component
+        return true;
+    }
+};
+int maxNumEdgesToRemove(int n, vector&lt;vector&lt;int&gt;&gt;&amp; edges) {
+    DSU alice(n), bob(n);
+    int removed = 0;
+    for (auto&amp; e : edges)                        // shared edges are the most valuable
+        if (e[0] == 3) {
+            bool a = alice.unite(e[1], e[2]);
+            bool b = bob.unite(e[1], e[2]);
+            if (!a &amp;&amp; !b) removed++;             // useful to neither traveller
+        }
+    for (auto&amp; e : edges) {
+        if (e[0] == 1 &amp;&amp; !alice.unite(e[1], e[2])) removed++;
+        if (e[0] == 2 &amp;&amp; !bob.unite(e[1], e[2])) removed++;
+    }
+    if (alice.components &gt; 1 || bob.components &gt; 1) return -1;   // someone is stuck
+    return removed;
+}   // O(m · α(n)) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m · α(n)) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="number-of-ways-to-arrive-at-destination">
+    <h3><span class="pn">H10</span> Number of Ways to Arrive at Destination <span class="pill hot">Hard</span> <span class="muted small">· Dijkstra with path counting</span></h3>
+    <p><b>Problem.</b> Count the paths from node 0 to node n-1 that have the shortest total travel time, modulo 10^9 + 7.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 7, roads = [[0,6,7],[0,1,2],[1,2,3],[1,3,3],[6,3,3],[3,5,1],[6,5,1],[2,5,1],[0,4,5],[4,6,2]]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 2, roads = [[1,0,10]]
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 200; 0 &lt;= roads &lt;= n · (n - 1) / 2; weights are positive; the graph is connected.</p>
+    <p><b>Approach.</b> Run Dijkstra, but maintain two arrays: the shortest distance and the number of shortest paths reaching each node. When a relaxation finds a strictly shorter route the count is *replaced*; when it finds an equal-length route the count is *added*. That distinction is the entire problem.</p>
+    <pre><code>// Dijkstra with a path count: replace on improvement, add on a tie
+int countPaths(int n, vector&lt;vector&lt;int&gt;&gt;&amp; roads) {
+    const long long MOD = 1000000007;
+    vector&lt;vector&lt;pair&lt;int,int&gt;&gt;&gt; adj(n);        // u -&gt; (v, time)
+    for (auto&amp; r : roads) {
+        adj[r[0]].push_back({r[1], r[2]});
+        adj[r[1]].push_back({r[0], r[2]});
+    }
+    vector&lt;long long&gt; dist(n, LLONG_MAX), ways(n, 0);
+    priority_queue&lt;pair&lt;long long,int&gt;, vector&lt;pair&lt;long long,int&gt;&gt;, greater&lt;&gt;&gt; pq;
+    dist[0] = 0; ways[0] = 1;
+    pq.push({0, 0});
+    while (!pq.empty()) {
+        auto [d, u] = pq.top(); pq.pop();
+        if (d &gt; dist[u]) continue;               // stale entry
+        for (auto [v, w] : adj[u]) {
+            if (d + w &lt; dist[v]) {               // shorter: replace the count
+                dist[v] = d + w;
+                ways[v] = ways[u];
+                pq.push({dist[v], v});
+            } else if (d + w == dist[v]) {       // equal: add the count
+                ways[v] = (ways[v] + ways[u]) % MOD;
+            }
+        }
+    }
+    return (int)ways[n - 1];
+}   // O(m log n) time · O(n + m) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(m log n) time · O(n + m) space.</p>
+  </section>
+  <section class="sub" id="find-the-city-with-the-smallest-number-of-neighbors-at-a-threshold-distance">
+    <h3><span class="pn">H11</span> City With the Fewest Reachable Neighbours <span class="pill hot">Hard</span> <span class="muted small">· all-pairs shortest paths (Floyd-Warshall)</span></h3>
+    <p><b>Problem.</b> Given weighted bidirectional edges and a distance threshold, return the city with the fewest other cities within that distance, breaking ties by the largest index.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  n = 4, edges = [[0,1,3],[1,2,1],[1,3,4],[2,3,1]], distanceThreshold = 4
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  n = 5, edges = [[0,1,2],[0,4,8],[1,2,3],[1,4,2],[2,3,1],[3,4,1]], distanceThreshold = 2
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= n &lt;= 100; 1 &lt;= edges &lt;= n · (n - 1) / 2; weights are positive.</p>
+    <p><b>Approach.</b> Every pair of cities needs a distance, which is exactly what Floyd-Warshall computes with three nested loops over a matrix: try every intermediate node k and relax the pair (i, j). With n &lt;= 100 the O(n³) table is small enough, and the alternative of running Dijkstra from every node is more code for no benefit.</p>
+    <pre><code>// Floyd-Warshall: try every intermediate node k
+int findTheCity(int n, vector&lt;vector&lt;int&gt;&gt;&amp; edges, int threshold) {
+    const int INF = 1e9;
+    vector&lt;vector&lt;int&gt;&gt; d(n, vector&lt;int&gt;(n, INF));
+    for (int i = 0; i &lt; n; i++) d[i][i] = 0;
+    for (auto&amp; e : edges) { d[e[0]][e[1]] = e[2]; d[e[1]][e[0]] = e[2]; }
+    for (int k = 0; k &lt; n; k++)                  // the intermediate node
+        for (int i = 0; i &lt; n; i++)
+            for (int j = 0; j &lt; n; j++)
+                if (d[i][k] + d[k][j] &lt; d[i][j]) d[i][j] = d[i][k] + d[k][j];
+    int bestCity = -1, bestCount = n;
+    for (int i = n - 1; i &gt;= 0; i--) {           // descending: largest index wins ties
+        int reachable = 0;
+        for (int j = 0; j &lt; n; j++) if (i != j &amp;&amp; d[i][j] &lt;= threshold) reachable++;
+        if (reachable &lt; bestCount) { bestCount = reachable; bestCity = i; }
+    }
+    return bestCity;
+}   // O(n³) time · O(n²) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n³) time · O(n²) space.</p>
+  </section>
+  <section class="sub" id="largest-color-value-in-a-directed-graph">
+    <h3><span class="pn">H12</span> Largest Colour Value in a Directed Graph <span class="pill hot">Hard</span> <span class="muted small">· topological order + per-node colour counts</span></h3>
+    <p><b>Problem.</b> Each node has a colour. The colour value of a path is the number of times its most frequent colour appears on it. Return the largest colour value over all paths, or -1 if the graph has a cycle.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  colors = "abaca", edges = [[0,1],[0,2],[2,3],[3,4]]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  colors = "a", edges = [[0,0]]
+Output: -1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; 1 &lt;= edges &lt;= 10^5; there are at most 26 colours.</p>
+    <p><b>Approach.</b> Process nodes in topological order so every predecessor is finished before its successors. Each node stores 26 counters: the best count of each colour along any path ending there, computed by copying the best predecessor and adding its own colour. A cycle (fewer processed nodes than n) makes the answer -1.</p>
+    <pre><code>// Topological order: each node keeps 26 per-colour counts
+int largestPathValue(string colors, vector&lt;vector&lt;int&gt;&gt;&amp; edges) {
+    int n = colors.size();
+    vector&lt;vector&lt;int&gt;&gt; adj(n);
+    vector&lt;int&gt; indeg(n, 0);
+    for (auto&amp; e : edges) { adj[e[0]].push_back(e[1]); indeg[e[1]]++; }
+    vector&lt;array&lt;int, 26&gt;&gt; dp(n);
+    for (auto&amp; row : dp) row.fill(0);
+    queue&lt;int&gt; ready;
+    for (int u = 0; u &lt; n; u++) if (!indeg[u]) ready.push(u);
+    int processed = 0, best = 0;
+    while (!ready.empty()) {
+        int u = ready.front(); ready.pop();
+        processed++;
+        dp[u][colors[u] - 'a']++;                // count this node's colour
+        best = max(best, dp[u][colors[u] - 'a']);
+        for (int v : adj[u]) {
+            for (int c = 0; c &lt; 26; c++)          // push the better counts forward
+                if (dp[u][c] &gt; dp[v][c]) dp[v][c] = dp[u][c];
+            if (--indeg[v] == 0) ready.push(v);
+        }
+    }
+    return processed == n ? best : -1;            // fewer than n: a cycle
+}   // O(26·(n + m)) time · O(26·n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(26 · (n + m)) time · O(26 · n) space.</p>
+  </section>
+</section>
 
   </main>
 </div>
 
 <footer>
-  <p><b>C++ bank</b> — 210 problems across 7 topics, with complete solutions in
+  <p><b>C++ bank</b> — 240 problems across 8 topics, with complete solutions in
   C++17/20/23 solutions.</p>
   <p class="small">Same problems in every language:
     <a href="cpp-leetcode.html">C++</a> · <a href="java-leetcode.html">Java</a> · <a href="python-leetcode.html">Python</a>

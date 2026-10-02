@@ -10,7 +10,7 @@ _Last updated: 2026-10-02_
 | **C++ for LeetCode** (16 chapters, STL-first) | `site/cpp-guide.html` (168 KB) | ✅ 0 parser errors, 34 snippets compile-checked with g++ 14 / C++20 |
 | **Java for LeetCode** (16 chapters, Collections-first) | `site/java-guide.html` (248 KB) | ✅ 0 parser errors, 63 snippets compile-checked with javac 11, 13 SVG figures |
 | Site hub | `site/index.html` | ✅ all internal links resolve |
-| **Question banks, topics 1–7** — Arrays & Strings · Two Pointers & Sliding Window · Hashing & Frequency Maps · Stacks, Queues & Monotonic Structures · Binary Search & Sorted Structures · Linked Lists · Trees & BSTs · 210 problems (42 easy · 84 medium · 84 hard) | `site/{cpp,java,python}-leetcode.html` | ✅ **all 210 C++ and 210 Java solutions compile** (judge-API stubs included so every snippet is self-contained); Python solutions pass 250 example checks plus thousands of randomised brute-force comparisons; documented example inputs cross-checked against LeetCode where they were transcribed from memory |
+| **Question banks, topics 1–8** — Arrays & Strings · Two Pointers & Sliding Window · Hashing & Frequency Maps · Stacks, Queues & Monotonic Structures · Binary Search & Sorted Structures · Linked Lists · Trees & BSTs · Graphs & Union-Find · 240 problems (48 easy · 96 medium · 96 hard) | `site/{cpp,java,python}-leetcode.html` | ✅ **all 240 C++ and 240 Java solutions compile** (judge-API stubs included so every snippet is self-contained); Python solutions pass 250 example checks plus thousands of randomised brute-force comparisons; documented example inputs cross-checked against LeetCode where they were transcribed from memory |
 | GitHub Pages workflow | `.github/workflows/pages.yml` | ✅ pages artifact + deploy job |
 | One-command publisher | `push.sh` | ✅ ready (needs a token, see below) |
 | Rebuild script | `site/build-all.sh` | ✅ regenerates both guides + the three banks |
@@ -20,9 +20,8 @@ _Last updated: 2026-10-02_
 The bank engine is finished: `site/leetcode/build.py` renders **one** authored bank into the three
 language pages, so each problem is written once and appears with C++, Java and Python solutions.
 
-**Topics 8–16 still to author** (270 problems per language):
+**Topics 9–16 still to author** (240 problems per language):
 
-8. Graphs & Union-Find
 9. Dynamic Programming
 10. Greedy & Intervals
 11. Heaps, Top-K & Design
@@ -48,7 +47,11 @@ of contents and the search index update automatically.
    `POST https://leetcode.com/graphql` with `{"query":"query($t:String!){question(titleSlug:$t){content difficulty}}","variables":{"t":"<title-slug>"}}`
    returns the official examples (no auth needed) — two inputs in topic 5 were mis-remembered and this is how they were caught.
 5. Unique Python function names inside one topic (several LeetCode problems are all called `search` or `findKthNumber`).
-6. `bash site/build-all.sh` (rebuilds pages, mirrors `docs/`, link check) → commit → push.
+6. Difficulty chips mark the *tier*, not LeetCode's star rating: the three sections are a graded slope (easy 1→6, medium 1→12, hard 1→12), so a
+   hard-tier slot may hold a problem LeetCode rates Medium when it introduces a heavier pattern (Dijkstra, Bellman-Ford, MST, Floyd-Warshall).
+   Never do the reverse — a problem rated above its tier (an officially Medium problem in an easy slot, as `employee-importance` was in topic 8) must
+   be swapped out for a genuine easy one.
+7. `bash site/build-all.sh` (rebuilds pages, mirrors `docs/`, link check) → commit → push.
 
 ## GitHub deployment
 
