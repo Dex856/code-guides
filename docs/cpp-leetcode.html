@@ -1641,12 +1641,810 @@ long long countSubarrays(vector&lt;int&gt;&amp; a, int minK, int maxK) {
     <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
   </section>
 </section>
+<section class="chapter" id="t03">
+  <h2><span class="num">3</span> Hashing &amp; Frequency Maps</h2>
+  <p class="tagline">Trade memory for time: one pass, one dictionary, O(1) lookups — the pattern behind a third of all interview questions.</p>
+  <div class="card"><p><b>What this topic trains.</b> Choosing the right key (value, value-minus-index, prefix-sum-mod, slope, encoded state), counting with maps instead of sorting, hashing composite keys, and knowing exactly when a hash map is not allowed (when you need order) or not needed (when the index itself can store the information).</p>
+<p class="small muted">Ordering: easy 1–6 are single-pass lookups and frequency counts; medium 1–5 are counting maps with a twist (prefix sums, normalised keys, pair counting), 6–9 are design/encoding problems, 10–12 combine a map with another idea; hard 1–4 are the classic hard hash problems, 5–8 need a normalised key or an exact-count argument, 9–12 are competition-level variants.</p></div>
+  <section class="sub" id="two-sum-hash">
+    <h3><span class="pn">E1</span> Two Sum (Unsorted) <span class="pill">Easy</span> <span class="muted small">· seen-map of complements</span></h3>
+    <p><b>Problem.</b> Given an unsorted array and a target, return the indices of the two numbers that add up to the target. Exactly one solution exists and you may not use the same element twice.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [2,7,11,15], target = 9
+Output: [0,1]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [3,2,4], target = 6
+Output: [1,2]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= n &lt;= 10^4; exactly one valid pair exists; answers may be returned in any order.</p>
+    <p><b>Approach.</b> Walk the array once and remember every value you have already seen together with its index. For the current value v you need target - v, so the complement lookup happens *before* storing v — that ordering alone stops you from pairing an element with itself.</p>
+    <pre><code>// One pass, complements in a hash map
+vector&lt;int&gt; twoSum(vector&lt;int&gt;&amp; a, int target) {
+    unordered_map&lt;int, int&gt; seen;              // value -&gt; index
+    for (int i = 0; i &lt; (int)a.size(); i++) {
+        auto it = seen.find(target - a[i]);    // look FIRST
+        if (it != seen.end()) return {it-&gt;second, i};
+        seen[a[i]] = i;
+    }
+    return {};                                 // unreachable for valid input
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="contains-duplicate">
+    <h3><span class="pn">E2</span> Contains Duplicate <span class="pill">Easy</span> <span class="muted small">· set membership</span></h3>
+    <p><b>Problem.</b> Return true if any value appears at least twice in the array, false if every element is distinct.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [1,2,3,1]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [1,2,3,4]
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; values fit in a 32-bit integer.</p>
+    <p><b>Approach.</b> A set is the minimal structure that answers "have I seen this?". Walk once and test membership before inserting; the moment the test succeeds you can return true without scanning the rest.</p>
+    <pre><code>// Set membership answers "seen before?" in O(1)
+bool containsDuplicate(vector&lt;int&gt;&amp; a) {
+    unordered_set&lt;int&gt; seen;
+    for (int v : a) {
+        if (!seen.insert(v).second) return true;   // insert returns {it, inserted}
+    }
+    return false;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="valid-anagram">
+    <h3><span class="pn">E3</span> Valid Anagram <span class="pill">Easy</span> <span class="muted small">· frequency count 26</span></h3>
+    <p><b>Problem.</b> Given two strings s and t, return true if t is an anagram of s — same characters with the same multiplicities.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "anagram", t = "nagaram"
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "rat", t = "car"
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= len(s), len(t) &lt;= 5 * 10^4; strings contain lowercase English letters only.</p>
+    <p><b>Approach.</b> Count each letter of s up, each letter of t down, and check that every counter returns to zero. Because the alphabet is fixed at 26, a small array beats a hash map on both speed and allocation.</p>
+    <pre><code>// Fixed alphabet: a 26-slot array is the fastest "map"
+bool isAnagram(string s, string t) {
+    if (s.size() != t.size()) return false;
+    array&lt;int, 26&gt; cnt{};                       // zero-initialised
+    for (char c : s) cnt[c - 'a']++;
+    for (char c : t) if (--cnt[c - 'a'] &lt; 0) return false;
+    return true;                                // every slot is back to zero
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="first-unique-character">
+    <h3><span class="pn">E4</span> First Unique Character <span class="pill">Easy</span> <span class="muted small">· count then scan</span></h3>
+    <p><b>Problem.</b> Return the index of the first character in the string that does not repeat anywhere else, or -1 if there is none.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "leetcode"
+Output: 0</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "aabb"
+Output: -1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= len(s) &lt;= 10^5; strings contain lowercase English letters only.</p>
+    <p><b>Approach.</b> Two passes: count everything first, then read the counts left to right and stop at the first 1. Trying to answer in one pass fails because you cannot know whether a character seen now will repeat later.</p>
+    <pre><code>// Count in pass 1, decide in pass 2
+int firstUniqChar(string s) {
+    array&lt;int, 26&gt; cnt{};
+    for (char c : s) cnt[c - 'a']++;
+    for (int i = 0; i &lt; (int)s.size(); i++)
+        if (cnt[s[i] - 'a'] == 1) return i;
+    return -1;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="intersection-of-two-arrays">
+    <h3><span class="pn">E5</span> Intersection of Two Arrays <span class="pill">Easy</span> <span class="muted small">· set intersection</span></h3>
+    <p><b>Problem.</b> Return the *distinct* values that appear in both arrays; the result may be in any order.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [1,2,2,1], [2,2]
+Output: [2]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [4,9,5], [9,4,9,8,4]
+Output: [9,4]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n, m &lt;= 1000; 0 &lt;= values &lt;= 1000; each element of the result must be unique.</p>
+    <p><b>Approach.</b> Put one array in a set, then walk the other and keep the values the set contains. Iterate over a snapshot of the candidates (or build a separate result set) so you are not mutating the container you are scanning.</p>
+    <pre><code>// Set of one side, filter the other
+vector&lt;int&gt; intersection(vector&lt;int&gt;&amp; a, vector&lt;int&gt;&amp; b) {
+    unordered_set&lt;int&gt; have(a.begin(), a.end()), out;
+    for (int v : b) if (have.count(v)) out.insert(v);   // dedupes for free
+    return vector&lt;int&gt;(out.begin(), out.end());
+}   // O(n + m) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n + m) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="word-pattern">
+    <h3><span class="pn">E6</span> Word Pattern <span class="pill">Easy</span> <span class="muted small">· two-way bijection</span></h3>
+    <p><b>Problem.</b> Given a pattern such as "abba" and a sentence such as "dog cat cat dog", decide whether the sentence follows the pattern — a perfect one-to-one correspondence between pattern characters and words, in both directions.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  pattern = "abba", s = "dog cat cat dog"
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  pattern = "abba", s = "dog cat cat fish"
+Output: false</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= pattern length &lt;= 300; s contains lowercase words separated by single spaces; words may repeat.</p>
+    <p><b>Approach.</b> One map is not enough: "ab" vs "dog dog" would pass a char-to-word map alone (both map to dog) yet is not a bijection. Keep a map in each direction and reject any clash — this 'two maps' idea reappears in isomorphic strings, encoding problems and cipher puzzles.</p>
+    <pre><code>// Both directions, or the mapping is not a bijection
+bool wordPattern(string pattern, string s) {
+    vector&lt;string&gt; words;
+    stringstream ss(s); string w;
+    while (ss &gt;&gt; w) words.push_back(w);
+    if (words.size() != pattern.size()) return false;
+    unordered_map&lt;char, string&gt; c2w;
+    unordered_map&lt;string, char&gt; w2c;
+    for (int i = 0; i &lt; (int)pattern.size(); i++) {
+        char c = pattern[i];
+        if (c2w.count(c) &amp;&amp; c2w[c] != words[i]) return false;
+        if (w2c.count(words[i]) &amp;&amp; w2c[words[i]] != c) return false;
+        c2w[c] = words[i];
+        w2c[words[i]] = c;
+    }
+    return true;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="group-anagrams">
+    <h3><span class="pn">M1</span> Group Anagrams <span class="pill">Medium</span> <span class="muted small">· canonical key</span></h3>
+    <p><b>Problem.</b> Group the strings that are anagrams of each other and return the groups in any order.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  ["eat","tea","tan","ate","nat","bat"]
+Output: [["eat","tea","ate"],["tan","nat"],["bat"]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of strings &lt;= 10^4; each string has length 1..100; lowercase letters only.</p>
+    <p><b>Approach.</b> Anagrams share a canonical form. Sorting each word (O(k log k)) is the portable choice; counting letters into a 26-length signature gives O(k) but needs care to be unambiguous — join the numbers with a separator, otherwise [1,11] and [11,1] collide.</p>
+    <pre><code>// Sort each word into a canonical key
+vector&lt;vector&lt;string&gt;&gt; groupAnagrams(vector&lt;string&gt;&amp; words) {
+    unordered_map&lt;string, vector&lt;string&gt;&gt; groups;
+    for (const string&amp; w : words) {
+        string key = w;
+        sort(key.begin(), key.end());          // anagrams share this key
+        groups[key].push_back(w);
+    }
+    vector&lt;vector&lt;string&gt;&gt; out;
+    for (auto&amp; kv : groups) out.push_back(move(kv.second));
+    return out;
+}   // O(n · k log k) time · O(n · k) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n · k log k) time · O(n · k) space.</p>
+  </section>
+  <section class="sub" id="top-k-frequent-elements">
+    <h3><span class="pn">M2</span> Top K Frequent Elements <span class="pill">Medium</span> <span class="muted small">· count + bucket sort</span></h3>
+    <p><b>Problem.</b> Return the k values that occur most often in the array; the answer is unique and may be returned in any order.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [1,1,1,2,2,3], k = 2
+Output: [1,2]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [1], k = 1
+Output: [1]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; 1 &lt;= k &lt;= number of distinct values; answer is guaranteed unique.</p>
+    <p><b>Approach.</b> Count, then exploit that a frequency is at most n: build an array of buckets indexed by frequency and read backwards. That trades the O(n log n) of sorting for O(n). A heap of size k is the alternative when memory is tight or frequencies are not bounded by n.</p>
+    <pre><code>// Count, then bucket by frequency (frequencies are &lt;= n)
+vector&lt;int&gt; topKFrequent(vector&lt;int&gt;&amp; a, int k) {
+    unordered_map&lt;int, int&gt; cnt;
+    for (int v : a) cnt[v]++;
+    vector&lt;vector&lt;int&gt;&gt; bucket(a.size() + 1);
+    for (auto&amp; [v, c] : cnt) bucket[c].push_back(v);
+    vector&lt;int&gt; out;
+    for (int f = (int)a.size(); f &gt;= 1 &amp;&amp; (int)out.size() &lt; k; f--)
+        for (int v : bucket[f]) { out.push_back(v); if ((int)out.size() == k) break; }
+    return out;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="subarray-sum-equals-k">
+    <h3><span class="pn">M3</span> Subarray Sum Equals K <span class="pill">Medium</span> <span class="muted small">· prefix sum + count map</span></h3>
+    <p><b>Problem.</b> Count the contiguous subarrays whose elements sum to exactly k. Values may be negative.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [1,1,1], k = 2
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [1,2,3], k = 3
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  [1,-1,0], k = 0
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 2 * 10^4; -1000 &lt;= values, k &lt;= 1000; subarrays must be contiguous and non-empty.</p>
+    <p><b>Approach.</b> A subarray sum is prefix[j] - prefix[i]. Fixing j turns the question into 'how many earlier prefixes equal prefix[j] - k' — a dictionary lookup. Seed the map with {0: 1} so subarrays that start at index 0 are counted, and note that negative values make a sliding window impossible.</p>
+    <pre><code>// prefix[j] - prefix[i] == k  -&gt;  count earlier prefixes
+int subarraySum(vector&lt;int&gt;&amp; a, int k) {
+    unordered_map&lt;long long, int&gt; seen{{0, 1}};   // empty prefix
+    long long run = 0; int count = 0;
+    for (int v : a) {
+        run += v;
+        auto it = seen.find(run - k);             // how many prefixes end at run-k
+        if (it != seen.end()) count += it-&gt;second;
+        seen[run]++;
+    }
+    return count;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="longest-consecutive-sequence">
+    <h3><span class="pn">M4</span> Longest Consecutive Sequence <span class="pill">Medium</span> <span class="muted small">· hash set + only start at runs</span></h3>
+    <p><b>Problem.</b> Given an unsorted array, return the length of the longest run of consecutive integers (for example [100,4,200,1,3,2] contains 1,2,3,4). The algorithm must run in O(n).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [100,4,200,1,3,2]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [0,3,7,2,5,8,4,6,0,1]
+Output: 9</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; -10^9 &lt;= values &lt;= 10^9; the array is unsorted and may contain duplicates.</p>
+    <p><b>Approach.</b> Put every value in a set, then only expand runs whose value has no predecessor in the set. Each value is the predecessor test's subject once, so the inner while-loop runs a total of O(n) times across the whole scan — that is what makes the approach linear rather than quadratic despite the nested loop.</p>
+    <pre><code>// Only expand a run from its smallest element
+int longestConsecutive(vector&lt;int&gt;&amp; a) {
+    unordered_set&lt;int&gt; s(a.begin(), a.end());
+    int best = 0;
+    for (int v : s) {
+        if (s.count(v - 1)) continue;            // not the start of a run
+        int len = 1;
+        while (s.count(v + len)) len++;          // total work over all runs is O(n)
+        best = max(best, len);
+    }
+    return best;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="four-sum-count-ii">
+    <h3><span class="pn">M5</span> 4Sum II — Counting Tuples <span class="pill">Medium</span> <span class="muted small">· meet in the middle with counts</span></h3>
+    <p><b>Problem.</b> Given four arrays of equal length, count the tuples (i,j,k,l) with a[i] + b[j] + c[k] + d[l] = 0.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  a=[1,2] b=[-2,-1] c=[-1,2] d=[0,2]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  a=[0] b=[0] c=[0] d=[0]
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 200; -2^28 &lt;= values &lt;= 2^28; the answer fits in a 32-bit signed integer.</p>
+    <p><b>Approach.</b> Splitting the equation into (a+b) and (c+d) is the whole trick: enumerating every pair costs O(n²) and the two halves are then matched by lookup. A map from pair-sum to how many times it occurs makes the sweep of the second half a plain dictionary read; the same split works for any 4-way counting problem.</p>
+    <pre><code>// Meet in the middle: hash the sum of every (a,b) pair
+int fourSumCount(vector&lt;int&gt;&amp; a, vector&lt;int&gt;&amp; b, vector&lt;int&gt;&amp; c, vector&lt;int&gt;&amp; d) {
+    unordered_map&lt;int, int&gt; ab;                  // pair sum -&gt; count
+    for (int x : a) for (int y : b) ab[x + y]++;
+    int total = 0;
+    for (int x : c) for (int y : d) {
+        auto it = ab.find(-(x + y));             // need ab sum == -(cd sum)
+        if (it != ab.end()) total += it-&gt;second;
+    }
+    return total;
+}   // O(n²) time · O(n²) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) time · O(n²) space.</p>
+  </section>
+  <section class="sub" id="insert-delete-getrandom-o1">
+    <h3><span class="pn">M6</span> Insert, Delete and GetRandom in O(1) <span class="pill">Medium</span> <span class="muted small">· array + index map</span></h3>
+    <p><b>Problem.</b> Design a set supporting insert(value), remove(value) and getRandom() (uniformly at random among the current values), each in average O(1). Duplicates are ignored.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  insert(1), insert(2), remove(1), getRandom()
+Output: returns 2 with probability 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  insert(1), insert(1), getRandom()
+Output: returns 1 (duplicate insert is a no-op)</code></pre></div>
+    <p class="cons"><b>Constraints:</b> up to 2 * 10^5 calls; -2^31 &lt;= values &lt;= 2^31 - 1; getRandom is called only when the set is non-empty.</p>
+    <p><b>Approach.</b> Random access needs an array; O(1) deletion from an array needs to know positions and to fill gaps. Keep an array of values plus a map value → index: deleting means swapping the victim with the last element and popping, then repairing the map. The map is what makes both halves O(1).</p>
+    <pre><code>// Array for random access + map value-&gt;index for O(1) deletes
+class RandomizedSet {
+    vector&lt;int&gt; vals;
+    unordered_map&lt;int, int&gt; idx;                 // value -&gt; position in vals
+public:
+    bool insert(int v) {
+        if (idx.count(v)) return false;
+        idx[v] = (int)vals.size();
+        vals.push_back(v);
+        return true;
+    }
+    bool remove(int v) {
+        auto it = idx.find(v);
+        if (it == idx.end()) return false;
+        int i = it-&gt;second, last = vals.back();
+        vals[i] = last; idx[last] = i;           // move the last value into the hole
+        vals.pop_back(); idx.erase(v);
+        return true;
+    }
+    int getRandom() { return vals[rand() % vals.size()]; }
+};   // O(1) average per op · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(1) average per op time · O(n) space.</p>
+  </section>
+  <section class="sub" id="valid-sudoku">
+    <h3><span class="pn">M7</span> Valid Sudoku <span class="pill">Medium</span> <span class="muted small">· composite keys in sets</span></h3>
+    <p><b>Problem.</b> Decide whether a partially filled 9x9 Sudoku board is valid: no digit repeats within any row, any column or any of the nine 3x3 boxes. Empty cells are '.' and the board need not be solvable.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  a board with 8 in the top row twice
+Output: false</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  a partially filled legal board
+Output: true</code></pre></div>
+    <p class="cons"><b>Constraints:</b> the board is always 9x9; cells hold '1'-'9' or '.'; only the already-placed digits are checked.</p>
+    <p><b>Approach.</b> One set per row, per column and per box, holding either the digit or a key that includes the digit. The box index is (row/3)*3 + col/3 — computing that once and sharing the same 27-set machinery for all three rules keeps the code short and hard to get wrong.</p>
+    <pre><code>// 27 sets: 9 rows, 9 columns, 9 boxes
+bool isValidSudoku(vector&lt;vector&lt;char&gt;&gt;&amp; board) {
+    vector&lt;unordered_set&lt;char&gt;&gt; rows(9), cols(9), box(9);
+    for (int r = 0; r &lt; 9; r++)
+        for (int c = 0; c &lt; 9; c++) {
+            char d = board[r][c];
+            if (d == '.') continue;
+            int b = (r / 3) * 3 + c / 3;          // which 3x3 box
+            if (!rows[r].insert(d).second) return false;
+            if (!cols[c].insert(d).second) return false;
+            if (!box[b].insert(d).second) return false;
+        }
+    return true;
+}   // O(1) time (the board is fixed size) · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(1) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="sort-characters-by-frequency">
+    <h3><span class="pn">M8</span> Sort Characters by Frequency <span class="pill">Medium</span> <span class="muted small">· count + bucket by frequency</span></h3>
+    <p><b>Problem.</b> Reorder a string so that characters appear in decreasing order of frequency; characters with equal frequency may appear in any relative order.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "tree"
+Output: "eert" or "eetr"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "Aabb"
+Output: "bbAa"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= len(s) &lt;= 5 * 10^5; s holds ASCII characters; any valid ordering is accepted.</p>
+    <p><b>Approach.</b> Count first, then either sort the distinct characters by count (O(k log k), simple) or bucket them by count (O(n), same trick as Top K Frequent). Either way the output is assembled by repeating each character its own number of times — never by sorting all n characters.</p>
+    <pre><code>// Count, sort the distinct characters, then expand
+string frequencySort(string s) {
+    unordered_map&lt;char, int&gt; cnt;
+    for (char c : s) cnt[c]++;
+    vector&lt;pair&lt;char, int&gt;&gt; items(cnt.begin(), cnt.end());
+    sort(items.begin(), items.end(),
+         [](auto&amp; x, auto&amp; y) { return x.second &gt; y.second; });
+    string out;
+    for (auto&amp; [c, f] : items) out.append(f, c);   // repeat c, f times
+    return out;
+}   // O(n + k log k) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n + k log k) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="find-all-duplicates-in-array">
+    <h3><span class="pn">M9</span> Find All Duplicates in an Array <span class="pill">Medium</span> <span class="muted small">· the array indexes itself</span></h3>
+    <p><b>Problem.</b> Given an array where every value is in 1..n (n = length) and each value appears once or twice, return the values that appear twice, using no extra memory and O(n) time.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [4,3,2,7,8,2,3,1]
+Output: [2,3]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [1,1,2]
+Output: [1]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; 1 &lt;= a[i] &lt;= n; each value occurs once or twice; extra memory must be O(1).</p>
+    <p><b>Approach.</b> The values 1..n are themselves a perfect hash space: use the sign of a[|v|-1] as the flag for 'value |v| seen'. The first visit flips the sign, the second visit finds it already flipped and records a duplicate, and afterwards restoring the signs leaves the input unchanged.</p>
+    <pre><code>// Sign of a[|v|-1] is the "seen" flag — no extra memory
+vector&lt;int&gt; findDuplicates(vector&lt;int&gt;&amp; a) {
+    vector&lt;int&gt; out;
+    for (int v : a) {
+        int i = abs(v) - 1;
+        if (a[i] &lt; 0) out.push_back(abs(v));      // second visit
+        else a[i] = -a[i];                        // first visit: mark
+    }
+    for (int&amp; v : a) v = abs(v);                  // restore the input
+    return out;
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="encode-and-decode-strings">
+    <h3><span class="pn">M10</span> Encode and Decode Strings <span class="pill">Medium</span> <span class="muted small">· self-describing encoding</span></h3>
+    <p><b>Problem.</b> Design encode(list) and decode(string) that round-trip a list of arbitrary strings (which may contain any character, including your own separator) through a single string.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  ["hello","world"]
+Output: encode then decode returns ["hello","world"]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  ["a","","b"]
+Output: empty strings must survive too</code></pre></div>
+    <p class="cons"><b>Constraints:</b> up to 200 strings per call; each string has length 0..200; the encoded string may use any characters.</p>
+    <p><b>Approach.</b> Any fixed delimiter breaks when the payload contains it. Prefix each string with its byte length and a marker, then parse by reading the digits and slicing exactly that many characters — the decoder never guesses where a string ends, so nothing can be escaped incorrectly.</p>
+    <pre><code>// "&lt;len&gt;#&lt;bytes&gt;" — the length makes the delimiter unambiguous
+string encode(const vector&lt;string&gt;&amp; strs) {
+    string out;
+    for (const string&amp; s : strs) out += to_string(s.size()) + "#" + s;
+    return out;
+}
+vector&lt;string&gt; decode(const string&amp; s) {
+    vector&lt;string&gt; out;
+    int i = 0;
+    while (i &lt; (int)s.size()) {
+        int j = i;
+        while (s[j] != '#') j++;                  // read the length digits
+        int len = stoi(s.substr(i, j - i));
+        out.push_back(s.substr(j + 1, len));      // take exactly len bytes
+        i = j + 1 + len;
+    }
+    return out;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="brick-wall">
+    <h3><span class="pn">M11</span> Brick Wall <span class="pill">Medium</span> <span class="muted small">· count edge positions</span></h3>
+    <p><b>Problem.</b> A wall is a list of rows, each row a list of brick widths. Draw a vertical line from top to bottom: return the minimum number of bricks that line crosses.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  wall = [[1,2,2,1],[3,1,2],[1,3,2],[2,4],[3,1,2],[1,3,1,1]]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  wall = [[1],[1],[1]]
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows &lt;= 10^4; 1 &lt;= total bricks on a row &lt;= 10^4; all rows are the same total width.</p>
+    <p><b>Approach.</b> Crossing fewest bricks means passing through the most gaps, and gaps only exist at the running x-positions of row edges. Count how many rows have an edge at each x, take the best count, and the answer is (rows - best). Skipping each row's final edge is essential: the right border is not a gap.</p>
+    <pre><code>// Count rows that have a gap at each x
+int leastBricks(vector&lt;vector&lt;int&gt;&gt;&amp; wall) {
+    unordered_map&lt;int, int&gt; gaps;                 // x -&gt; rows with an edge there
+    int best = 0;
+    for (const auto&amp; row : wall) {
+        int x = 0;
+        for (int i = 0; i + 1 &lt; (int)row.size(); i++) {   // skip the last brick
+            x += row[i];
+            best = max(best, ++gaps[x]);
+        }
+    }
+    return (int)wall.size() - best;
+}   // O(total bricks) time · O(edges) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(total bricks) time · O(distinct edges) space.</p>
+  </section>
+  <section class="sub" id="contiguous-array">
+    <h3><span class="pn">M12</span> Contiguous Array of Equal Zeros and Ones <span class="pill">Medium</span> <span class="muted small">· balance + first index</span></h3>
+    <p><b>Problem.</b> Return the length of the longest contiguous subarray containing an equal number of 0s and 1s.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [0,1]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [0,1,0]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  [0,0,1,1,0]
+Output: 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; elements are exactly 0 or 1; subarrays must be contiguous.</p>
+    <p><b>Approach.</b> Treat 1 as +1 and 0 as -1: equal counts mean a zero balance. Store the *first* index at which each balance occurs and, on seeing a balance again, the distance between the two indices is a valid answer. First-seen, not last-seen, is what maximises the length.</p>
+    <pre><code>// +1 for 1, -1 for 0: equal counts = zero balance
+int findMaxLength(vector&lt;int&gt;&amp; a) {
+    unordered_map&lt;int, int&gt; first{{0, -1}};       // balance -&gt; earliest index
+    int bal = 0, best = 0;
+    for (int i = 0; i &lt; (int)a.size(); i++) {
+        bal += (a[i] == 1 ? 1 : -1);
+        if (first.count(bal)) best = max(best, i - first[bal]);
+        else first[bal] = i;                      // remember the earliest only
+    }
+    return best;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="max-points-on-a-line">
+    <h3><span class="pn">H1</span> Max Points on a Line <span class="pill hot">Hard</span> <span class="muted small">· normalised slope keys</span></h3>
+    <p><b>Problem.</b> Given n points in the plane, return the maximum number of points that lie on one straight line.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [[1,1],[2,2],[3,3]]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [[1,1],[3,2],[5,3],[4,1],[2,3],[1,4]]
+Output: 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 300; -10^4 &lt;= coordinates &lt;= 10^4; all points are unique.</p>
+    <p><b>Approach.</b> Fix one point as the anchor and count how many others share each direction. Storing a reduced fraction (dx/g, dy/g) with gcd — plus sign normalisation, since (1,2) and (-1,-2) are the same line — makes slopes exact and immune to floating-point error. Identical points are the <code>(0,0)</code> key and add to every count.</p>
+    <pre><code>// Fix an anchor, count directions as reduced (dx,dy) keys
+int maxPoints(vector&lt;vector&lt;int&gt;&gt;&amp; pts) {
+    int n = pts.size();
+    if (n &lt;= 2) return n;
+    int best = 2;
+    for (int i = 0; i &lt; n; i++) {
+        unordered_map&lt;long long, int&gt; dir;
+        int dup = 0;
+        for (int j = i + 1; j &lt; n; j++) {
+            long long dx = pts[j][0] - pts[i][0], dy = pts[j][1] - pts[i][1];
+            if (dx == 0 &amp;&amp; dy == 0) { dup++; continue; }   // same point
+            long long g = gcd(abs(dx), abs(dy));
+            dx /= g; dy /= g;
+            if (dx &lt; 0 || (dx == 0 &amp;&amp; dy &lt; 0)) { dx = -dx; dy = -dy; }  // normalise sign
+            dir[dx * 100000 + dy]++;                        // exact integer key
+        }
+        for (auto&amp; [k, c] : dir) best = max(best, c + 1 + dup);
+        best = max(best, dup + 1);                          // all points identical
+    }
+    return best;
+}   // O(n²) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n²) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="longest-duplicate-substring">
+    <h3><span class="pn">H2</span> Longest Duplicate Substring <span class="pill hot">Hard</span> <span class="muted small">· binary search + rolling hash</span></h3>
+    <p><b>Problem.</b> Return any substring of length &gt;= 1 that occurs at least twice in the string; if none exists return the empty string.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "banana"
+Output: "ana"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "abcd"
+Output: ""</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= len(s) &lt;= 3 * 10^4; lowercase English letters; both occurrences may overlap.</p>
+    <p><b>Approach.</b> If a duplicate of length L exists, so does one of every shorter length — the predicate is monotone, so binary search L. Each test hashes all windows in O(n) with rolling hashes and looks for a repeat; using two moduli makes accidental collisions negligible, which is the practical way to avoid comparing every pair of substrings.</p>
+    <pre><code>// Monotone in L: binary search the length, test with rolling hashes
+string longestDupSubstring(string s) {
+    const long long M1 = 1000000007, M2 = 998244353, B = 131;
+    int n = s.size();
+    vector&lt;long long&gt; p1(n + 1, 1), p2(n + 1, 1);
+    for (int i = 1; i &lt;= n; i++) { p1[i] = p1[i-1] * B % M1; p2[i] = p2[i-1] * B % M2; }
+
+    auto findAt = [&amp;](int L) -&gt; int {            // start index of a repeat, or -1
+        if (L == 0) return -1;
+        unordered_map&lt;long long, int&gt; seen;
+        long long h1 = 0, h2 = 0;
+        for (int i = 0; i &lt; n; i++) {
+            h1 = (h1 * B + (unsigned char)s[i]) % M1;
+            h2 = (h2 * B + (unsigned char)s[i]) % M2;
+            if (i &gt;= L) {
+                h1 = (h1 - (long long)(unsigned char)s[i-L] * p1[L] % M1 + M1) % M1;
+                h2 = (h2 - (long long)(unsigned char)s[i-L] * p2[L] % M2 + M2) % M2;
+            }
+            if (i &gt;= L - 1) {
+                long long key = h1 * M2 + h2;
+                auto it = seen.find(key);
+                if (it != seen.end()) return it-&gt;second;   // second occurrence
+                seen[key] = i - L + 1;
+            }
+        }
+        return -1;
+    };
+
+    int lo = 1, hi = n - 1, bestLen = 0, bestStart = -1;
+    while (lo &lt;= hi) {
+        int mid = (lo + hi) / 2, start = findAt(mid);
+        if (start &gt;= 0) { bestLen = mid; bestStart = start; lo = mid + 1; }
+        else hi = mid - 1;
+    }
+    return bestStart &lt; 0 ? "" : s.substr(bestStart, bestLen);
+}   // O(n log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="first-missing-positive">
+    <h3><span class="pn">H3</span> First Missing Positive <span class="pill hot">Hard</span> <span class="muted small">· index-as-bucket (cyclic placement)</span></h3>
+    <p><b>Problem.</b> Given an unsorted integer array, return the smallest positive integer that does not appear in it, using O(1) extra memory and O(n) time.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [1,2,0]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [3,4,-1,1]
+Output: 2</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  [7,8,9,11,12]
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; -2^31 &lt;= values &lt;= 2^31 - 1; extra space must be O(1).</p>
+    <p><b>Approach.</b> The answer is always in 1..n+1, so every value in that range has a natural home: value v belongs at index v-1. Swap each such value into its home (a while-loop, not an if, because the swapped-in value may also need placing), then the first index whose slot does not hold index+1 is the answer.</p>
+    <pre><code>// Value v belongs at index v-1; place, then scan
+int firstMissingPositive(vector&lt;int&gt;&amp; a) {
+    int n = a.size();
+    for (int i = 0; i &lt; n; i++)
+        while (a[i] &gt; 0 &amp;&amp; a[i] &lt;= n &amp;&amp; a[a[i] - 1] != a[i])
+            swap(a[i], a[a[i] - 1]);              // send a[i] to its home
+    for (int i = 0; i &lt; n; i++)
+        if (a[i] != i + 1) return i + 1;          // first broken home
+    return n + 1;                                 // 1..n are all present
+}   // O(n) time (each swap fixes one value) · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="all-oone-data-structure">
+    <h3><span class="pn">H4</span> All O(1) Data Structure <span class="pill hot">Hard</span> <span class="muted small">· value-&gt;count map + count-&gt;bucket map</span></h3>
+    <p><b>Problem.</b> Design inc(key), dec(key), getMaxKey() and getMinKey() so that all four run in O(1) average time. inc on a missing key starts its count at 1; dec removes the key when its count reaches 0.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  inc("a"), inc("a"), inc("b"), getMaxKey()
+Output: "a"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  after the above, getMinKey()
+Output: "b"</code></pre></div>
+    <p class="cons"><b>Constraints:</b> up to 5 * 10^4 calls; keys are non-empty strings; every call must be O(1).</p>
+    <p><b>Approach.</b> Two maps: key → count, and count → set of keys with that count. A move touches exactly two buckets, so the cost is constant — but only if nothing scans for the minimum or maximum. Use an ordered bucket structure (or cached min/max counts) so the extremes are a pointer read rather than a search.</p>
+    <pre><code>// key-&gt;count plus count-&gt;bucket; extremes come from an ordered map
+class AllOne {
+    unordered_map&lt;string, int&gt; cnt;               // key -&gt; count
+    map&lt;int, unordered_set&lt;string&gt;&gt; bucket;       // count -&gt; keys (ordered by count)
+public:
+    void inc(string key) {
+        int c = cnt[key]++;                       // 0 for a new key
+        if (c) {
+            bucket[c].erase(key);
+            if (bucket[c].empty()) bucket.erase(c);
+        }
+        bucket[c + 1].insert(key);
+    }
+    void dec(string key) {
+        auto it = cnt.find(key);
+        if (it == cnt.end()) return;
+        int c = it-&gt;second;
+        bucket[c].erase(key);
+        if (bucket[c].empty()) bucket.erase(c);
+        if (--it-&gt;second == 0) cnt.erase(it);
+        else bucket[c - 1].insert(key);
+    }
+    string getMaxKey() {
+        return bucket.empty() ? "" : *bucket.rbegin()-&gt;second.begin();
+    }
+    string getMinKey() {
+        return bucket.empty() ? "" : *bucket.begin()-&gt;second.begin();
+    }
+};   // O(1) average per op (map operations on counts are O(log n) keys) · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(1) average per op time · O(n) space.</p>
+  </section>
+  <section class="sub" id="number-of-submatrices-that-sum-to-target">
+    <h3><span class="pn">H5</span> Submatrices That Sum to Target <span class="pill hot">Hard</span> <span class="muted small">· 2D prefix sums + hash per column band</span></h3>
+    <p><b>Problem.</b> Given a matrix and a target, count the non-empty submatrices whose elements sum to the target.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  matrix = [[0,1,0],[1,1,1],[0,1,0]], target = 0
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  matrix = [[1,-1],[-1,1]], target = 0
+Output: 5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 100; -1000 &lt;= values, target &lt;= 1000; submatrices must be non-empty.</p>
+    <p><b>Approach.</b> A submatrix is a band of columns crossed with a contiguous run of rows. Fix the column band, collapse it into a 1-D column vector by adding rows as you widen, and the problem becomes 'subarray sum equals target' in 1-D — the same prefix-sum-with-counts map you already know, now applied O(cols²) times.</p>
+    <pre><code>// Fix a column band, collapse it to 1-D, then count subarrays
+int numSubmatrixSumTarget(vector&lt;vector&lt;int&gt;&gt;&amp; m, int target) {
+    int R = m.size(), C = m[0].size(), total = 0;
+    for (int c1 = 0; c1 &lt; C; c1++) {
+        vector&lt;int&gt; rowSum(R, 0);
+        for (int c2 = c1; c2 &lt; C; c2++) {
+            for (int r = 0; r &lt; R; r++) rowSum[r] += m[r][c2];   // widen the band
+            unordered_map&lt;int, int&gt; seen{{0, 1}};                // prefix -&gt; count
+            int run = 0;
+            for (int r = 0; r &lt; R; r++) {
+                run += rowSum[r];
+                auto it = seen.find(run - target);
+                if (it != seen.end()) total += it-&gt;second;
+                seen[run]++;
+            }
+        }
+    }
+    return total;
+}   // O(rows · cols²) time · O(rows) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · cols²) time · O(rows) space.</p>
+  </section>
+  <section class="sub" id="palindrome-pairs">
+    <h3><span class="pn">H6</span> Palindrome Pairs <span class="pill hot">Hard</span> <span class="muted small">· split every word + reversed lookup</span></h3>
+    <p><b>Problem.</b> Given a list of distinct words, return all index pairs (i, j) such that words[i] + words[j] is a palindrome.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  ["abcd","dcba","lls","s","sssll"]
+Output: [[0,1],[1,0],[3,2],[2,4]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  ["bat","tab","cat"]
+Output: [[0,1],[1,0]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of words &lt;= 5000; 0 &lt;= word length &lt;= 300; all words are distinct.</p>
+    <p><b>Approach.</b> Fix a word and try every split w = left + right. If left is a palindrome then a reversed right placed in front completes one pair; if right is a palindrome then a reversed left placed behind completes the other. Both cases are dictionary lookups, so the total work is the sum of word lengths. Guard against pairing a word with itself and against double-counting the empty suffix case.</p>
+    <pre><code>// Every split of every word is one dictionary lookup
+vector&lt;vector&lt;int&gt;&gt; palindromePairs(vector&lt;string&gt;&amp; words) {
+    unordered_map&lt;string, int&gt; pos;
+    for (int i = 0; i &lt; (int)words.size(); i++) pos[words[i]] = i;
+    set&lt;vector&lt;int&gt;&gt; res;
+    auto rev = [](const string&amp; s) { return string(s.rbegin(), s.rend()); };
+    auto pal = [](const string&amp; s) { return s == string(s.rbegin(), s.rend()); };
+
+    for (int i = 0; i &lt; (int)words.size(); i++) {
+        const string&amp; w = words[i];
+        for (int cut = 0; cut &lt;= (int)w.size(); cut++) {
+            string left = w.substr(0, cut), right = w.substr(cut);
+            if (pal(left)) {
+                auto it = pos.find(rev(right));               // partner goes in front
+                if (it != pos.end() &amp;&amp; it-&gt;second != i) res.insert({it-&gt;second, i});
+            }
+            if (cut &lt; (int)w.size() &amp;&amp; pal(right)) {
+                auto it = pos.find(rev(left));                // partner goes behind
+                if (it != pos.end() &amp;&amp; it-&gt;second != i) res.insert({i, it-&gt;second});
+            }
+        }
+    }
+    return vector&lt;vector&lt;int&gt;&gt;(res.begin(), res.end());
+}   // O(total characters) time · O(total characters) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(total characters) time · O(total characters) space.</p>
+  </section>
+  <section class="sub" id="subarrays-with-k-different-integers">
+    <h3><span class="pn">H7</span> Subarrays with K Different Integers <span class="pill hot">Hard</span> <span class="muted small">· exactly k = at most k minus at most k-1</span></h3>
+    <p><b>Problem.</b> Count the contiguous subarrays that contain exactly k distinct values.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [1,2,1,2,3], k = 2
+Output: 7</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [1,2,1,3,4], k = 3
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 2 * 10^4; 1 &lt;= values, k &lt;= n; the answer fits in a 32-bit signed integer.</p>
+    <p><b>Approach.</b> The 'exactly k' window cannot be slid directly because both shrinking and growing can violate the rule. Instead count windows with *at most* d distinct values — that predicate is monotone in d and window length, so a clever two-pointer works — and subtract the answer for d = k-1 from the answer for d = k.</p>
+    <pre><code>// Monotone "at most d" windows, evaluated twice
+int atMost(vector&lt;int&gt;&amp; a, int d) {
+    unordered_map&lt;int, int&gt; cnt;
+    int l = 0, total = 0;
+    for (int r = 0; r &lt; (int)a.size(); r++) {
+        cnt[a[r]]++;
+        while ((int)cnt.size() &gt; d) {                  // too many distinct
+            if (--cnt[a[l]] == 0) cnt.erase(a[l]);
+            l++;
+        }
+        total += r - l + 1;                            // windows ending at r
+    }
+    return total;
+}
+int subarraysWithKDistinct(vector&lt;int&gt;&amp; a, int k) {
+    return atMost(a, k) - atMost(a, k - 1);
+}   // O(n) time · O(k) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(k) space.</p>
+  </section>
+  <section class="sub" id="count-array-pairs-divisible-by-k">
+    <h3><span class="pn">H8</span> Count Array Pairs Divisible by K <span class="pill hot">Hard</span> <span class="muted small">· gcd with k, then count divisors</span></h3>
+    <p><b>Problem.</b> Count the index pairs (i, j) with i &lt; j such that a[i] * a[j] is divisible by k.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [1,2,3,4,5], k = 2
+Output: 7</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [1,2,3,4], k = 4
+Output: 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; 1 &lt;= values, k &lt;= 10^5; the answer fits in a 64-bit signed integer.</p>
+    <p><b>Approach.</b> Only gcd(value, k) matters, and it is always a divisor of k. Bucket values by that gcd, list the divisors of k, and for each pair of divisors whose product is divisible by k add (count × count) — carefully separating distinct divisors from the same-divisor choose-2 case.</p>
+    <pre><code>// Bucket by gcd(v, k); combine divisor buckets
+long long countPairs(vector&lt;int&gt;&amp; a, int k) {
+    unordered_map&lt;int, long long&gt; freq;
+    for (int v : a) freq[gcd(v, k)]++;
+    vector&lt;int&gt; divs;
+    for (int d = 1; (long long)d * d &lt;= k; d++)
+        if (k % d == 0) { divs.push_back(d); if (d != k / d) divs.push_back(k / d); }
+    long long total = 0;
+    for (int i = 0; i &lt; (int)divs.size(); i++)
+        for (int j = i; j &lt; (int)divs.size(); j++) {
+            int d1 = divs[i], d2 = divs[j];
+            if ((long long)d1 * d2 % k) continue;      // product must be divisible
+            long long c1 = freq[d1], c2 = freq[d2];
+            if (d1 == d2) total += c1 * (c1 - 1) / 2;  // same bucket: choose 2
+            else total += c1 * c2;                     // cross buckets
+        }
+    return total;
+}   // O(n + d²) time · O(d) space  (d = number of divisors of k)</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n + d²) time · O(d) space.</p>
+  </section>
+  <section class="sub" id="maximum-number-of-visible-points">
+    <h3><span class="pn">H9</span> Maximum Number of Visible Points <span class="pill hot">Hard</span> <span class="muted small">· angles + circular sliding window</span></h3>
+    <p><b>Problem.</b> Given your location and a list of points, you see the points whose direction is within angle degrees of some half-line from you. Points at your exact location are always visible. Return the maximum you can see at once.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  points = [[2,1],[2,2],[3,3]], angle = 90, location = [1,1]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  points = [[2,1],[2,2],[3,4],[1,1]], angle = 90, location = [1,1]
+Output: 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; 0 &lt;= angle &lt;= 359; points and location are integer coordinates.</p>
+    <p><b>Approach.</b> A point is either at your location (always counted) or at an angle atan2(dy, dx). Sort the angles and duplicate them shifted by 360° so a window may wrap around; a two-pointer scan then finds the largest window spanning at most <code>angle</code> degrees. Compare with a tiny epsilon — floating-point angles that should be equal at the boundary otherwise break the count.</p>
+    <pre><code>// Sort angles, duplicate +360, slide a two-pointer window
+int visiblePoints(vector&lt;vector&lt;int&gt;&gt;&amp; points, int angle, vector&lt;int&gt;&amp; loc) {
+    vector&lt;double&gt; a;
+    int same = 0;
+    for (auto&amp; p : points) {
+        double dx = p[0] - loc[0], dy = p[1] - loc[1];
+        if (dx == 0 &amp;&amp; dy == 0) { same++; continue; }   // always visible
+        a.push_back(atan2(dy, dx) * 180.0 / M_PI);
+    }
+    sort(a.begin(), a.end());
+    int m = a.size();
+    for (int i = 0; i &lt; m; i++) a.push_back(a[i] + 360.0);   // wrap-around
+    int best = 0;
+    for (int l = 0, r = 0; r &lt; (int)a.size(); r++) {
+        while (a[r] - a[l] &gt; angle + 1e-9) l++;             // epsilon for ties
+        best = max(best, r - l + 1);
+    }
+    return best + same;
+}   // O(n log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="substring-with-largest-variance">
+    <h3><span class="pn">H10</span> Substring With Largest Variance <span class="pill hot">Hard</span> <span class="muted small">· per-letter-pair Kadane</span></h3>
+    <p><b>Problem.</b> The variance of a substring is the largest difference between the number of occurrences of two of its letters. Return the largest variance over all substrings of the string.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "aababbb"
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "abcde"
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= len(s) &lt;= 10^4; lowercase English letters; a substring must have length at least 1.</p>
+    <p><b>Approach.</b> Try every ordered pair of letters (a, b): map a to +1 and b to -1 and find the maximum subarray sum that contains at least one b. That extra condition is the whole difficulty — Kadane alone would return a run of pure a's — so carry two running values: best sum that has already seen a b, and best sum with none.</p>
+    <pre><code>// For each ordered pair (a, b): Kadane that must include a b
+int largestVariance(string s) {
+    int best = 0;
+    for (char a = 'a'; a &lt;= 'z'; a++)
+        for (char b = 'a'; b &lt;= 'z'; b++) {
+            if (a == b) continue;
+            int withB = 0, noB = 0;                 // running sums of each state
+            bool seenB = false;
+            for (char c : s) {
+                if (c == a) { withB++; noB++; }
+                else if (c == b) {
+                    withB = max(seenB ? withB - 1 : INT_MIN, noB - 1);   // start or extend
+                    noB = 0;
+                    seenB = true;
+                }
+                if (seenB) best = max(best, withB);
+            }
+        }
+    return best;
+}   // O(26² · n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(26² · n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="maximum-frequency-stack">
+    <h3><span class="pn">H11</span> Maximum Frequency Stack <span class="pill hot">Hard</span> <span class="muted small">· value-&gt;count map + frequency stacks</span></h3>
+    <p><b>Problem.</b> Design push(x) and pop(), where pop removes and returns the value with the highest frequency; ties break by the value pushed most recently. pop is only called when the stack is non-empty.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  push 5, push 7, push 5, push 7, push 4, push 5
+Output: pops: 5, 7, 5, 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> up to 2 * 10^4 calls; 0 &lt;= values &lt;= 10^9; pop is never called on an empty structure.</p>
+    <p><b>Approach.</b> Keep count[value] plus a list of stacks indexed by frequency: pushing x puts it on stack[count[x]+1], and popping takes from the highest non-empty stack. The frequency-indexed stacks give the tie-break rule for free, because a value only re-enters a high stack after it is pushed again.</p>
+    <pre><code>// Stacks indexed by frequency give frequency + recency order at once
+class FreqStack {
+    unordered_map&lt;int, int&gt; cnt;                       // value -&gt; frequency
+    vector&lt;vector&lt;int&gt;&gt; stacks;                        // stacks[f] = values seen f times
+public:
+    void push(int x) {
+        int f = ++cnt[x];
+        if (f &gt; (int)stacks.size()) stacks.resize(f);
+        stacks[f - 1].push_back(x);                    // index 0 holds frequency 1
+    }
+    int pop() {
+        int x = stacks.back().back();
+        stacks.back().pop_back();                      // highest frequency first
+        if (stacks.back().empty()) stacks.pop_back();
+        if (--cnt[x] == 0) cnt.erase(x);
+        return x;
+    }
+};   // O(1) per op · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(1) per op time · O(n) space.</p>
+  </section>
+  <section class="sub" id="count-subarrays-with-median-k">
+    <h3><span class="pn">H12</span> Count Subarrays With Median K <span class="pill hot">Hard</span> <span class="muted small">· sign transform + balanced prefix pairs</span></h3>
+    <p><b>Problem.</b> Given an array containing k exactly once, count how many subarrays have median exactly k (an odd-length subarray's median is its middle element after sorting; even lengths use the lower middle).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  [3,2,1,4,5], k = 4
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  [2,3,1], k = 3
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; k appears exactly once; 1 &lt;= values &lt;= n.</p>
+    <p><b>Approach.</b> Replace every element by +1 if it is &gt; k, -1 if &lt; k and 0 if it equals k. A subarray has median k exactly when it contains that single 0 and its signs sum to 0 or 1 (the extra +1 covers even-length windows with the lower middle). Counting then means matching prefix sums to the left and right of the 0, restricted to the block between its neighbours' occurrences of k — which, since k is unique, is simply the whole array.</p>
+    <pre><code>// sign(v - k); match prefix sums across the single k
+long long countSubarrays(vector&lt;int&gt;&amp; a, int k) {
+    int n = a.size(), p = find(a.begin(), a.end(), k) - a.begin();
+    vector&lt;int&gt; pre(n + 1, 0);
+    for (int i = 0; i &lt; n; i++) pre[i + 1] = pre[i] + (a[i] &gt; k ? 1 : a[i] &lt; k ? -1 : 0);
+    unordered_map&lt;int, int&gt; left;
+    for (int i = p; i &gt;= 0; i--) left[pre[i]]++;          // left endpoint choices
+    long long total = 0;
+    for (int j = p + 1; j &lt;= n; j++) {                    // right endpoint choices
+        int need1 = left.count(pre[j]);                   // sum == 0
+        int need2 = left.count(pre[j] - 1);               // sum == 1 (even length)
+        total += (need1 ? left[pre[j]] : 0) + (need2 ? left[pre[j] - 1] : 0);
+    }
+    return total;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+</section>
 
   </main>
 </div>
 
 <footer>
-  <p><b>C++ bank</b> — 60 problems across 2 topics, with complete solutions in
+  <p><b>C++ bank</b> — 90 problems across 3 topics, with complete solutions in
   C++17/20/23 solutions.</p>
   <p class="small">Same problems in every language:
     <a href="cpp-leetcode.html">C++</a> · <a href="java-leetcode.html">Java</a> · <a href="python-leetcode.html">Python</a>

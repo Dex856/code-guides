@@ -10,7 +10,7 @@ _Last updated: 2026-10-02_
 | **C++ for LeetCode** (16 chapters, STL-first) | `site/cpp-guide.html` (168 KB) | ✅ 0 parser errors, 34 snippets compile-checked with g++ 14 / C++20 |
 | **Java for LeetCode** (16 chapters, Collections-first) | `site/java-guide.html` (248 KB) | ✅ 0 parser errors, 63 snippets compile-checked with javac 11, 13 SVG figures |
 | Site hub | `site/index.html` | ✅ all internal links resolve |
-| **Topic 1 of the question banks** — Arrays & Strings (6 easy · 12 medium · 12 hard) | `site/cpp-leetcode.html`, `site/java-leetcode.html`, `site/python-leetcode.html` | ✅ 30 problems × 3 languages; **all 30 C++ and 30 Java solutions compile**, all 30 Python solutions pass 55 example checks |
+| **Question banks, topics 1–3** — Arrays & Strings, Two Pointers & Sliding Window, Hashing & Frequency Maps · 90 problems (18 easy · 36 medium · 36 hard) | `site/{cpp,java,python}-leetcode.html` | ✅ **all 90 C++ and 90 Java solutions compile**; Python solutions pass 130 example checks + 40 randomised brute-force cross-checks (fuzz-tested: RandomizedSet, AllOne, FreqStack, encode/decode) |
 | GitHub Pages workflow | `.github/workflows/pages.yml` | ✅ pages artifact + deploy job |
 | One-command publisher | `push.sh` | ✅ ready (needs a token, see below) |
 | Rebuild script | `site/build-all.sh` | ✅ regenerates both guides + the three banks |
@@ -20,10 +20,8 @@ _Last updated: 2026-10-02_
 The bank engine is finished: `site/leetcode/build.py` renders **one** authored bank into the three
 language pages, so each problem is written once and appears with C++, Java and Python solutions.
 
-**Topics 2–16 still to author** (450 problems per language):
+**Topics 4–16 still to author** (390 problems per language):
 
-2. Two Pointers & Sliding Window
-3. Hashing & Frequency Maps
 4. Stacks, Queues & Monotonic Structures
 5. Binary Search & Sorted Structures
 6. Linked Lists
