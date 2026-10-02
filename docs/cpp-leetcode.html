@@ -8122,12 +8122,910 @@ vector&lt;int&gt; smallestRange(vector&lt;vector&lt;int&gt;&gt;&amp; nums) {
     <p class="cx"><b>Complexity:</b> O(N log N) time · O(N + k) space.</p>
   </section>
 </section>
+<section class="chapter" id="t11">
+  <h2><span class="num">11</span> Heaps, Top-K &amp; Design</h2>
+  <p class="tagline">A heap is a promise about one end of a collection — pay log n to keep the extreme element cheap.</p>
+  <div class="card"><p><b>What this topic trains.</b> Three shapes cover the topic. Top-K keeps a heap of exactly k elements and discards the weakest, so the extra cost stays logarithmic in k rather than in n. Merge/sweep keeps one heap per source and always pops the global extreme. Design problems keep two heaps or a heap plus an index, which is how a stream answers median and ranking questions. The hard tier adds laziness — deleted entries stay in the heap and are skipped when they surface.</p>
+<p class="small muted">Ordering: easy 1–4 are single-heap simulations and top-K shepherds, 5–6 add a second structure (sorting, two stacks); medium 1–5 are the Top-K family and the heap-greedy strings, 6–9 are scheduling sweeps with deadlines, 10–12 are heap-backed designs; hard 1–3 are two-heap median structures, 4–6 are sweep-line and k-way merge problems, 7–9 combine heaps with windows or prefix sums, 10–12 are the largest designs, where the data structure itself is the answer.</p></div>
+  <section class="sub" id="last-stone-weight">
+    <h3><span class="pn">E1</span> Last Stone Weight <span class="pill">Easy</span> <span class="muted small">· max-heap simulation</span></h3>
+    <p><b>Problem.</b> Repeatedly take the two heaviest stones; if they differ, the difference goes back into the pile. Return the weight of the last stone, or 0 if none is left.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  stones = [2,7,4,1,8,1]
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  stones = [1]
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= stones.length &lt;= 30; 1 &lt;= stones[i] &lt;= 1000; at most one new stone appears per smash.</p>
+    <p><b>Approach.</b> The rule always asks for the two heaviest, which is exactly what a max-heap gives cheaply: pop twice, push the difference if it is positive, and repeat until at most one stone remains. A sorted list would re-sort on every insertion.</p>
+    <pre><code>// Always smash the two heaviest: a max-heap supplies them
+int lastStoneWeight(vector&lt;int&gt;&amp; stones) {
+    priority_queue&lt;int&gt; pq(stones.begin(), stones.end());
+    while (pq.size() &gt; 1) {
+        int a = pq.top(); pq.pop();              // heaviest
+        int b = pq.top(); pq.pop();              // second heaviest
+        if (a != b) pq.push(a - b);              // the difference survives
+    }
+    return pq.empty() ? 0 : pq.top();
+}   // O(n log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="kth-largest-element-in-a-stream">
+    <h3><span class="pn">E2</span> Kth Largest Element in a Stream <span class="pill">Easy</span> <span class="muted small">· bounded min-heap (design)</span></h3>
+    <p><b>Problem.</b> Design a class that is initialised with a list and a number k, and answers, after each added value, the k-th largest value seen so far.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  k = 3, nums = [4,5,8,2]: ["KthLargest","add","add","add","add","add"] [[3,[4,5,8,2]],[3],[5],[10],[9],[4]]
+Output: [null, 4, 5, 5, 8, 8]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  k = 4, nums = [7,7,7,7,8,3]: ["KthLargest","add","add","add","add"] [[4,[7,7,7,7,8,3]],[2],[10],[9],[9]]
+Output: [null, 7, 7, 7, 8]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= k &lt;= 10^4; 0 &lt;= nums.length &lt;= 10^4; -10^4 &lt;= values &lt;= 10^4.</p>
+    <p><b>Approach.</b> Keep only the k largest values seen so far in a min-heap. Its root is then the smallest of them — which is exactly the k-th largest overall — and an incoming value either replaces the root or is discarded immediately.</p>
+    <pre><code>// A min-heap of the k largest values: its root is the answer
+class KthLargest {
+public:
+    priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt; small;   // smallest on top
+    int k;
+    KthLargest(int k, vector&lt;int&gt;&amp; nums) : k(k) {
+        for (int x : nums) add(x);
+    }
+    int add(int val) {
+        small.push(val);
+        if ((int)small.size() &gt; k) small.pop();   // drop the least useful value
+        return small.top();                       // the k-th largest
+    }
+};   // O(log k) per add · O(k) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log k) per add time · O(k) space.</p>
+  </section>
+  <section class="sub" id="take-gifts-from-the-richest-pile">
+    <h3><span class="pn">E3</span> Take Gifts From the Richest Pile <span class="pill">Easy</span> <span class="muted small">· max-heap with a shrinking value</span></h3>
+    <p><b>Problem.</b> For k seconds, replace the largest pile by the integer square root of its size. Return the total left afterwards.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  gifts = [25,64,9,4,100], k = 4
+Output: 29</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  gifts = [1,1,1,1], k = 4
+Output: 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= gifts.length &lt;= 10^3; 1 &lt;= gifts[i] &lt;= 10^9; 1 &lt;= k &lt;= 10^3.</p>
+    <p><b>Approach.</b> Each second acts on the current maximum, so a max-heap keeps that lookup to O(log n). Pop the largest, push back its square root, and repeat k times; the remaining sum is the answer.</p>
+    <pre><code>// Pop the largest, push back its square root, k times
+long long pickGifts(vector&lt;int&gt;&amp; gifts, int k) {
+    priority_queue&lt;int&gt; pq(gifts.begin(), gifts.end());
+    while (k-- &gt; 0) {
+        int biggest = pq.top(); pq.pop();
+        pq.push((int) sqrt(biggest));            // integer square root
+    }
+    long long total = 0;
+    while (!pq.empty()) { total += pq.top(); pq.pop(); }
+    return total;
+}   // O((n + k) log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O((n + k) log n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="maximum-product-of-two-elements-in-an-array">
+    <h3><span class="pn">E4</span> Maximum Product of Two Elements <span class="pill">Easy</span> <span class="muted small">· top-two selection</span></h3>
+    <p><b>Problem.</b> Pick two different indices and return (nums[i] - 1) * (nums[j] - 1) as large as possible.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [3,4,5,2]
+Output: 12</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,5,4,5]
+Output: 16</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [3,7]
+Output: 12</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= nums.length &lt;= 500; 1 &lt;= nums[i] &lt;= 10^3; the two indices must differ.</p>
+    <p><b>Approach.</b> Only the two largest values matter, since subtracting 1 preserves order. This is the smallest version of the top-K pattern: a single heap of size two, or just two running maxima, makes the scan linear.</p>
+    <pre><code>// Only the two largest values matter; keep them as running maxima
+int maxProduct(vector&lt;int&gt;&amp; nums) {
+    int first = 0, second = 0;                   // the two best values so far
+    for (int x : nums) {
+        if (x &gt; first) { second = first; first = x; }
+        else if (x &gt; second) second = x;
+    }
+    return (first - 1) * (second - 1);
+}   // O(n) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="the-k-weakest-rows-in-a-matrix">
+    <h3><span class="pn">E5</span> The K Weakest Rows in a Matrix <span class="pill">Easy</span> <span class="muted small">· rank rows by a pair key</span></h3>
+    <p><b>Problem.</b> Each row of 0s and 1s has its 1s first. Return the indices of the k weakest rows, where weaker means fewer 1s, ties broken by the smaller row index.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  mat = [[1,1,0,0,0],[1,1,1,1,0],[1,0,0,0,0],[1,1,0,0,0],[1,1,1,1,1]], k = 3
+Output: [2,0,3]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  mat = [[1,0,0,0],[1,1,1,1],[1,0,0,0],[1,0,0,0]], k = 2
+Output: [0,2]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= rows, cols &lt;= 100; matrix entries are 0 or 1, sorted in each row; 1 &lt;= k &lt;= number of rows.</p>
+    <p><b>Approach.</b> The strength of a row is just its count of ones, and because each row is sorted that count is a binary search. Ranking by the pair (strength, index) gives the required tie-break; a heap of size k or a full sort both work at these sizes.</p>
+    <pre><code>// Strength is the number of ones; rank by (strength, row index)
+vector&lt;int&gt; kWeakestRows(vector&lt;vector&lt;int&gt;&gt;&amp; mat, int k) {
+    vector&lt;pair&lt;int,int&gt;&gt; rows;                  // (soldiers, row index)
+    for (int i = 0; i &lt; (int)mat.size(); i++) {
+        // rows are sorted, so count by binary search: first 0 minus first 1
+        int lo = 0, hi = mat[i].size();
+        while (lo &lt; hi) { int mid = (lo + hi) / 2; if (mat[i][mid]) lo = mid + 1; else hi = mid; }
+        rows.push_back({lo, i});
+    }
+    sort(rows.begin(), rows.end());              // ties broken by the index
+    vector&lt;int&gt; out;
+    for (int i = 0; i &lt; k; i++) out.push_back(rows[i].second);
+    return out;
+}   // O(rows log cols + rows log rows) time · O(rows) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows log cols + rows log k) time · O(k) space.</p>
+  </section>
+  <section class="sub" id="implement-queue-using-stacks">
+    <h3><span class="pn">E6</span> Implement Queue using Stacks <span class="pill">Easy</span> <span class="muted small">· two stacks with a lazy transfer</span></h3>
+    <p><b>Problem.</b> Implement a queue with only stack operations: push, peek, pop and empty.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  ["MyQueue","push","push","peek","pop","empty"] [[],[1],[2],[],[],[]]
+Output: [null, null, null, 1, 1, false]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of calls &lt;= 100; 1 &lt;= values &lt;= 9; only standard stack operations may be used.</p>
+    <p><b>Approach.</b> One stack receives pushes, the other serves pops. Moving elements across only when the serving stack is empty reverses them twice in total, which gives each element an amortised constant cost even though a single transfer looks linear.</p>
+    <pre><code>// in receives pushes; out serves pops, refilled only when empty
+class MyQueue {
+public:
+    stack&lt;int&gt; in, out;
+    void push(int x) { in.push(x); }
+    void transfer() {
+        if (out.empty()) while (!in.empty()) { out.push(in.top()); in.pop(); }
+    }
+    int pop() { transfer(); int x = out.top(); out.pop(); return x; }
+    int peek() { transfer(); return out.top(); }
+    bool empty() { return in.empty() &amp;&amp; out.empty(); }
+};   // O(1) amortised per operation · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(1) amortised per operation time · O(n) space.</p>
+  </section>
+  <section class="sub" id="kth-largest-element-in-an-array">
+    <h3><span class="pn">M1</span> Kth Largest Element in an Array <span class="pill">Medium</span> <span class="muted small">· bounded min-heap or quickselect</span></h3>
+    <p><b>Problem.</b> Return the k-th largest element of an unsorted array.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [3,2,1,5,6,4], k = 2
+Output: 5</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [3,2,3,1,2,4,5,5,6], k = 4
+Output: 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= k &lt;= nums.length &lt;= 10^5; -10^4 &lt;= nums[i] &lt;= 10^4; counting-sort sizes are allowed.</p>
+    <p><b>Approach.</b> The heap route keeps at most k values, so the cost depends on k rather than n; quickselect partitions instead and skips the half that cannot contain the answer, averaging linear time. Both are standard answers and the choice is a trade of worst-case safety against average speed.</p>
+    <pre><code>// Keep the k largest in a min-heap; its root is the answer
+int findKthLargest(vector&lt;int&gt;&amp; nums, int k) {
+    priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt; heap;   // smallest on top
+    for (int x : nums) {
+        heap.push(x);
+        if ((int)heap.size() &gt; k) heap.pop();    // discard the weakest
+    }
+    return heap.top();
+}   // O(n log k) time · O(k) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log k) heap, O(n) average quickselect time · O(k) or O(1) space.</p>
+  </section>
+  <section class="sub" id="k-closest-points-to-origin">
+    <h3><span class="pn">M2</span> K Closest Points to Origin <span class="pill">Medium</span> <span class="muted small">· bounded max-heap on a distance key</span></h3>
+    <p><b>Problem.</b> Return the k points closest to (0, 0), in any order.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  points = [[1,3],[-2,2]], k = 1
+Output: [[-2,2]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  points = [[3,3],[5,-1],[-2,4]], k = 2
+Output: [[3,3],[-2,4]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= k &lt;= points.length &lt;= 10^4; -10^4 &lt;= coordinates &lt;= 10^4; no square roots are needed.</p>
+    <p><b>Approach.</b> Distance comparisons only need squared distances, which avoids floating point entirely. Mirroring the k-th largest pattern, keep a max-heap of the k nearest candidates and evict the farthest whenever it overflows.</p>
+    <pre><code>// Squared distances avoid floating point; evict the farthest
+vector&lt;vector&lt;int&gt;&gt; kClosest(vector&lt;vector&lt;int&gt;&gt;&amp; points, int k) {
+    priority_queue&lt;pair&lt;int,int&gt;&gt; heap;          // (sq distance, index), farthest on top
+    for (int i = 0; i &lt; (int)points.size(); i++) {
+        int d = points[i][0] * points[i][0] + points[i][1] * points[i][1];
+        heap.push({d, i});
+        if ((int)heap.size() &gt; k) heap.pop();    // drop the farthest candidate
+    }
+    vector&lt;vector&lt;int&gt;&gt; out;
+    while (!heap.empty()) { out.push_back(points[heap.top().second]); heap.pop(); }
+    return out;
+}   // O(n log k) time · O(k) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log k) time · O(k) space.</p>
+  </section>
+  <section class="sub" id="reorganize-string">
+    <h3><span class="pn">M3</span> Reorganize String <span class="pill">Medium</span> <span class="muted small">· most frequent first with a hold-back slot</span></h3>
+    <p><b>Problem.</b> Rearrange the characters so that no two adjacent characters are equal. Return any valid arrangement, or the empty string if none exists.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  s = "aab"
+Output: "aba"</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  s = "aaab"
+Output: ""</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= s.length &lt;= 500; s contains lowercase letters; adjacent characters must differ.</p>
+    <p><b>Approach.</b> Placing the most frequent remaining character first is safe as long as it is not the one just used. Holding the previous character out of the heap for one step is exactly the constraint, and if the heap is empty while characters remain, the answer is impossible.</p>
+    <pre><code>// Most frequent first; hold the previous character out for one step
+string reorganizeString(string s) {
+    int counts[26] = {0};
+    for (char c : s) counts[c - 'a']++;
+    priority_queue&lt;pair&lt;int,char&gt;&gt; pq;           // (remaining, character)
+    for (int c = 0; c &lt; 26; c++) if (counts[c]) pq.push({counts[c], (char)('a' + c)});
+    string out;
+    int heldCount = 0; char heldChar = 0;        // the character used last
+    while (!pq.empty()) {
+        auto [cnt, ch] = pq.top(); pq.pop();     // never the character just used
+        out += ch;
+        if (heldCount &gt; 0) pq.push({heldCount, heldChar});   // it may come back now
+        heldCount = cnt - 1;                     // and it must wait one step
+        heldChar = ch;
+    }
+    return (int)out.size() == (int)s.size() ? out : "";
+}   // O(n log 26) time · O(26) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log 26) time · O(26) space.</p>
+  </section>
+  <section class="sub" id="longest-happy-string">
+    <h3><span class="pn">M4</span> Longest Happy String <span class="pill">Medium</span> <span class="muted small">· greedy with two-character hold-back</span></h3>
+    <p><b>Problem.</b> Build the longest string of a, b and c that uses the given counts, contains no 'aaa', 'bbb' or 'ccc', and uses at most the given number of each letter.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  a = 1, b = 1, c = 7
+Output: ccaccbcc</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  a = 7, b = 1, c = 0
+Output: aabaa</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 0 &lt;= a, b, c &lt;= 100; at least one count is positive; no letter may appear three times in a row.</p>
+    <p><b>Approach.</b> Always append the most plentiful letter that does not create a triple. If the top of the heap would form a triple, take the second instead — that swap is the whole algorithm, and it fails only when no letter is left to break the run.</p>
+    <pre><code>// Append the most plentiful letter that does not make a triple
+string longestDiverseString(int a, int b, int c) {
+    priority_queue&lt;pair&lt;int,char&gt;&gt; pq;
+    if (a) pq.push({a, 'a'});
+    if (b) pq.push({b, 'b'});
+    if (c) pq.push({c, 'c'});
+    string out;
+    while (!pq.empty()) {
+        auto [cnt, ch] = pq.top(); pq.pop();
+        int n = out.size();
+        if (n &gt;= 2 &amp;&amp; out[n-1] == ch &amp;&amp; out[n-2] == ch) {   // this would make a triple
+            if (pq.empty()) break;                          // nothing else to use
+            auto [cnt2, ch2] = pq.top(); pq.pop();          // take the runner-up
+            out += ch2;
+            if (--cnt2 &gt; 0) pq.push({cnt2, ch2});
+            pq.push({cnt, ch});                             // the leader stays
+        } else {
+            out += ch;
+            if (--cnt &gt; 0) pq.push({cnt, ch});
+        }
+    }
+    return out;
+}   // O((a + b + c) log 3) time · O(1) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O((a + b + c) log 3) time · O(1) space.</p>
+  </section>
+  <section class="sub" id="furthest-building-you-can-reach">
+    <h3><span class="pn">M5</span> Furthest Building You Can Reach <span class="pill">Medium</span> <span class="muted small">· ladder/brick trade with a heap</span></h3>
+    <p><b>Problem.</b> Move between buildings in order: a rise costs either one ladder or that many bricks, while a fall is free. With a fixed number of ladders and bricks, return the furthest index reachable.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  heights = [4,2,7,6,9,14,12], bricks = 5, ladders = 1
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  heights = [4,12,2,7,3,18,20,3,19], bricks = 10, ladders = 2
+Output: 7</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  heights = [14,3,19,3], bricks = 17, ladders = 0
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= heights.length &lt;= 10^5; 0 &lt;= bricks &lt;= 10^9; 0 &lt;= ladders &lt;= heights.length.</p>
+    <p><b>Approach.</b> Ladders should be spent on the *largest* climbs, so collect every positive climb in a min-heap and let it hold the climbs currently assigned to ladders. When a new climb arrives, the smaller of the pair takes bricks and the larger takes a ladder, which keeps the ladder assignment optimal as you advance.</p>
+    <pre><code>// Ladders pay for the biggest climbs: keep those in a min-heap
+int furthestBuilding(vector&lt;int&gt;&amp; heights, int bricks, int ladders) {
+    priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt; laddered;   // climbs on ladders
+    for (int i = 0; i + 1 &lt; (int)heights.size(); i++) {
+        int climb = heights[i+1] - heights[i];
+        if (climb &lt;= 0) continue;                // going down is free
+        laddered.push(climb);
+        if ((int)laddered.size() &gt; ladders) {    // too many ladder climbs
+            bricks -= laddered.top();            // the smallest one takes bricks
+            laddered.pop();
+            if (bricks &lt; 0) return i;            // out of bricks: stop here
+        }
+    }
+    return heights.size() - 1;
+}   // O(n log ladders) time · O(ladders) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log ladders) time · O(ladders) space.</p>
+  </section>
+  <section class="sub" id="design-twitter">
+    <h3><span class="pn">M6</span> Design Twitter <span class="pill">Medium</span> <span class="muted small">· heap merge across followees</span></h3>
+    <p><b>Problem.</b> Design a small Twitter with postTweet, getNewsFeed (the ten most recent tweets from the user and their followees), follow and unfollow.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  ["Twitter","postTweet","getNewsFeed","follow","postTweet","getNewsFeed","unfollow","getNewsFeed"] [[],[1,5],[1],[1,2],[2,6],[1],[1,2],[1]]
+Output: [null, null, [5], null, null, [6,5], null, [5]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of calls &lt;= 3 · 10^4; 0 &lt;= userId, followerId &lt;= 500; the feed holds at most ten tweets.</p>
+    <p><b>Approach.</b> Keep each user's tweets in a running list with a global counter as the timestamp, and merge the followees' most recent tweets with a max-heap. Because only ten results are needed, each list contributes at most ten candidates — a bounded k-way merge.</p>
+    <pre><code>// Timestamped lists per user, merged with a heap for the feed
+class Twitter {
+public:
+    int time = 0;
+    unordered_map&lt;int, vector&lt;pair&lt;int,int&gt;&gt;&gt; tweets;   // user -&gt; [(time, tweetId)]
+    unordered_map&lt;int, unordered_set&lt;int&gt;&gt; follows;     // user -&gt; followees
+    void postTweet(int userId, int tweetId) {
+        tweets[userId].push_back({time++, tweetId});
+    }
+    vector&lt;int&gt; getNewsFeed(int userId) {
+        priority_queue&lt;array&lt;int,3&gt;&gt; pq;                 // (time, user, position)
+        auto add = [&amp;](int u) {
+            if (!tweets[u].empty())
+                pq.push({tweets[u].back().first, u, (int)tweets[u].size() - 1});
+        };
+        add(userId);
+        for (int u : follows[userId]) add(u);
+        vector&lt;int&gt; feed;
+        while (!pq.empty() &amp;&amp; (int)feed.size() &lt; 10) {
+            auto [t, u, pos] = pq.top(); pq.pop();
+            feed.push_back(tweets[u][pos].second);
+            if (pos &gt; 0) pq.push({tweets[u][pos-1].first, u, pos - 1});
+        }
+        return feed;
+    }
+    void follow(int followerId, int followeeId) {
+        if (followerId != followeeId) follows[followerId].insert(followeeId);
+    }
+    void unfollow(int followerId, int followeeId) {
+        follows[followerId].erase(followeeId);
+    }
+};   // O(f log f) per feed · O(tweets + f) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(f log f) per feed with f followees time · O(tweets) space.</p>
+  </section>
+  <section class="sub" id="find-k-pairs-with-smallest-sums">
+    <h3><span class="pn">M7</span> Find K Pairs with Smallest Sums <span class="pill">Medium</span> <span class="muted small">· k-way merge over two sorted arrays</span></h3>
+    <p><b>Problem.</b> Given two ascending arrays, return the k pairs (one element from each) with the smallest sums.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums1 = [1,7,11], nums2 = [2,4,6], k = 3
+Output: [[1,2],[1,4],[1,6]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums1 = [1,1,2], nums2 = [1,2,3], k = 2
+Output: [[1,1],[1,1]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= lengths &lt;= 10^5; -10^9 &lt;= values &lt;= 10^9; pairs may repeat.</p>
+    <p><b>Approach.</b> The simplest pair for each index of the first array is (i, 0). Seed a min-heap with those, then repeatedly pop the smallest pair and push its successor (i, j+1). The heap is doing a k-way merge over the rows of the implicit matrix of sums, so only k rows are ever touched.</p>
+    <pre><code>// Seed with (i, 0); each pop pushes the pair one column further
+vector&lt;vector&lt;int&gt;&gt; kSmallestPairs(vector&lt;int&gt;&amp; a, vector&lt;int&gt;&amp; b, int k) {
+    vector&lt;vector&lt;int&gt;&gt; out;
+    if (a.empty() || b.empty()) return out;
+    priority_queue&lt;array&lt;long long,3&gt;, vector&lt;array&lt;long long,3&gt;&gt;, greater&lt;&gt;&gt; pq;  // (sum, i, j)
+    for (int i = 0; i &lt; (int)a.size() &amp;&amp; i &lt; k; i++) pq.push({(long long)a[i] + b[0], i, 0});
+    while (!pq.empty() &amp;&amp; (int)out.size() &lt; k) {
+        auto [sum, i, j] = pq.top(); pq.pop();
+        out.push_back({a[i], b[j]});
+        if (j + 1 &lt; (int)b.size())                   // the successor in this row
+            pq.push({(long long)a[i] + b[j+1], i, j + 1});
+    }
+    return out;
+}   // O(k log min(k, n)) time · O(min(k, n)) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(k log min(k, n)) time · O(min(k, n)) space.</p>
+  </section>
+  <section class="sub" id="kth-smallest-element-in-a-sorted-matrix">
+    <h3><span class="pn">M8</span> Kth Smallest Element in a Sorted Matrix <span class="pill">Medium</span> <span class="muted small">· k-way merge on a matrix</span></h3>
+    <p><b>Problem.</b> Rows and columns of a matrix are each sorted ascending. Return the k-th smallest element.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  matrix = [[1,5,9],[10,11,13],[12,13,15]], k = 8
+Output: 13</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  matrix = [[-5]], k = 1
+Output: -5</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 300; -10^9 &lt;= values &lt;= 10^9; rows and columns are sorted.</p>
+    <p><b>Approach.</b> Treat the first column as the heads of n sorted lists and merge them with a heap exactly as in the k-way merge. After popping a value its row advances one cell, so the k-th pop is the answer with only O(k) heap work.</p>
+    <pre><code>// Merge the rows with a heap; the k-th pop is the answer
+int kthSmallest(vector&lt;vector&lt;int&gt;&gt;&amp; mat, int k) {
+    int n = mat.size();
+    priority_queue&lt;array&lt;int,3&gt;, vector&lt;array&lt;int,3&gt;&gt;, greater&lt;&gt;&gt; pq;   // (value, row, col)
+    for (int i = 0; i &lt; n; i++) pq.push({mat[i][0], i, 0});
+    int answer = mat[0][0];
+    while (k-- &gt; 0) {
+        auto [v, r, c] = pq.top(); pq.pop();
+        answer = v;
+        if (c + 1 &lt; n) pq.push({mat[r][c+1], r, c + 1});   // advance that row
+    }
+    return answer;
+}   // O(k log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(k log n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="seat-reservation-manager">
+    <h3><span class="pn">M9</span> Seat Reservation Manager <span class="pill">Medium</span> <span class="muted small">· min-heap of free seats (design)</span></h3>
+    <p><b>Problem.</b> Design a booking system for n seats numbered 1 to n: reserve() returns the smallest unreserved number, and unreserve(seat) returns that seat to the pool.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  ["SeatManager","reserve","reserve","unreserve","reserve","reserve","reserve","reserve","unreserve"] [[5],[],[],[2],[],[],[],[],[5]]
+Output: [null, 1, 2, null, 2, 3, 4, 5, null]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; 0 &lt;= number of calls &lt;= 2 · 10^5; reserve always has a free seat available.</p>
+    <p><b>Approach.</b> A min-heap of free seat numbers gives the smallest available seat in logarithmic time, and returned seats are simply pushed back. There is no need to sort anything after construction.</p>
+    <pre><code>// A min-heap of free seats answers reserve() and absorbs unreserve()
+class SeatManager {
+public:
+    priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt; freeSeats;
+    SeatManager(int n) {
+        for (int s = 1; s &lt;= n; s++) freeSeats.push(s);
+    }
+    int reserve() {
+        int s = freeSeats.top(); freeSeats.pop();
+        return s;
+    }
+    void unreserve(int seatNumber) {
+        freeSeats.push(seatNumber);              // returned to the pool
+    }
+};   // O(log n) per operation · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) per operation time · O(n) space.</p>
+  </section>
+  <section class="sub" id="maximum-number-of-events-that-can-be-attended">
+    <h3><span class="pn">M10</span> Maximum Number of Events That Can Be Attended <span class="pill">Medium</span> <span class="muted small">· sweep days with a deadline heap</span></h3>
+    <p><b>Problem.</b> Each event is [startDay, endDay] and attending one takes that whole day, at most one event per day. Return the maximum number of events attendable.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  events = [[1,2],[2,3],[3,4]]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  events = [[1,2],[2,3],[3,4],[1,2]]
+Output: 4</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= events.length &lt;= 10^5; 1 &lt;= startDay &lt;= endDay &lt;= 10^5; one event per day.</p>
+    <p><b>Approach.</b> Sweep day by day, adding every event that has started into a min-heap keyed by end day, and attend the one that expires soonest. That earliest-deadline-first choice is the same exchange argument as interval scheduling, applied one day at a time; the day counter can jump straight to the next start when the heap is empty.</p>
+    <pre><code>// Sweep days, always attend the event expiring soonest
+int maxEvents(vector&lt;vector&lt;int&gt;&gt;&amp; events) {
+    sort(events.begin(), events.end());          // by start day
+    priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt; ending;   // end days
+    int i = 0, n = events.size(), day = 0, attended = 0;
+    while (i &lt; n || !ending.empty()) {
+        if (ending.empty()) day = max(day, events[i][0]);    // jump forward
+        while (i &lt; n &amp;&amp; events[i][0] &lt;= day) ending.push(events[i++][1]);
+        ending.pop();                            // attend the earliest deadline
+        attended++;
+        day++;
+        while (!ending.empty() &amp;&amp; ending.top() &lt; day) ending.pop();   // expired
+    }
+    return attended;
+}   // O(n log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n + days) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="process-tasks-using-servers">
+    <h3><span class="pn">M11</span> Process Tasks Using Servers <span class="pill">Medium</span> <span class="muted small">· two heaps: free pool and busy queue</span></h3>
+    <p><b>Problem.</b> Servers have weights; each task arrives at a given second. Assign each task to the free server with the smallest weight (ties by index); if none is free, wait for the earliest one to finish, again preferring the smallest weight. Return the server indices used.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  servers = [3,3,2], tasks = [1,2,3,2,1,2]
+Output: [2,2,0,2,1,2]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  servers = [5,1,4,3,2], tasks = [2,1,2,4,5,2,1]
+Output: [1,4,1,4,1,3,2]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= servers, tasks &lt;= 2 · 10^5; 1 &lt;= weights, task times &lt;= 2 · 10^5; the next task starts only when this one is done.</p>
+    <p><b>Approach.</b> Keep free servers in a heap ordered by (weight, index) and busy ones in a heap ordered by (free time, weight, index). Before each task, release everything that has finished and pick the best free server; the doubly-keyed ordering handles both tie-breaks without a single sort.</p>
+    <pre><code>// Free pool by (weight, index); busy queue by (free time, weight, index)
+vector&lt;int&gt; assignTasks(vector&lt;int&gt;&amp; servers, vector&lt;int&gt;&amp; tasks) {
+    priority_queue&lt;pair&lt;int,int&gt;, vector&lt;pair&lt;int,int&gt;&gt;, greater&lt;&gt;&gt; freePool;   // (weight, index)
+    priority_queue&lt;array&lt;long long,3&gt;, vector&lt;array&lt;long long,3&gt;&gt;, greater&lt;&gt;&gt; busy;  // (time, weight, index)
+    for (int i = 0; i &lt; (int)servers.size(); i++) freePool.push({servers[i], i});
+    vector&lt;int&gt; out;
+    long long second = 0;
+    for (int t = 0; t &lt; (int)tasks.size(); t++) {
+        second = max(second, (long long)t);       // the task arrives no earlier
+        if (freePool.empty()) second = max(second, busy.top()[0]);   // wait for one
+        while (!busy.empty() &amp;&amp; busy.top()[0] &lt;= second) {           // release
+            auto [finish, w, idx] = busy.top(); busy.pop();
+            freePool.push({(int)w, (int)idx});
+        }
+        auto [w, idx] = freePool.top(); freePool.pop();
+        out.push_back(idx);
+        busy.push({second + tasks[t], w, idx});   // busy until this task finishes
+    }
+    return out;
+}   // O((s + t) log s) time · O(s) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O((s + t) log s) time · O(s) space.</p>
+  </section>
+  <section class="sub" id="time-based-key-value-store">
+    <h3><span class="pn">M12</span> Time Based Key-Value Store <span class="pill">Medium</span> <span class="muted small">· append-only log with binary search (design)</span></h3>
+    <p><b>Problem.</b> Design a store whose set(key, value, timestamp) records values in increasing timestamp order per key, and whose get(key, timestamp) returns the value with the largest timestamp at most the given one, or "" if there is none.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  ["TimeMap","set","get","get","set","get","get"] [[],["foo","bar",1],["foo",1],["foo",3],["foo","bar2",4],["foo",4],["foo",5]]
+Output: [null, null, "bar", "bar", null, "bar2", "bar2"]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= number of calls &lt;= 2 · 10^5; timestamps strictly increase per key; keys and values are short lowercase strings.</p>
+    <p><b>Approach.</b> A per-key list of (timestamp, value) pairs is already sorted, because timestamps only grow per key. Binary search finds the last entry at or before the query timestamp, which turns a potentially linear scan into a logarithmic one.</p>
+    <pre><code>// Each key keeps a growing list; get() binary searches it
+class TimeMap {
+public:
+    unordered_map&lt;string, vector&lt;pair&lt;int,string&gt;&gt;&gt; store;   // key -&gt; [(time, value)]
+    void set(string key, string value, int timestamp) {
+        store[key].push_back({timestamp, value});            // times only grow
+    }
+    string get(string key, int timestamp) {
+        auto it = store.find(key);
+        if (it == store.end()) return "";
+        auto&amp; list = it-&gt;second;
+        // last entry whose time is &lt;= timestamp
+        int lo = 0, hi = list.size();
+        while (lo &lt; hi) {
+            int mid = (lo + hi) / 2;
+            if (list[mid].first &lt;= timestamp) lo = mid + 1; else hi = mid;
+        }
+        return lo == 0 ? "" : list[lo-1].second;
+    }
+};   // O(log n) per get · O(total entries) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) per get time · O(total entries) space.</p>
+  </section>
+  <section class="sub" id="find-median-from-data-stream">
+    <h3><span class="pn">H1</span> Find Median from Data Stream <span class="pill hot">Hard</span> <span class="muted small">· two heaps around the median</span></h3>
+    <p><b>Problem.</b> Design a structure with addNum(int) and findMedian() that reports the median of everything added so far.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  ["MedianFinder","addNum","addNum","findMedian","addNum","findMedian"] [[],[1],[2],[],[3],[]]
+Output: [null, null, null, 1.5, null, 2.0]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> -10^5 &lt;= num &lt;= 10^5; at most 5 · 10^4 calls; findMedian is only called when a number exists.</p>
+    <p><b>Approach.</b> Keep the smaller half in a max-heap and the larger half in a min-heap, sized so they differ by at most one. The median is then either the top of the bigger heap or the average of the two tops, and each insertion costs two logarithmic moves.</p>
+    <pre><code>// Smaller half in a max-heap, larger half in a min-heap
+class MedianFinder {
+public:
+    priority_queue&lt;int&gt; low;                                 // max-heap
+    priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt; high;     // min-heap
+    void addNum(int num) {
+        low.push(num);
+        high.push(low.top()); low.pop();                     // hand the largest low over
+        if (high.size() &gt; low.size()) { low.push(high.top()); high.pop(); }
+    }
+    double findMedian() {
+        return low.size() &gt; high.size()
+             ? low.top()                                     // odd count: the middle
+             : (low.top() + high.top()) / 2.0;               // even count: the average
+    }
+};   // O(log n) per add · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(log n) per add, O(1) per median time · O(n) space.</p>
+  </section>
+  <section class="sub" id="sliding-window-median">
+    <h3><span class="pn">H2</span> Sliding Window Median <span class="pill hot">Hard</span> <span class="muted small">· two heaps with lazy deletion</span></h3>
+    <p><b>Problem.</b> Return the median of every window of size k as it slides across the array from left to right.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,3,-1,-3,5,3,6,7], k = 3
+Output: [1.00000,-1.00000,-1.00000,3.00000,5.00000,6.00000]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [1,2,3,4,2,3,1,4,2], k = 3
+Output: [2.00000,3.00000,3.00000,3.00000,2.00000,3.00000,2.00000]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= k &lt;= nums.length &lt;= 10^5; -2^31 &lt;= nums[i] &lt;= 2^31 - 1; the median of an even window is the mean of the middle two.</p>
+    <p><b>Approach.</b> The two-heap median structure cannot delete arbitrary elements cheaply, so deletions are *deferred*: record the leaving value in a pending map, shrink the logical size of the half it belonged to, and let each heap discard such entries when they reach its top. The result is two heaps that stay the right shape while ignoring the values that have left the window.</p>
+    <pre><code>// Two heaps plus a pending-deletion map: stale entries leave at the top
+vector&lt;double&gt; medianSlidingWindow(vector&lt;int&gt;&amp; nums, int k) {
+    priority_queue&lt;int&gt; low;                                 // max-heap (smaller half)
+    priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt; high;     // min-heap (larger half)
+    unordered_map&lt;int,int&gt; pending;                          // value -&gt; deletions owed
+    int lowSize = 0, highSize = 0;
+    auto clean = [&amp;]() {
+        while (!low.empty() &amp;&amp; pending[low.top()]) { pending[low.top()]--; low.pop(); }
+        while (!high.empty() &amp;&amp; pending[high.top()]) { pending[high.top()]--; high.pop(); }
+    };
+    auto rebalance = [&amp;]() {
+        if (lowSize &gt; highSize + 1) {
+            high.push(low.top()); low.pop(); lowSize--; highSize++;
+        } else if (highSize &gt; lowSize) {
+            low.push(high.top()); high.pop(); highSize--; lowSize++;
+        }
+    };
+    vector&lt;double&gt; out;
+    for (int i = 0; i &lt; (int)nums.size(); i++) {
+        clean();
+        if (!low.empty() &amp;&amp; nums[i] &lt;= low.top()) { low.push(nums[i]); lowSize++; }
+        else { high.push(nums[i]); highSize++; }
+        rebalance();
+        clean();
+        if (i &gt;= k - 1) {
+            out.push_back(k % 2 ? (double) low.top()
+                                : (low.top() + (double) high.top()) / 2.0);
+            int gone = nums[i - k + 1];
+            clean();
+            if (!low.empty() &amp;&amp; gone &lt;= low.top()) lowSize--; else highSize--;
+            pending[gone]++;
+            clean();
+            rebalance();
+            clean();
+        }
+    }
+    return out;
+}   // O(n log k) time · O(k) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log k) time · O(k) space.</p>
+  </section>
+  <section class="sub" id="find-the-kth-smallest-sum-of-a-matrix-with-sorted-rows">
+    <h3><span class="pn">H3</span> Kth Smallest Sum of a Matrix With Sorted Rows <span class="pill hot">Hard</span> <span class="muted small">· repeated k-way merge across rows</span></h3>
+    <p><b>Problem.</b> The rows of the matrix are sorted. A sum picks exactly one element from each row. Return the k-th smallest such sum.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  mat = [[1,3,11],[2,4,6]], k = 5
+Output: 7</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  mat = [[1,3,11],[2,4,6]], k = 9
+Output: 17</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  mat = [[1,10,10],[1,4,5],[2,3,6]], k = 7
+Output: 9</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 40; 1 &lt;= mat[i][j] &lt;= 5000; 1 &lt;= k &lt;= min(200, cols^rows).</p>
+    <p><b>Approach.</b> Fold the rows one at a time. Keeping only the k smallest partial sums is safe, because any larger partial sum can only produce larger totals. Combining a k-element list with the next row is exactly the k-smallest-pairs problem, solved by a heap walk that never materialises the full product.</p>
+    <pre><code>// Fold rows in: each step keeps only the k smallest partial sums
+int kthSmallest(vector&lt;vector&lt;int&gt;&gt;&amp; mat, int k) {
+    vector&lt;int&gt; sums = mat[0];
+    sort(sums.begin(), sums.end());
+    if ((int)sums.size() &gt; k) sums.resize(k);
+    for (size_t r = 1; r &lt; mat.size(); r++) {
+        vector&lt;int&gt; row = mat[r];
+        sort(row.begin(), row.end());
+        priority_queue&lt;array&lt;long long,3&gt;, vector&lt;array&lt;long long,3&gt;&gt;, greater&lt;&gt;&gt; pq;   // (sum, i, j)
+        for (int i = 0; i &lt; (int)sums.size() &amp;&amp; i &lt; k; i++)
+            pq.push({(long long)sums[i] + row[0], i, 0});
+        vector&lt;int&gt; next;
+        while (!pq.empty() &amp;&amp; (int)next.size() &lt; k) {
+            auto [s, i, j] = pq.top(); pq.pop();
+            next.push_back((int) s);
+            if (j + 1 &lt; (int)row.size())             // the successor in this row
+                pq.push({(long long)sums[i] + row[j+1], i, j + 1});
+        }
+        sums = move(next);
+    }
+    return sums[k - 1];
+}   // O(rows · k log min(k, cols)) time · O(k) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · k log min(k, cols)) time · O(k) space.</p>
+  </section>
+  <section class="sub" id="the-skyline-problem">
+    <h3><span class="pn">H4</span> The Skyline Problem <span class="pill hot">Hard</span> <span class="muted small">· sweep line with a height heap</span></h3>
+    <p><b>Problem.</b> Each building is [left, right, height]. Return the skyline as the list of critical points where the silhouette's height changes.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  buildings = [[2,9,10],[3,7,15],[5,12,12],[15,20,10],[19,24,8]]
+Output: [[2,10],[3,15],[7,12],[12,0],[15,10],[20,8],[24,0]]</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  buildings = [[0,2,3],[2,5,3]]
+Output: [[0,3],[5,0]]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= buildings.length &lt;= 10^4; 0 &lt;= left &lt; right &lt;= 2^31 - 1; 1 &lt;= height &lt;= 2^31 - 1.</p>
+    <p><b>Approach.</b> Turn each building into a start event and an end event, sort by x, and keep the active heights in a max-heap. Endings cannot be removed from a heap directly, so they are counted in a pending map and discarded when they surface at the top — the same lazy deletion trick as the sliding median, here doing all the work.</p>
+    <pre><code>// Sweep the x-axis; the heap top is the current skyline height
+vector&lt;vector&lt;int&gt;&gt; getSkyline(vector&lt;vector&lt;int&gt;&gt;&amp; buildings) {
+    vector&lt;pair&lt;int,int&gt;&gt; events;                // (x, signed height): -h starts, +h ends
+    for (auto&amp; b : buildings) {
+        events.push_back({b[0], -b[2]});
+        events.push_back({b[1], b[2]});
+    }
+    sort(events.begin(), events.end());          // starts sort before ends at the same x
+    priority_queue&lt;int&gt; heights;                 // active heights, max on top
+    unordered_map&lt;int,int&gt; pending;              // endings waiting to be discarded
+    heights.push(0);                             // the ground
+    vector&lt;vector&lt;int&gt;&gt; out;
+    int prev = 0;
+    for (auto&amp; [x, h] : events) {
+        if (h &lt; 0) heights.push(-h);             // a building starts
+        else pending[h]++;                       // a building ends
+        while (pending[heights.top()] &gt; 0) {     // drop heights that already ended
+            pending[heights.top()]--;
+            heights.pop();
+        }
+        int cur = heights.top();
+        if (cur != prev) {                       // the silhouette changed here
+            out.push_back({x, cur});
+            prev = cur;
+        }
+    }
+    return out;
+}   // O(n log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="trapping-rain-water-ii">
+    <h3><span class="pn">H5</span> Trapping Rain Water II <span class="pill hot">Hard</span> <span class="muted small">· min-heap flooding from the border</span></h3>
+    <p><b>Problem.</b> Given the heights of a 2D cell grid, return how much water is trapped after raining.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  heightMap = [[1,4,3,1,3,2],[3,2,1,3,2,4],[2,3,3,2,3,1]]
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  heightMap = [[3,3,3,3,3],[3,2,2,2,3],[3,2,1,2,3],[3,2,2,2,3],[3,3,3,3,3]]
+Output: 10</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= rows, cols &lt;= 200; 0 &lt;= height &lt;= 2 · 10^4; water cannot flow off the border cells.</p>
+    <p><b>Approach.</b> Water escapes along the lowest path to the border, so flood inward from the border with a min-heap: always process the lowest boundary cell, raise the water level to it, and let its neighbours join the boundary. A cell's trapped water is the level when it is reached minus its own height.</p>
+    <pre><code>// Flood inward from the border; the heap keeps the lowest boundary cell
+int trapRainWater(vector&lt;vector&lt;int&gt;&gt;&amp; h) {
+    int R = h.size(), C = h[0].size();
+    if (R &lt; 3 || C &lt; 3) return 0;                // no room to trap anything
+    priority_queue&lt;array&lt;int,3&gt;, vector&lt;array&lt;int,3&gt;&gt;, greater&lt;&gt;&gt; pq;   // (height, r, c)
+    vector&lt;vector&lt;bool&gt;&gt; seen(R, vector&lt;bool&gt;(C, false));
+    for (int r = 0; r &lt; R; r++)
+        for (int c = 0; c &lt; C; c++)
+            if (r == 0 || c == 0 || r == R-1 || c == C-1) {
+                pq.push({h[r][c], r, c});
+                seen[r][c] = true;
+            }
+    int water = 0, level = 0;
+    int dr[4] = {1,-1,0,0}, dc[4] = {0,0,1,-1};
+    while (!pq.empty()) {
+        auto [height, r, c] = pq.top(); pq.pop();
+        level = max(level, height);              // the water level never falls
+        for (int d = 0; d &lt; 4; d++) {
+            int nr = r + dr[d], nc = c + dc[d];
+            if (nr &lt; 0 || nr &gt;= R || nc &lt; 0 || nc &gt;= C || seen[nr][nc]) continue;
+            seen[nr][nc] = true;
+            water += max(0, level - h[nr][nc]);  // anything below the level holds water
+            pq.push({h[nr][nc], nr, nc});
+        }
+    }
+    return water;
+}   // O(R·C log(R·C)) time · O(R·C) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(rows · cols · log(rows · cols)) time · O(rows · cols) space.</p>
+  </section>
+  <section class="sub" id="max-value-of-equation">
+    <h3><span class="pn">H6</span> Max Value of Equation <span class="pill hot">Hard</span> <span class="muted small">· sliding window maximum with a deque</span></h3>
+    <p><b>Problem.</b> Given points [xi, yi] with xi strictly increasing, and a limit k, maximise yi + yj + |xi - xj| over pairs with |xi - xj| &lt;= k.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  points = [[1,3],[2,0],[5,10],[6,-10]], k = 1
+Output: 4</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  points = [[0,0],[3,0],[9,2]], k = 3
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 2 &lt;= points.length &lt;= 10^5; -10^8 &lt;= xi, yi &lt;= 10^8; points are sorted by xi.</p>
+    <p><b>Approach.</b> Because the x values increase, the absolute value disappears: for i before j the expression is (yj + xj) + (yi - xi). That makes it a sliding-window maximum of yi - xi over the previous positions within distance k, which a monotonic deque maintains in constant amortised time.</p>
+    <pre><code>// For i &lt; j the expression is (yj + xj) + (yi - xi): windowed max of y - x
+int findMaxValueOfEquation(vector&lt;vector&lt;int&gt;&gt;&amp; points, int k) {
+    deque&lt;int&gt; dq;                               // indices with decreasing y - x
+    int best = INT_MIN;
+    for (int j = 0; j &lt; (int)points.size(); j++) {
+        int xj = points[j][0], yj = points[j][1];
+        while (!dq.empty() &amp;&amp; xj - points[dq.front()][0] &gt; k) dq.pop_front();   // out of reach
+        if (!dq.empty()) {
+            int i = dq.front();
+            best = max(best, yj + xj + points[i][1] - points[i][0]);
+        }
+        int key = yj - xj;
+        while (!dq.empty() &amp;&amp; points[dq.back()][1] - points[dq.back()][0] &lt;= key)
+            dq.pop_back();                       // this candidate is superseded
+        dq.push_back(j);
+    }
+    return best;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="construct-target-array-with-multiple-sums">
+    <h3><span class="pn">H7</span> Construct Target Array With Multiple Sums <span class="pill hot">Hard</span> <span class="muted small">· reverse simulation with a max-heap</span></h3>
+    <p><b>Problem.</b> Starting from an array of all ones, each step replaces one element by the sum of the whole array. Given a target array, decide whether it can be produced.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  target = [9,3,5]
+Output: true</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  target = [1,1,1,2]
+Output: false</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  target = [8,5]
+Output: true</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= target.length &lt;= 5 · 10^4; 1 &lt;= target[i] &lt;= 10^9; the forward step raises one element at a time.</p>
+    <p><b>Approach.</b> Run the process backwards: the largest element must have been the sum of everything else plus its own previous value, so it reduces to (largest mod rest). Taking the modulo skips thousands of identical reverse steps at once, which is what keeps the loop logarithmic instead of linear in the values.</p>
+    <pre><code>// Reverse the process: the max shrinks to (max mod rest)
+bool isPossible(vector&lt;int&gt;&amp; target) {
+    priority_queue&lt;int&gt; pq(target.begin(), target.end());
+    long long total = accumulate(target.begin(), target.end(), 0LL);
+    while (pq.top() &gt; 1) {
+        long long mx = pq.top(); pq.pop();
+        long long rest = total - mx;
+        if (rest == 0 || rest &gt;= mx) return false;       // impossible predecessor
+        long long prev = mx % rest;                      // skip repeated steps
+        if (prev == 0) prev = rest;                      // exact multiple of rest
+        if (prev &gt;= mx) return false;                    // must have come from below
+        total = rest + prev;
+        pq.push((int) prev);
+    }
+    return true;
+}   // O(n log n log(max value)) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n log(max value)) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="minimum-difference-in-sums-after-removal-of-elements">
+    <h3><span class="pn">H8</span> Minimum Difference in Sums After Removal of Elements <span class="pill hot">Hard</span> <span class="muted small">· prefix and suffix selection with heaps</span></h3>
+    <p><b>Problem.</b> The array has 3n elements. Remove exactly n of them, then split the remaining 2n, in order, into a first and a second half of n elements each; return the smallest possible value of (sum of the first half) - (sum of the second half).</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [3,1,2]
+Output: -1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [7,9,5,8,1,3]
+Output: 1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 10^5; nums.length == 3n; 1 &lt;= nums[i] &lt;= 10^5.</p>
+    <p><b>Approach.</b> Scan once from the left keeping the n smallest values in a max-heap to get the cheapest prefix sum at every split, then scan from the right keeping the n largest in a min-heap for the best suffix sum. The answer is the smallest gap between the two arrays at any valid cut.</p>
+    <pre><code>// Cheapest prefix selection and richest suffix selection, then compare
+long long minimumDifference(vector&lt;int&gt;&amp; nums) {
+    int m = nums.size(), n = m / 3;
+    vector&lt;long long&gt; left(m, 0), right(m, 0);
+    priority_queue&lt;int&gt; keepLow;                 // largest of the n smallest on top
+    long long sum = 0;
+    for (int i = 0; i &lt; m; i++) {
+        keepLow.push(nums[i]);
+        sum += nums[i];
+        if ((int)keepLow.size() &gt; n) { sum -= keepLow.top(); keepLow.pop(); }
+        if ((int)keepLow.size() == n) left[i] = sum;
+    }
+    priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt; keepHigh;   // smallest of the n largest
+    sum = 0;
+    for (int i = m - 1; i &gt;= 0; i--) {
+        keepHigh.push(nums[i]);
+        sum += nums[i];
+        if ((int)keepHigh.size() &gt; n) { sum -= keepHigh.top(); keepHigh.pop(); }
+        if ((int)keepHigh.size() == n) right[i] = sum;
+    }
+    long long best = LLONG_MAX;
+    for (int i = n - 1; i &lt; 2 * n; i++) best = min(best, left[i] - right[i+1]);
+    return best;
+}   // O(n log n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="insert-delete-getrandom-o1-duplicates-allowed">
+    <h3><span class="pn">H9</span> Insert Delete GetRandom O(1) — Duplicates Allowed <span class="pill hot">Hard</span> <span class="muted small">· array plus index map (design)</span></h3>
+    <p><b>Problem.</b> Design a multiset with insert(val), which returns true only when val was absent; remove(val), which returns true only when val was present; and getRandom(), which returns a uniformly random element. Duplicates are allowed and every operation must average constant time.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  ["RandomizedCollection","insert","insert","insert","getRandom","remove","getRandom"] [[],[1],[1],[2],[],[1],[]]
+Output: [null, true, false, true, 2, true, 1]</code></pre></div>
+    <p class="cons"><b>Constraints:</b> -2^31 &lt;= val &lt;= 2^31 - 1; at most 2 · 10^5 calls; getRandom is called only when the structure is non-empty.</p>
+    <p><b>Approach.</b> Keep the values in a plain array and a map from value to the set of its array positions. Deletion swaps the victim with the last array element and rewrites only those two positions, so no shifting ever happens and every operation stays constant on average.</p>
+    <pre><code>// Array plus value -&gt; positions; deletion swaps with the last slot
+class RandomizedCollection {
+public:
+    vector&lt;int&gt; items;
+    unordered_map&lt;int, unordered_set&lt;int&gt;&gt; where;    // value -&gt; array indices
+    bool insert(int val) {
+        bool fresh = where[val].empty();
+        where[val].insert(items.size());
+        items.push_back(val);
+        return fresh;
+    }
+    bool remove(int val) {
+        auto it = where.find(val);
+        if (it == where.end() || it-&gt;second.empty()) return false;
+        int victim = *it-&gt;second.begin();            // any copy will do
+        it-&gt;second.erase(victim);
+        int last = items.size() - 1;
+        if (victim != last) {
+            int moved = items[last];                 // the last slot fills the hole
+            items[victim] = moved;
+            where[moved].erase(last);
+            where[moved].insert(victim);
+        }
+        items.pop_back();
+        return true;
+    }
+    int getRandom() {
+        return items[rand() % items.size()];
+    }
+};   // O(1) average per operation · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(1) average per operation time · O(n) space.</p>
+  </section>
+  <section class="sub" id="minimum-cost-to-reach-destination-in-time">
+    <h3><span class="pn">H10</span> Minimum Cost to Reach Destination in Time <span class="pill hot">Hard</span> <span class="muted small">· Dijkstra over (node, time) states</span></h3>
+    <p><b>Problem.</b> The country has n cities joined by bidirectional roads, where edges[i] = [x, y, time] says travelling that road takes time minutes. You pay passingFees[i] every time you pass through city i. Return the cheapest way from city 0 to city n-1 that finishes within maxTime minutes, or -1.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  maxTime = 30, edges = [[0,1,10],[1,2,10],[2,5,10],[0,3,1],[3,4,10],[4,5,15]], passingFees = [5,1,2,20,20,3]
+Output: 11</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  maxTime = 29, edges = [[0,1,10],[1,2,10],[2,5,10],[0,3,1],[3,4,10],[4,5,15]], passingFees = [5,1,2,20,20,3]
+Output: 48</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  maxTime = 25, edges = [[0,1,10],[1,2,10],[2,5,10],[0,3,1],[3,4,10],[4,5,15]], passingFees = [5,1,2,20,20,3]
+Output: -1</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= n &lt;= 1000; 1 &lt;= edges.length &lt;= 1000; 2 &lt;= time_i &lt;= 1000; 1 &lt;= passingFees[i] &lt;= 1000; 1 &lt;= maxTime &lt;= 1000; passingFees.length == n and each road is [x, y, time].</p>
+    <p><b>Approach.</b> Time is a resource, not just a weight, so cost alone cannot be the state: arriving later can be cheaper, and arriving cheaper can be too late. The Dijkstra state is therefore the pair (city, minutes spent) and the distance is the fee paid — starting at city 0 costs its own fee and every step adds the fee of the city you enter. The heap settles states in order of cost, so the first settled state that reaches the destination within maxTime is the answer.</p>
+    <pre><code>// Dijkstra over (city, minutes spent); the distance is the fee paid
+int minCost(int maxTime, vector&lt;vector&lt;int&gt;&gt;&amp; edges, vector&lt;int&gt;&amp; fees) {
+    int n = fees.size();
+    vector&lt;vector&lt;pair&lt;int,int&gt;&gt;&gt; adj(n);                    // city -&gt; (neighbour, time)
+    for (auto&amp; e : edges) {
+        adj[e[0]].push_back({e[1], e[2]});
+        adj[e[1]].push_back({e[0], e[2]});
+    }
+    const int INF = 1e9;
+    vector&lt;vector&lt;int&gt;&gt; best(n, vector&lt;int&gt;(maxTime + 1, INF));   // fee per state
+    vector&lt;vector&lt;bool&gt;&gt; done(n, vector&lt;bool&gt;(maxTime + 1, false));
+    priority_queue&lt;array&lt;int,3&gt;, vector&lt;array&lt;int,3&gt;&gt;, greater&lt;&gt;&gt; pq;   // (fee, city, time)
+    best[0][0] = fees[0];                            // entering city 0 costs its own fee
+    pq.push({fees[0], 0, 0});
+    int answer = INF;
+    while (!pq.empty()) {
+        auto [cost, u, t] = pq.top(); pq.pop();
+        if (done[u][t]) continue;                    // a cheaper state is already settled
+        done[u][t] = true;
+        if (u == n - 1) { answer = min(answer, cost); continue; }
+        for (auto [v, dt] : adj[u]) {
+            int nt = t + dt;
+            if (nt &gt; maxTime) continue;              // the ride would run out of time
+            int nc = cost + fees[v];
+            if (nc &lt; best[v][nt]) { best[v][nt] = nc; pq.push({nc, v, nt}); }
+        }
+    }
+    return answer == INF ? -1 : answer;
+}   // O(maxTime · n log(maxTime · n)) time · O(maxTime · n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(maxTime · n log(maxTime · n)) in the worst case time · O(maxTime · n) space.</p>
+  </section>
+  <section class="sub" id="minimize-deviation-in-array">
+    <h3><span class="pn">H11</span> Minimize Deviation in Array <span class="pill hot">Hard</span> <span class="muted small">· raise the odd values, then halve the maximum</span></h3>
+    <p><b>Problem.</b> You may double odd numbers and halve even numbers any number of times. Return the smallest possible (maximum - minimum) of the resulting array.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  nums = [1,2,3,4]
+Output: 1</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  nums = [4,1,5,20,3]
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 3</div><pre><code class="nohl">Input:  nums = [2,10,8]
+Output: 3</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= nums.length &lt;= 5 · 10^4; 1 &lt;= nums[i] &lt;= 10^9; halving applies only to even numbers.</p>
+    <p><b>Approach.</b> Doubling odd values first is free and makes every number reachable by halving alone, so the minimum can only ever be a value that was on the board at some point. Repeatedly halve the current maximum and keep the running minimum; every such step is the only move that can shrink the gap.</p>
+    <pre><code>// Double the odds, then repeatedly halve the current maximum
+int minimumDeviation(vector&lt;int&gt;&amp; nums) {
+    priority_queue&lt;int&gt; pq;
+    int smallest = INT_MAX;
+    for (int x : nums) {
+        if (x % 2) x *= 2;                       // odds can only be doubled first
+        pq.push(x);
+        smallest = min(smallest, x);
+    }
+    int best = pq.top() - smallest;
+    while (pq.top() % 2 == 0) {                  // only evens can shrink
+        int top = pq.top(); pq.pop();
+        int halved = top / 2;
+        pq.push(halved);
+        smallest = min(smallest, halved);        // the minimum may fall
+        best = min(best, pq.top() - smallest);
+    }
+    return best;
+}   // O(n log n log(max value)) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n log n log(max value)) time · O(n) space.</p>
+  </section>
+  <section class="sub" id="maximum-number-of-robots-within-budget">
+    <h3><span class="pn">H12</span> Maximum Number of Robots Within Budget <span class="pill hot">Hard</span> <span class="muted small">· sliding window maximum with running costs</span></h3>
+    <p><b>Problem.</b> Choosing robots i..j costs max(chargeTimes in the window) + k * sum(runningCosts in the window). Return the largest window whose cost fits the budget.</p>
+    <div class="ex"><div class="exh">Example 1</div><pre><code class="nohl">Input:  chargeTimes = [3,6,1,3,4], runningCosts = [2,1,3,4,5], budget = 25
+Output: 3</code></pre></div>
+    <div class="ex"><div class="exh">Example 2</div><pre><code class="nohl">Input:  chargeTimes = [11,12,19], runningCosts = [10,8,7], budget = 19
+Output: 0</code></pre></div>
+    <p class="cons"><b>Constraints:</b> 1 &lt;= robots &lt;= 5 · 10^4; 1 &lt;= chargeTimes[i], runningCosts[i] &lt;= 10^5; 0 &lt;= budget &lt;= 10^15.</p>
+    <p><b>Approach.</b> For a window, the charge term is its maximum and the cost term is its sum, so a monotonic deque supplies the maximum in constant amortised time while a running sum tracks the costs. Whenever the window is too expensive, drop the left end — the cost is monotone in the window, so that is the only repair needed.</p>
+    <pre><code>// Grow a window; track its max with a deque and its cost with a running sum
+int maximumRobots(vector&lt;int&gt;&amp; chargeTimes, vector&lt;int&gt;&amp; runningCosts, long long budget) {
+    deque&lt;int&gt; dq;                               // indices with decreasing charge time
+    long long costSum = 0, best = 0;
+    int left = 0;
+    for (int right = 0; right &lt; (int)chargeTimes.size(); right++) {
+        while (!dq.empty() &amp;&amp; chargeTimes[dq.back()] &lt;= chargeTimes[right])
+            dq.pop_back();                       // this robot dominates them
+        dq.push_back(right);
+        costSum += runningCosts[right];
+        while (left &lt;= right &amp;&amp;
+               (long long)chargeTimes[dq.front()] + (right - left + 1) * costSum &gt; budget) {
+            costSum -= runningCosts[left];       // shrink from the left
+            if (dq.front() == left) dq.pop_front();
+            left++;
+        }
+        best = max(best, (long long)(right - left + 1));
+    }
+    return (int) best;
+}   // O(n) time · O(n) space</code></pre>
+    <p class="cx"><b>Complexity:</b> O(n) time · O(n) space.</p>
+  </section>
+</section>
 
   </main>
 </div>
 
 <footer>
-  <p><b>C++ bank</b> — 300 problems across 10 topics, with complete solutions in
+  <p><b>C++ bank</b> — 330 problems across 11 topics, with complete solutions in
   C++17/20/23 solutions.</p>
   <p class="small">Same problems in every language:
     <a href="cpp-leetcode.html">C++</a> · <a href="java-leetcode.html">Java</a> · <a href="python-leetcode.html">Python</a>

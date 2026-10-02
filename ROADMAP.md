@@ -10,7 +10,7 @@ _Last updated: 2026-10-02_
 | **C++ for LeetCode** (16 chapters, STL-first) | `site/cpp-guide.html` (168 KB) | ✅ 0 parser errors, 34 snippets compile-checked with g++ 14 / C++20 |
 | **Java for LeetCode** (16 chapters, Collections-first) | `site/java-guide.html` (248 KB) | ✅ 0 parser errors, 63 snippets compile-checked with javac 11, 13 SVG figures |
 | Site hub | `site/index.html` | ✅ all internal links resolve |
-| **Question banks, topics 1–10** — Arrays & Strings · Two Pointers & Sliding Window · Hashing & Frequency Maps · Stacks, Queues & Monotonic Structures · Binary Search & Sorted Structures · Linked Lists · Trees & BSTs · Graphs & Union-Find · Dynamic Programming · Greedy & Intervals · 300 problems (60 easy · 120 medium · 120 hard) | `site/{cpp,java,python}-leetcode.html` | ✅ **all 300 C++ and 300 Java solutions compile** (judge-API stubs included so every snippet is self-contained); Python solutions pass 250 example checks plus thousands of randomised brute-force comparisons; documented example inputs cross-checked against LeetCode where they were transcribed from memory |
+| **Question banks, topics 1–11** — Arrays & Strings · Two Pointers & Sliding Window · Hashing & Frequency Maps · Stacks, Queues & Monotonic Structures · Binary Search & Sorted Structures · Linked Lists · Trees & BSTs · Graphs & Union-Find · Dynamic Programming · Greedy & Intervals · Heaps, Top-K & Design · **330 problems (66 easy · 132 medium · 132 hard)** | `site/{cpp,java,python}-leetcode.html` | ✅ **all 300 C++ and 300 Java solutions compile** (judge-API stubs included so every snippet is self-contained); Python solutions pass 250 example checks plus thousands of randomised brute-force comparisons; documented example inputs cross-checked against LeetCode where they were transcribed from memory |
 | GitHub Pages workflow | `.github/workflows/pages.yml` | ✅ pages artifact + deploy job |
 | One-command publisher | `push.sh` | ✅ ready (needs a token, see below) |
 | Rebuild script | `site/build-all.sh` | ✅ regenerates both guides + the three banks |
@@ -20,9 +20,9 @@ _Last updated: 2026-10-02_
 The bank engine is finished: `site/leetcode/build.py` renders **one** authored bank into the three
 language pages, so each problem is written once and appears with C++, Java and Python solutions.
 
-**Topics 11–16 still to author** (180 problems per language):
+**Topics 12–16 still to author** (150 problems per language):
 
-11. Heaps, Top-K & Design
+11. ~~Heaps, Top-K & Design~~ ✅ shipped
 12. Tries & String Algorithms
 13. Backtracking & Recursion
 14. Bit Manipulation
