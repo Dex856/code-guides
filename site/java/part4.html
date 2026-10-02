@@ -1,0 +1,658 @@
+
+<section class="chapter" id="ch6">
+  <h2><span class="num">6</span> Sorting, searching &amp; Comparators</h2>
+  <p class="tagline">In Java, “sort this the way I want” means “write a Comparator” — and a malformed Comparator is the
+  single most common runtime crash in interview code.</p>
+
+  <div class="hero">
+    <h1>Sorting and the Comparator contract</h1>
+    <p class="lede"><code>Arrays.sort</code>, <code>Collections.sort</code>, <code>list.sort</code>,
+    <code>Comparator.comparing</code>, <code>Arrays.binarySearch</code> and the <code>PriorityQueue</code> constructor all
+    funnel through one concept: an ordering. Get the ordering right and half your solutions shrink to a line; get it wrong and
+    you see <code>IllegalArgumentException: Comparison method violates its general contract!</code>.</p>
+  </div>
+
+  <section class="sub">
+    <h3>6.1 What to call for each sorting job</h3>
+    <table class="tbl">
+      <thead><tr><th>Job</th><th>Call</th><th>Complexity / notes</th></tr></thead>
+      <tbody>
+        <tr><td>Sort primitives</td><td><code>Arrays.sort(int[])</code></td><td>O(n log n), dual-pivot quicksort, <b>not stable</b></td></tr>
+        <tr><td>Sort objects</td><td><code>Arrays.sort(T[], cmp)</code> / <code>list.sort(cmp)</code></td><td>TimSort, <b>stable</b>, needs a comparator or <code>Comparable</code></td></tr>
+        <tr><td>Sort descending</td><td><code>Arrays.sort(boxed, Comparator.reverseOrder())</code></td><td>primitives cannot be reverse-sorted directly — box, or negate on read</td></tr>
+        <tr><td>Partially sort (k smallest)</td><td>PriorityQueue of size k, or full sort if k ≈ n</td><td>O(n log k) vs O(n log n)</td></tr>
+        <tr><td>k-th element</td><td><code>quickselect</code> (hand-written) or sort</td><td>O(n) average vs O(n log n)</td></tr>
+        <tr><td>Counting sort</td><td>frequency array + prefix sums</td><td>O(n + range) — the fastest when values are small ints</td></tr>
+        <tr><td>Sort by two keys</td><td><code>Comparator.comparing(...).thenComparing(...)</code></td><td>clean and allocation-light</td></tr>
+        <tr><td>Sort rows of a matrix</td><td><code>Arrays.sort(grid, (p, q) -&gt; Integer.compare(p[0], q[0]))</code></td><td>works on <code>int[][]</code> because rows are objects</td></tr>
+      </tbody>
+    </table>
+    <pre><code>int[] a = {5, 2, 9, 1};
+Arrays.sort(a);                                        // [1, 2, 5, 9]
+
+Integer[] boxed = {5, 2, 9, 1};
+Arrays.sort(boxed, Comparator.reverseOrder());         // [9, 5, 2, 1]
+Arrays.sort(boxed, (x, y) -&gt; Integer.compare(y, x));   // same thing, explicit
+
+List&lt;String&gt; names = new ArrayList&lt;&gt;(List.of("bob", "al", "carol"));
+names.sort(Comparator.naturalOrder());                 // [al, bob, carol]
+names.sort(Comparator.comparingInt(String::length).thenComparing(Comparator.naturalOrder()));
+// shortest first, ties alphabetical
+
+// Sorting indices instead of values (keeps the original array untouched)
+Integer[] idx = new Integer[n];
+for (int i = 0; i &lt; n; i++) idx[i] = i;
+Arrays.sort(idx, (i, j) -&gt; Long.compare(a[i], a[j]));   // ✅ long-safe comparator</code></pre>
+    <div class="trap"><b><code>Arrays.sort</code> on primitives is not stable</b>, and it uses quicksort — an adversary
+    (or a TLE-obsessed test) cannot make it quadratic, but it also will not preserve the order of equal elements. If
+    “equal keys in input order” matters, sort a boxed array/list, or sort indices with an index tie-break.</div>
+  </section>
+
+  <section class="sub">
+    <h3>6.2 The Comparator contract — and how it crashes your code</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 320" role="img" aria-label="Valid comparator versus a comparator that violates the contract">
+        <text class="tt" x="450" y="28" text-anchor="middle">A comparator must define a total order</text>
+        <rect class="bc" x="30" y="50" width="400" height="150" rx="9"/>
+        <text class="t" x="46" y="74">✅ Valid</text>
+        <text class="sm" x="46" y="96">· sign(compare(a,b)) = −sign(compare(b,a))</text>
+        <text class="sm" x="46" y="116">· compare(a,b) &gt; 0 and compare(b,c) &gt; 0 ⇒ compare(a,c) &gt; 0</text>
+        <text class="sm" x="46" y="136">· compare(a,a) = 0 and is consistent</text>
+        <text class="sm" x="46" y="158">(a, b) -&gt; Integer.compare(a.x, b.x)</text>
+        <text class="sm" x="46" y="178">(a, b) -&gt; a.x != b.x ? Integer.compare(a.x, b.x)</text>
+        <text class="sm" x="46" y="194">                                : Integer.compare(a.y, b.y)</text>
+        <rect class="bd" x="470" y="50" width="400" height="150" rx="9"/>
+        <text class="t" x="486" y="74">❌ Violates the contract</text>
+        <text class="sm" x="486" y="96">(a, b) -&gt; a.x − b.x   ← overflows for large ints</text>
+        <text class="sm" x="486" y="116">(a, b) -&gt; a.x % 2 − b.x % 2   ← returns 0 for non-equal</text>
+        <text class="sm" x="486" y="136">(a, b) -&gt; Math.random() &gt; .5 ? 1 : -1   ← not antisymmetric</text>
+        <text class="sm" x="486" y="158">(a, b) -&gt; a.x - b.x == 0 ? 0 : (a.x &gt; b.x ? 1 : -1)</text>
+        <text class="sm" x="486" y="178">   with int overflow the comparison becomes</text>
+        <text class="sm" x="486" y="194">   inconsistent and TimSort throws</text>
+        <line class="lnd" x1="30" y1="220" x2="870" y2="220"/>
+        <text class="t" x="30" y="246">The error you will see (at runtime, only on large inputs)</text>
+        <text class="mono sm" x="30" y="268">java.lang.IllegalArgumentException: Comparison method violates its general contract!</text>
+        <text class="sm" x="30" y="292">Fix: Integer.compare / Long.compare / Double.compare, or Comparator.comparing — never subtraction.</text>
+      </svg>
+      <figcaption>Fig 6.1 — Subtraction-based comparators are the classic bug: they are correct for small test values and
+      collapse when values get near <code>Integer.MAX_VALUE</code>.</figcaption>
+    </figure>
+    <pre><code>// The six comparator shapes you actually need
+Comparator&lt;int[]&gt; byFirst      = (p, q) -&gt; Integer.compare(p[0], q[0]);
+Comparator&lt;int[]&gt; bySecondDesc = (p, q) -&gt; Integer.compare(q[1], p[1]);           // reversed
+Comparator&lt;int[]&gt; byTwoKeys    = (p, q) -&gt; p[0] != q[0] ? Integer.compare(p[0], q[0])
+                                                        : Integer.compare(p[1], q[1]);
+Comparator&lt;String&gt; byLength    = Comparator.comparingInt(String::length);
+Comparator&lt;int[]&gt; bySum        = Comparator.comparingInt(r -&gt; r[0] + r[1]);        // key extractor
+Comparator&lt;Integer&gt; absOrder   = Comparator.comparingInt(Math::abs);
+
+// Reverse any comparator without writing a new lambda
+Comparator&lt;int[]&gt; byFirstDesc = byFirst.reversed();
+// Null-safe
+Comparator&lt;String&gt; nullsLast  = Comparator.nullsLast(Comparator.naturalOrder());
+
+// Comparable on a custom class (so plain sort() works)
+class Job implements Comparable&lt;Job&gt; {
+    int start, end;
+    Job(int s, int e) { start = s; end = e; }
+    @Override public int compareTo(Job o) {
+        if (start != o.start) return Integer.compare(start, o.start);
+        return Integer.compare(end, o.end);
+    }
+}
+// or, without touching the class:
+List&lt;Job&gt; jobs = new ArrayList&lt;&gt;();
+jobs.sort(Comparator.comparingInt((Job j) -&gt; j.start).thenComparingInt(j -&gt; j.end));</code></pre>
+    <div class="note"><b>Interview style:</b> prefer <code>Comparator.comparingInt(...)</code> to writing a lambda by hand
+    — it is shorter, cannot overflow, and immediately documents the key. Annotate the lambda parameter type
+    (<code>(Job j) -&gt;</code>) when the compiler cannot infer it from the target type.</div>
+  </section>
+
+  <section class="sub">
+    <h3>6.3 Binary search: the three templates</h3>
+    <pre><code>import java.util.function.IntPredicate;   // for the predicate-based templates below
+
+// A · Exact search in a sorted ARRAY (returns index or -1)
+int binarySearch(int[] a, int target) {
+    int lo = 0, hi = a.length - 1;
+    while (lo &lt;= hi) {
+        int mid = lo + (hi - lo) / 2;              // ✅ overflow-safe
+        if (a[mid] == target) return mid;
+        if (a[mid] &lt; target) lo = mid + 1; else hi = mid - 1;
+    }
+    return -1;
+}   // O(log n) time · O(1) space
+
+// B · First index satisfying a monotone predicate ("leftmost true")
+int lowerBound(int lo, int hi, IntPredicate ok) {  // [lo, hi] searchable range
+    while (lo &lt; hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (ok.test(mid)) hi = mid; else lo = mid + 1;
+    }
+    return lo;
+}
+
+// C · Last index satisfying the predicate ("rightmost true")
+int upperBound(int lo, int hi, IntPredicate ok) {
+    while (lo &lt; hi) {
+        int mid = lo + (hi - lo + 1) / 2;          // ← the +1 avoids an infinite loop
+        if (ok.test(mid)) lo = mid; else hi = mid - 1;
+    }
+    return lo;
+}
+
+// Examples of the predicate — the real skill
+// smallest x with x*x &gt;= n      : ok = mid -&gt; (long) mid * mid &gt;= n
+// smallest capacity that ships  : ok = mid -&gt; canShip(mid)
+// leftmost insertion point for v: ok = mid -&gt; a[mid] &gt;= v
+// real-valued answer (sqrt, rate): 200 iterations of the same loop with doubles</code></pre>
+    <figure class="dg">
+      <svg viewBox="0 0 900 260" role="img" aria-label="Binary search halves the search space and the boundary convention">
+        <text class="tt" x="450" y="28" text-anchor="middle">Halving, and why the boundary moves the same way every time</text>
+        <rect class="bx" x="30" y="52" width="840" height="40" rx="8"/>
+        <text class="mono sm" x="40" y="77">index 0..15   [ F F F F F F F T T T T T T T T T ]</text>
+        <line class="lnd" x1="30" y1="106" x2="870" y2="106"/>
+        <rect class="bd" x="30" y="120" width="420" height="34" rx="8"/>
+        <text class="sm" x="46" y="142">mid = 7 is false → the answer cannot be left of it: lo = 8</text>
+        <rect class="bc" x="460" y="120" width="410" height="34" rx="8"/>
+        <text class="sm" x="476" y="142">…then mid = 11 true → hi = 11, and so on until lo == hi</text>
+        <text class="sm" x="30" y="184">Loop invariants: everything &lt; lo is “false”, everything ≥ hi is “true”, the answer is never outside [lo, hi].</text>
+        <text class="sm" x="30" y="206">Termination: the range strictly shrinks each iteration — (hi−lo)/2 shrinks for B, and +1 rounding prevents a stall in C.</text>
+        <text class="sm" x="30" y="230">Use lo + (hi − lo)/2 for the midpoint, and lo + (hi − lo + 1)/2 when you need the upper middle.</text>
+      </svg>
+      <figcaption>Fig 6.2 — Two templates cover every “binary search on the answer” problem: <i>leftmost</i> true and
+      <i>rightmost</i> true. Write the predicate first, then paste the frame.</figcaption>
+    </figure>
+    <div class="tip"><b>Recognising binary-search-on-answer problems:</b> the phrasing says “minimise the maximum”,
+    “maximise the minimum”, “smallest capacity/speed/days such that …”, or the answer is a number in a huge range with a
+    cheap feasibility check. Constraints like n ≤ 10<sup>5</sup> with values up to 10<sup>9</sup> are a strong hint that
+    O(n log V) is intended.</div>
+  </section>
+
+  <section class="sub">
+    <h3>6.4 <code>Arrays.binarySearch</code> and the sorted-collection helpers</h3>
+    <pre><code>int[] a = {1, 3, 3, 5, 8};
+Arrays.binarySearch(a, 3);        // 2 or 1 — ANY matching index, not necessarily the first
+Arrays.binarySearch(a, 4);        // -4  → miss; insertion point = (−(−4) − 1) = 3
+Arrays.binarySearch(a, 0);        // -1  → insertion point 0
+Arrays.binarySearch(a, 9);        // -6  → insertion point 5 == a.length
+
+int insertion = -(Arrays.binarySearch(a, 4) + 1);   // 3  ← where 4 belongs
+// first element &gt;= key (upper_bound equivalent): use the raw loop from 6.3, template B
+
+// On collections (must be sorted; TreeSet/TreeMap have their own O(log n) methods)
+Collections.binarySearch(list, 3);
+
+// Set operations (destructive on the receiver)
+Set&lt;Integer&gt; x = new HashSet&lt;&gt;(List.of(1,2,3)), y = new HashSet&lt;&gt;(List.of(3,4));
+Set&lt;Integer&gt; inter = new HashSet&lt;&gt;(x); inter.retainAll(y);   // {3}
+Set&lt;Integer&gt; uni   = new HashSet&lt;&gt;(x); uni.addAll(y);        // {1,2,3,4}
+Set&lt;Integer&gt; diff  = new HashSet&lt;&gt;(x); diff.removeAll(y);    // {1,2}</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Want (C++ name)</th><th>Java equivalent</th></tr></thead>
+      <tbody>
+        <tr><td><code>lower_bound</code> — first ≥ key</td><td>manual loop (6.3 B) or <code>TreeMap.ceilingKey</code> for keys</td></tr>
+        <tr><td><code>upper_bound</code> — first &gt; key</td><td>manual loop with <code>a[mid] &gt; key</code>, <code>TreeMap.higherKey</code></td></tr>
+        <tr><td><code>equal_range</code></td><td>both loops, or count with a frequency map</td></tr>
+        <tr><td><code>nth_element</code></td><td>quickselect (hand-written, ~15 lines)</td></tr>
+        <tr><td><code>next_permutation</code></td><td>hand-written — Java has no equivalent (ch. 13.10)</td></tr>
+        <tr><td><code>accumulate</code></td><td>loop, or <code>Arrays.stream(a).sum()</code></td></tr>
+      </tbody>
+    </table>
+    <div class="warn"><b>Do not call <code>Arrays.binarySearch</code> on an unsorted array.</b> It returns a
+    confidently wrong index. Duplicates make the result unpredictable even when sorted — for “first/last occurrence”
+    questions use the template loops.</div>
+  </section>
+
+  <section class="sub">
+    <h3>6.5 Streams: use them where they genuinely shorten code</h3>
+    <pre><code>int[] a = {3, 1, 4, 1, 5, 9};
+
+int sum   = Arrays.stream(a).sum();                       // ✅ neat
+int max   = Arrays.stream(a).max().getAsInt();
+long count = Arrays.stream(a).filter(x -&gt; x % 2 == 1).count();
+int[] doubled = Arrays.stream(a).map(x -&gt; x * 2).toArray();
+int[] sorted  = Arrays.stream(a).sorted().toArray();
+List&lt;Integer&gt; boxedList = Arrays.stream(a).boxed().collect(Collectors.toList());
+
+// Frequency map in one expression (readable, but slower than the loop)
+Map&lt;Integer, Long&gt; freq = Arrays.stream(a).boxed()
+        .collect(Collectors.groupingBy(x -&gt; x, Collectors.counting()));
+
+// Join / map to string
+String joined = Arrays.stream(a).mapToObj(String::valueOf).collect(Collectors.joining(","));
+
+// Group rows by a key
+Map&lt;Integer, List&lt;int[]&gt;&gt; byStart = list.stream()
+        .collect(Collectors.groupingBy(r -&gt; r[0]));</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Use streams when…</th><th>Use a loop when…</th></tr></thead>
+      <tbody>
+        <tr><td>The intent is a one-line transformation/filter/collection of an existing collection</td>
+        <td>You are inside a hot path (10<sup>7</sup>+ iterations) — boxing and lambda dispatch cost time</td></tr>
+        <tr><td>You want <code>groupingBy</code>/<code>partitioningBy</code>/<code>joining</code> directly</td>
+        <td>You need indices, early exit from the middle, or mutation of two structures at once</td></tr>
+        <tr><td>The interviewer explicitly asks for a functional style</td>
+        <td>You must keep an algorithm obviously O(n) on the first read (loops are easier to audit)</td></tr>
+      </tbody>
+    </table>
+    <div class="tip"><b>Streams cannot <code>break</code>.</b> For “find the first element matching X and stop”, a loop is
+    both clearer and faster; <code>findFirst</code> on a stream works but still processes lazily — only use it if the
+    pipeline is short.</div>
+  </section>
+</section>
+
+<section class="chapter" id="ch7">
+  <h2><span class="num">7</span> Classes, generics &amp; the objects interviews use</h2>
+  <p class="tagline">LeetCode hands you <code>ListNode</code> and <code>TreeNode</code>; you hand back a <code>Solution</code>
+  with helper classes. This chapter is the minimum object-orientation you need — and the <code>equals</code>/<code>hashCode</code>
+  rules that keep collections honest.</p>
+
+  <div class="hero">
+    <h1>Just enough OOP</h1>
+    <p class="lede">You will not design an inheritance hierarchy in a 45-minute interview. You will define nodes, pairs,
+    states and comparators — and put them in <code>HashMap</code>s and <code>HashSet</code>s. Here is the syntax for that,
+    plus <code>static</code> vs instance, <code>var</code>, records, and the two methods that break collections when you forget
+    them.</p>
+  </div>
+
+  <section class="sub">
+    <h3>7.1 The class shapes used in solutions</h3>
+    <pre><code>// 1 · LeetCode's ListNode — copy this exactly; do not reorder the fields
+class ListNode {
+    int val;
+    ListNode next;
+    ListNode() {}
+    ListNode(int val) { this.val = val; }
+    ListNode(int val, ListNode next) { this.val = val; this.next = next; }
+}
+
+// 2 · LeetCode's TreeNode
+class TreeNode {
+    int val;
+    TreeNode left, right;
+    TreeNode() {}
+    TreeNode(int val) { this.val = val; }
+    TreeNode(int val, TreeNode left, TreeNode right) { this.val = val; this.left = left; this.right = right; }
+}
+
+// 3 · Static nested helper classes (allowed inside Solution — static so they can be instantiated freely)
+class Solution {
+    static class State {
+        int r, c, dist;
+        State(int r, int c, int d) { this.r = r; this.c = c; dist = d; }
+    }
+    public int shortestPath(int[][] grid) {
+        Queue&lt;State&gt; q = new ArrayDeque&lt;&gt;();
+        q.offer(new State(0, 0, 0));
+        return 0;
+    }
+}
+
+// 4 · A record (Java 16+) — the modern pair/tuple. Immutable, with equals/hashCode/toString for free.
+record Pair(int a, int b) {}
+record Cell(int r, int c) {}
+
+// 5 · Interfaces &amp; lambdas as tiny strategies
+interface Move { int apply(int x); }
+Move inc = x -&gt; x + 1;                       // functional interface ✅</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Modifier</th><th>Meaning</th><th>Interview consequence</th></tr></thead>
+      <tbody>
+        <tr><td><code>static</code> nested class</td><td>No reference to the outer instance</td><td>Use it: cheaper, and no accidental capture of <code>this</code></td></tr>
+        <tr><td>inner (non-static) class</td><td>Holds an implicit outer pointer</td><td>Avoid in solutions — needless object retention</td></tr>
+        <tr><td><code>final</code> field</td><td>Assign once</td><td>Good for constants; the compiler flags accidental reassignment</td></tr>
+        <tr><td><code>static</code> method</td><td>No instance needed</td><td>Helper methods inside <code>Solution</code> can be static — the judge calls the public method regardless</td></tr>
+        <tr><td><code>private</code></td><td>Visible in the same class</td><td>Anything inside <code>Solution</code> is fine; <code>public</code> is required only on the entry method</td></tr>
+      </tbody>
+    </table>
+    <div class="warn"><b>Never add a <code>static</code> counter to remember state between calls.</b> The judge reuses the
+    class instance across test cases, so a static field leaks from one case into the next. Keep all mutable state local.</div>
+  </section>
+
+  <section class="sub">
+    <h3>7.2 Generics, <code>var</code>, and the type system in practice</h3>
+    <pre><code>// Declaration style: interface on the left, concrete on the right, diamond operator
+Map&lt;String, List&lt;Integer&gt;&gt; groups = new HashMap&lt;&gt;();
+List&lt;int[]&gt; intervals = new ArrayList&lt;&gt;();
+PriorityQueue&lt;int[]&gt; heap = new PriorityQueue&lt;&gt;((p, q) -&gt; Integer.compare(p[0], q[0]));
+
+var n = 10;                                  // ✅ Java 10+ — int, inferred
+var seen = new HashSet&lt;String&gt;();            // ✅ HashSet&lt;String&gt;
+var map  = new HashMap&lt;Integer, List&lt;int[]&gt;&gt;();   // ✅ inference works with the diamond
+for (var e : map.entrySet()) { /* Map.Entry&lt;Integer, List&lt;int[]&gt;&gt; */ }
+
+// ❌ Generics cannot hold primitives:
+// List&lt;int&gt; bad = new ArrayList&lt;&gt;();        → use List&lt;Integer&gt; or int[]
+
+// Generic methods and wildcards you may actually write
+static &lt;T extends Comparable&lt;T&gt;&gt; T maxOf(List&lt;T&gt; xs) {
+    T best = xs.get(0);
+    for (T x : xs) if (x.compareTo(best) &gt; 0) best = x;
+    return best;
+}
+static double sumOf(List&lt;? extends Number&gt; xs) {      // “producer extends”
+    double s = 0; for (Number x : xs) s += x.doubleValue(); return s;
+}
+static void addAll(List&lt;? super Integer&gt; dst, int v) { dst.add(v); }   // “consumer super”</code></pre>
+    <table class="tbl">
+      <thead><tr><th>PECS — “Producer Extends, Consumer Super”</th><th>Read as</th></tr></thead>
+      <tbody>
+        <tr><td><code>List&lt;? extends Number&gt;</code></td><td>You only <i>read</i> Numbers out of it</td></tr>
+        <tr><td><code>List&lt;? super Integer&gt;</code></td><td>You only <i>write</i> Integers into it</td></tr>
+        <tr><td>When you write both directions</td><td>Use a concrete type parameter <code>&lt;T&gt;</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>7.3 <code>equals</code>, <code>hashCode</code> — and why collections lie without them</h3>
+    <pre><code>// ❌ Without equals/hashCode, two “equal” objects are different keys
+class Point { int x, y; Point(int x, int y) { this.x = x; this.y = y; } }
+Set&lt;Point&gt; s = new HashSet&lt;&gt;();
+s.add(new Point(1, 2));
+s.contains(new Point(1, 2));        // false  ← identity comparison!
+
+// ✅ Option A: a record — both methods are generated
+record Point2(int x, int y) {}
+new HashSet&lt;Point2&gt;().add(new Point2(1, 2));
+
+// ✅ Option B: write them yourself (the contract: equal objects MUST have equal hash codes)
+class P {
+    final int x, y;
+    P(int x, int y) { this.x = x; this.y = y; }
+    @Override public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof P)) return false;
+        P p = (P) o;
+        return x == p.x &amp;&amp; y == p.y;
+    }
+    @Override public int hashCode() { return 31 * x + y; }   // or Objects.hash(x, y)
+    @Override public String toString() { return "(" + x + "," + y + ")"; }
+}</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Type used as a key</th><th>Works?</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><code>Integer</code>, <code>Long</code>, <code>String</code>, <code>Character</code></td><td>✅</td><td>Immutable, with value-based <code>equals</code>/<code>hashCode</code></td></tr>
+        <tr><td><code>List</code>, <code>Set</code>, <code>Map</code></td><td>✅ (if elements are ✅)</td><td>Structural equality; <code>List.of(1,2)</code> is a great composite key</td></tr>
+        <tr><td><code>int[]</code>, <code>int[][]</code>, any array</td><td>❌</td><td>Arrays inherit identity hashing; wrap in <code>List.of</code>, a <code>String</code> key, or a record</td></tr>
+        <tr><td>A class without <code>equals</code>/<code>hashCode</code></td><td>❌</td><td>Same as arrays — identity semantics</td></tr>
+        <tr><td>A mutable object</td><td>❌ even with the methods</td><td>Mutating a key after insertion breaks the bucket lookup — make keys immutable</td></tr>
+      </tbody>
+    </table>
+    <pre><code>// The composite-key idioms that avoid all of this
+Map&lt;Long, Integer&gt; packed = new HashMap&lt;&gt;();        // r * 1000000L + c (watch the cast!)
+Map&lt;String, Integer&gt; joined = new HashMap&lt;&gt;();      //  key = r + "," + c  (works, allocates)
+Map&lt;List&lt;Integer&gt;, Integer&gt; composite = new HashMap&lt;&gt;();   // List.of(r, c) ✅
+Set&lt;String&gt; seenStates = new HashSet&lt;&gt;();           // encode a whole state as a string key</code></pre>
+    <div class="trap"><b><code>record</code> as a map key is safe only if its components are immutable.</b> A record holding
+    an <code>int[]</code> hashes by array identity — the array inside is still mutable.</div>
+  </section>
+
+  <section class="sub">
+    <h3>7.4 Recursion, nesting depth and the <code>StackOverflowError</code></h3>
+    <pre><code>// Java's default thread stack is ~512 KB – 1 MB: expect ~10^4 frames, fewer with big frames
+static int depth(int n) { return n == 0 ? 0 : 1 + depth(n - 1); }
+depth(100_000);                     // ❌ java.lang.StackOverflowError
+
+// ✅ Convert to iteration with an explicit stack (order matters!)
+Deque&lt;int[]&gt; st = new ArrayDeque&lt;&gt;();
+st.push(new int[]{startR, startC});
+while (!st.isEmpty()) {
+    int[] cur = st.pop();
+    for (int[] nb : neighbours(cur)) if (fresh(nb)) { mark(nb); st.push(nb); }
+}
+
+// ✅ Or raise the limit when you control the JVM (local testing / some judges)
+// java -Xss64m Main        → roughly 10× more frames</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Recursion form</th><th>Depth for n = 10<sup>5</sup></th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td>Linear recursion (linked list, countdown)</td><td>10<sup>5</sup> frames</td><td>Too deep — iterate instead</td></tr>
+        <tr><td>Balanced divide &amp; conquer (merge sort, segment tree)</td><td>log₂ n ≈ 17</td><td>Always safe</td></tr>
+        <tr><td>DFS on a grid/maze</td><td>up to #cells</td><td>Usually fine ≤ 10<sup>4</sup> cells; convert above that</td></tr>
+        <tr><td>Backtracking (subsets, N-Queens)</td><td>bounded by depth of the search tree</td><td>Safe by design</td></tr>
+      </tbody>
+    </table>
+    <div class="tip"><b>Threading the state:</b> in a <code>Solution</code> method, the recursion usually lives in a helper
+    that takes the mutable state as parameters (or the class keeps it as instance fields). Instance fields are legal — but
+    re-initialise them at the top of the public method, not in the constructor, because the judge reuses the instance.</div>
+  </section>
+
+  <section class="sub">
+    <h3>7.5 Exceptions you will actually meet</h3>
+    <table class="tbl">
+      <thead><tr><th>Exception</th><th>Typical cause in a solution</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td><code>NullPointerException</code></td><td>Unboxing a null <code>Integer</code>; calling a method on a null node; <code>map.get()</code> returning null</td><td><code>getOrDefault</code>, null checks before <code>.val</code>, never store null values</td></tr>
+        <tr><td><code>ArrayIndexOutOfBoundsException</code></td><td>Off-by-one in loops, empty-input case reaching <code>a[0]</code></td><td>Guard <code>n == 0</code> first; use <code>&lt;</code> not <code>&lt;=</code> in loops</td></tr>
+        <tr><td><code>StringIndexOutOfBoundsException</code></td><td><code>charAt(n)</code>, <code>substring</code> with an end past the length</td><td>Loop while <code>i &lt; s.length()</code>; <code>substring</code> end is exclusive</td></tr>
+        <tr><td><code>ConcurrentModificationException</code></td><td>Removing from a collection inside for-each</td><td><code>Iterator.remove()</code> or <code>removeIf</code></td></tr>
+        <tr><td><code>NumberFormatException</code></td><td><code>parseInt</code> on a too-large or non-numeric string</td><td><code>Long.parseLong</code>; validate characters</td></tr>
+        <tr><td><code>IllegalArgumentException</code> (comparator contract)</td><td>Comparator using subtraction or returning inconsistent signs</td><td><code>Integer.compare</code>/<code>Long.compare</code></td></tr>
+        <tr><td><code>UnsupportedOperationException</code></td><td>Mutating <code>List.of</code>/<code>Arrays.asList</code> results</td><td>Wrap: <code>new ArrayList&lt;&gt;(...)</code></td></tr>
+        <tr><td><code>StackOverflowError</code></td><td>Deep recursion, or infinite recursion with no base case</td><td>Iterate, or fix the base case; ch. 7.4</td></tr>
+        <tr><td><code>OutOfMemoryError: Java heap space</code></td><td>A DP table that is too large, or a map built per element</td><td>Reduce dimensions, use primitives, roll rows (ch. 9.5)</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><b>Read the stack trace bottom-up.</b> The last frames are the standard library; the first line
+    mentioning <i>your</i> class is where the bug is. On the judge you rarely see traces — which is exactly why the local
+    3-level harness from ch. 1.3 exists.</div>
+  </section>
+</section>
+
+<section class="chapter" id="ch8">
+  <h2><span class="num">8</span> Building blocks you will re-use</h2>
+  <p class="tagline">Union-Find, pairs, tries, integer encodings, quickselect and other small machines that appear inside
+  dozens of different problems.</p>
+
+  <div class="hero">
+    <h1>Paste-ready building blocks</h1>
+    <p class="lede">Interviews reward recognition: the problem is usually a familiar <i>structure</i> wearing a story.
+    These are the structures — Disjoint Set Union, a pair encoding, a trie, quickselect, a monotonic helper — each in the
+    shortest correct Java form, ready to be adapted in place.</p>
+  </div>
+
+  <section class="sub">
+    <h3>8.1 Disjoint Set Union (union-find)</h3>
+    <pre><code>class DSU {
+    private final int[] parent, rank;
+    private int components;
+
+    DSU(int n) {
+        parent = new int[n];
+        rank = new int[n];
+        components = n;
+        for (int i = 0; i &lt; n; i++) parent[i] = i;
+    }
+
+    int find(int x) {                       // path compression, iterative (no recursion depth risk)
+        while (parent[x] != x) { parent[x] = parent[parent[x]]; x = parent[x]; }
+        return x;
+    }
+
+    boolean union(int a, int b) {           // union by rank → O(α(n)) amortised
+        int ra = find(a), rb = find(b);
+        if (ra == rb) return false;         // already connected: a cycle was found
+        if (rank[ra] &lt; rank[rb]) { int t = ra; ra = rb; rb = t; }
+        parent[rb] = ra;
+        if (rank[ra] == rank[rb]) rank[ra]++;
+        components--;
+        return true;
+    }
+
+    boolean connected(int a, int b) { return find(a) == find(b); }
+    int count() { return components; }      // useful for “number of islands/provinces”
+}</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Signal in the statement</th><th>Why DSU</th></tr></thead>
+      <tbody>
+        <tr><td>“connected components”, “provinces”, “friend circles”</td><td>Union on each edge, then count roots</td></tr>
+        <tr><td>“would adding this edge create a cycle?” (Kruskal)</td><td><code>union</code> returns false exactly on a cycle</td></tr>
+        <tr><td>“grid cells connected 4-directionally”</td><td>Map each cell to <code>r * cols + c</code> and union neighbours</td></tr>
+        <tr><td>“accounts merge”, “synonyms”, “equations”</td><td>Union strings via a <code>Map&lt;String,Integer&gt;</code> id assignment</td></tr>
+      </tbody>
+    </table>
+    <div class="tip"><b>Grid DSU in one line:</b> <code>int id = r * cols + c;</code>. Union right and down neighbours only
+    — that covers all adjacency while visiting each pair once.</div>
+  </section>
+
+  <section class="sub">
+    <h3>8.2 Pairs, encodings and composite keys</h3>
+    <pre><code>// Option 1 · long packing (fastest, no objects) — the extra cast is mandatory
+long key = (long) r * 100_000L + c;              // requires c &lt; 100000 and r &lt; ~9·10^13
+int rBack = (int) (key / 100_000L);
+int cBack = (int) (key % 100_000L);
+
+// Option 2 · a record (self-documenting, hashable)
+record Cell(int r, int c) {}
+Map&lt;Cell, Integer&gt; dist = new HashMap&lt;&gt;();
+dist.put(new Cell(0, 0), 0);
+
+// Option 3 · int[] with a comparator (fine for heaps and queues, NOT for maps/sets)
+Queue&lt;int[]&gt; q = new PriorityQueue&lt;&gt;((p, u) -&gt; Integer.compare(p[1], u[1]));
+
+// Option 4 · two arrays instead of an array of pairs (fastest for graphs)
+int[] to = new int[m]; int[] w = new int[m];     // edge lists
+
+// Sorting pairs by second element then first
+int[][] pairs = {{1,9},{2,3},{2,1}};
+Arrays.sort(pairs, (p, q) -&gt; p[1] != q[1] ? Integer.compare(p[1], q[1]) : Integer.compare(p[0], q[0]));
+// {{2,1},{2,3},{1,9}}</code></pre>
+    <div class="trap"><b>Encoding packs silently overflow.</b> If <code>c</code> can be 10<sup>5</sup> and you use
+    <code>r * 1000L + c</code>, distinct cells collide and your BFS visits the wrong nodes. Multiply by more than the
+    maximum column value, and make the multiplier a <code>long</code>.</div>
+  </section>
+
+  <section class="sub">
+    <h3>8.3 Trie (prefix tree)</h3>
+    <pre><code>class Trie {
+    private final int[][] next = new int[100005][26];   // or a HashMap&lt;Character,Integer&gt; per node
+    private final boolean[] end = new boolean[100005];
+    private int nodes = 1;                              // node 0 is the root
+
+    void insert(String w) {
+        int cur = 0;
+        for (int i = 0; i &lt; w.length(); i++) {
+            int c = w.charAt(i) - 'a';
+            if (next[cur][c] == 0) next[cur][c] = nodes++;
+            cur = next[cur][c];
+        }
+        end[cur] = true;
+    }
+    boolean contains(String w) {
+        int cur = 0;
+        for (int i = 0; i &lt; w.length(); i++) {
+            cur = next[cur][c(w, i)];
+            if (cur == 0) return false;
+        }
+        return end[cur];
+    }
+    boolean startsWith(String p) {
+        int cur = 0;
+        for (int i = 0; i &lt; p.length(); i++) {
+            cur = next[cur][c(p, i)];
+            if (cur == 0) return false;
+        }
+        return true;
+    }
+    private int c(String s, int i) { return s.charAt(i) - 'a'; }
+}
+
+// Object-node version — use when the alphabet is large or sparse (child maps instead of arrays)
+class Node {
+    Map&lt;Character, Node&gt; kids = new HashMap&lt;&gt;();
+    boolean end;
+}</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Version</th><th>When</th><th>Cost</th></tr></thead>
+      <tbody>
+        <tr><td><code>int[N][26]</code> arrays</td><td>Lowercase letters, up to ~10<sup>5</sup> nodes</td><td>Memory 26 ints/node; fastest lookups</td></tr>
+        <tr><td><code>Map&lt;Character,Node&gt;</code> per node</td><td>Mixed characters, few children each</td><td>Object-per-edge; slower but no wasted slots</td></tr>
+        <tr><td>One flat <code>int[] next</code> of size nodes×26</td><td>You know the size bound up front</td><td>The C++-style layout, best cache behaviour in Java</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><b>Beyond plain tries:</b> wildcard matching (keep a <code>HashMap</code> child list to iterate),
+    maximum XOR pair (a trie over bits 30…0), and word-search-II (a trie of the dictionary + DFS on the board) are all
+    variations of the same node structure.</div>
+  </section>
+
+  <section class="sub">
+    <h3>8.4 Quickselect — O(n) average k-th element</h3>
+    <pre><code>// Median of an int array without a full sort (Lomuto partition)
+int kth(int[] a, int k) {                    // k is 1-based: k = 1 gives the minimum
+    int lo = 0, hi = a.length - 1, target = k - 1;
+    java.util.Random rnd = new java.util.Random(42);
+    while (true) {
+        int p = lo + rnd.nextInt(hi - lo + 1);          // random pivot: avoids worst case on sorted input
+        int t = a[p]; a[p] = a[hi]; a[hi] = t;
+        int pivot = a[hi], i = lo;
+        for (int j = lo; j &lt; hi; j++) if (a[j] &lt; pivot) { int tmp = a[i]; a[i] = a[j]; a[j] = tmp; i++; }
+        int tmp = a[i]; a[i] = a[hi]; a[hi] = tmp;      // pivot to its final place: index i
+        if (i == target) return a[i];
+        if (i &lt; target) lo = i + 1; else hi = i - 1;
+    }
+}   // O(n) average · O(n^2) worst case (randomisation makes it unlikely)</code></pre>
+    <div class="tip"><b>In interviews, <code>Arrays.sort</code> then <code>a[k-1]</code> is usually the right first answer</b>
+    (5 seconds of code, O(n log n)). Mention quickselect as the optimisation: “we can do it in expected O(n) with
+    quickselect, which matters if the array is huge.” That sequence — simple first, then optimise — is exactly what the
+    rubric rewards.</div>
+  </section>
+
+  <section class="sub">
+    <h3>8.5 Bit-level helpers, <code>BitSet</code> and base conversion</h3>
+    <pre><code>// Integer/Long bit methods (all are intrinsics — very fast)
+Integer.bitCount(255);                 // 8      — popcount
+Integer.highestOneBit(100);            // 64     — the top set bit's value
+Integer.numberOfTrailingZeros(40);     // 3      (40 = 101000)
+Long.numberOfLeadingZeros(1L);         // 63
+Integer.toBinaryString(255);           // "11111111"
+Integer.toHexString(255);              // "ff"
+Integer.parseInt("1011", 2);           // 11     — parse from any radix
+Integer.reverse(1);                    // -2147483648  (full 32-bit reversal)
+Integer.reverseBytes(0x12345678);      // byte order flip
+
+// Lowest set bit and its index
+int x = 40;
+int low = x &amp; -x;                      // 8
+int idx = Integer.numberOfTrailingZeros(x);   // 3
+
+// BitSet — a growable bit vector; great for “duplicate detection in a huge range”,
+// subset-sum over a value range, and per-node flags in graph algorithms
+BitSet bs = new BitSet(1000);
+bs.set(7); bs.set(700);
+bs.get(7);                             // true
+bs.cardinality();                      // 2 (number of set bits)
+bs.nextSetBit(8);                      // 700
+bs.flip(7);                            // clear
+BitSet a = new BitSet(); a.set(0, 4);
+a.and(bs); a.or(bs); a.xor(bs);        // bulk bitwise ops
+a.length();                            // index of the highest set bit + 1</code></pre>
+    <div class="note"><b>Choosing between bitmask and <code>BitSet</code>:</b> a bitmask fits in a <code>long</code> when
+    n ≤ 63 (or an <code>int</code> when n ≤ 31) and enables O(1) set operations and fast DP over subsets. <code>BitSet</code>
+    is for larger, sparser universes — thousands of flags — where you still want cheap union/intersection.</div>
+  </section>
+
+  <section class="sub">
+    <h3>8.6 Small utilities that shorten many solutions</h3>
+    <table class="tbl">
+      <thead><tr><th>Utility</th><th>Signature</th><th>Use</th></tr></thead>
+      <tbody>
+        <tr><td><code>Math.max/min/abs</code></td><td>overloads for int/long/double</td><td><code>Math.max(0, x)</code> for “at least zero”</td></tr>
+        <tr><td><code>Integer.compare(a,b)</code></td><td>int</td><td>every comparator; never <code>a − b</code></td></tr>
+        <tr><td><code>Objects.equals(a,b)</code></td><td>boolean</td><td>null-safe equality without a branch</td></tr>
+        <tr><td><code>Arrays.copyOfRange</code></td><td>T[]</td><td>slicing without <code>System.arraycopy</code> boilerplate</td></tr>
+        <tr><td><code>String.join</code></td><td>String</td><td>building comma-joined row or path strings</td></tr>
+        <tr><td><code>Collections.frequency</code></td><td>int</td><td>counting occurrences in a list (O(n))</td></tr>
+        <tr><td><code>Map.merge</code></td><td>—</td><td>frequency counting without the <code>containsKey</code> dance</td></tr>
+        <tr><td><code>List.of</code> / <code>Map.of</code></td><td>immutable</td><td>test data and composite keys</td></tr>
+        <tr><td><code>StringBuilder.setLength</code></td><td>—</td><td>“clearing” a buffer without allocating a new one</td></tr>
+      </tbody>
+    </table>
+    <pre><code>// Four one-liners worth memorising
+int clamp = Math.max(lo, Math.min(hi, x));                    // clamping
+int sign  = Integer.compare(x, 0);                            // -1 / 0 / 1
+String path = String.join("-&gt;", new String[]{"a", "b", "c"});// "a-&gt;b-&gt;c"
+long total = list.stream().mapToLong(Integer::longValue).sum(); // overflow-safe sum of a List</code></pre>
+  </section>
+</section>

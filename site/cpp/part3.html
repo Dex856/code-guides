@@ -1,0 +1,552 @@
+<section class="chapter" id="ch6">
+  <h2><span class="num">6</span> Algorithms: sort, binary search, and the rest of &lt;algorithm&gt;</h2>
+  <p class="tagline">Fifteen standard algorithms replace a hundred lines of hand-written loops — and they are faster and already correct.</p>
+
+  <section class="sub">
+    <h3>6.1 Sorting and friends</h3>
+    <pre><code>#include &lt;bits/stdc++.h&gt;
+using namespace std;
+
+vector&lt;int&gt; a{3, 1, 4, 1, 5, 9};
+
+sort(a.begin(), a.end());                     // ascending,  O(n log n), NOT stable
+sort(a.begin(), a.end(), greater&lt;int&gt;());     // descending
+stable_sort(a.begin(), a.end());              // preserves equal-element order
+sort(a.begin(), a.end(), [](int x, int y){ return abs(x) &lt; abs(y); });
+
+partial_sort(a.begin(), a.begin()+3, a.end());        // smallest 3, sorted — O(n log k)
+nth_element(a.begin(), a.begin()+2, a.end());         // a[2] is in final sorted position — O(n) avg
+is_sorted(a.begin(), a.end());                        // bool
+
+reverse(a.begin(), a.end());                          // O(n)
+rotate(a.begin(), a.begin()+1, a.end());              // left-rotate by 1
+// shuffle(a.begin(), a.end(), mt19937{42});          // C++11+ (random_shuffle is removed)
+
+// Deduplicate: requires SORTED input
+sort(a.begin(), a.end());
+a.erase(unique(a.begin(), a.end()), a.end());         // ★ the two-line idiom
+
+// min/max
+min(3, 5);  max(3, 5);  min({3, 5, 1});               // min of an initialiser list
+*min_element(a.begin(), a.end());                     // returns an ITERATOR → dereference
+*max_element(a.begin(), a.end());
+auto [mn, mx] = minmax_element(a.begin(), a.end());   // pair of iterators
+count(a.begin(), a.end(), 1);                         // occurrences of a value
+count_if(a.begin(), a.end(), [](int x){ return x &gt; 2; });
+
+// Filling and transforming
+fill(a.begin(), a.end(), 7);                          // overwrite
+iota(a.begin(), a.end(), 0);                          // 0,1,2,3,...  (needs &lt;numeric&gt;)
+replace(a.begin(), a.end(), 1, 100);
+transform(a.begin(), a.end(), a.begin(), [](int x){ return x*x; });
+for_each(a.begin(), a.end(), [](int x){ cout &lt;&lt; x &lt;&lt; ' '; });
+
+// Set operations on SORTED ranges (write to a new vector)
+vector&lt;int&gt; x{1,2,3,4}, y{3,4,5}, out;
+set_intersection(x.begin(), x.end(), y.begin(), y.end(), back_inserter(out));
+out.clear();
+set_union(x.begin(), x.end(), y.begin(), y.end(), back_inserter(out));
+out.clear();
+set_difference(x.begin(), x.end(), y.begin(), y.end(), back_inserter(out));
+
+// Merge two sorted vectors into one sorted vector
+merge(x.begin(), x.end(), y.begin(), y.end(), back_inserter(out));
+
+// next/prev permutation (needs sorted start for full enumeration)
+sort(a.begin(), a.end());
+do { /* use a */ } while (next_permutation(a.begin(), a.end()));
+
+// Remove-erase idiom for a CONDITION (not for value+unique)
+a.erase(remove_if(a.begin(), a.end(), [](int x){ return x % 2 == 0; }), a.end());</code></pre>
+    <div class="note"><b>Predicates and comparators return <code>bool</code>:</b> “is <i>x</i> before <i>y</i>?”. Returning
+    anything that is not a strict weak ordering (for example <code>x &lt;= y</code>) is undefined behaviour inside
+    <code>sort</code> — it can even crash with an out-of-bounds write, because the algorithm relies on the ordering to
+    bound itself.</div>
+  </section>
+
+  <section class="sub">
+    <h3>6.2 Binary search: three functions and one template</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 300" role="img" aria-label="lower_bound, upper_bound and binary search on answer">
+        <text class="tt" x="20" y="26">lower_bound vs upper_bound on a sorted array with duplicates</text>
+        <g class="mono">
+          <text x="60" y="60" class="sm">index</text>
+          <text x="60" y="82">  0    1    2    3    4    5    6    7</text>
+          <text x="60" y="108">value</text>
+          <text x="60" y="134">  1    2    4    4    4    7    9   10</text>
+        </g>
+        <rect x="150" y="112" width="102" height="26" class="bb"/>
+        <rect x="150" y="86" width="34" height="26" class="bc"/>
+        <text class="sm" x="167" y="76" text-anchor="middle">lb(4)=2</text>
+        <text class="sm" x="270" y="76" text-anchor="middle">first ≥ 4</text>
+        <text class="sm" x="150" y="164">upper_bound(4) = 5  → first element &gt; 4</text>
+        <text class="sm" x="150" y="186">binary_search(4) → true ; binary_search(5) → false</text>
+        <text class="sm" x="150" y="208">equal_range(4) → {iterator lb, iterator ub} — the count is ub − lb</text>
+
+        <rect x="480" y="52" width="400" height="150" class="bx"/>
+        <text class="t" x="680" y="76" text-anchor="middle">On a vector of size n</text>
+        <text class="mono sm" x="500" y="102">int i = lower_bound(a.begin(), a.end(), x) - a.begin();</text>
+        <text class="mono sm" x="500" y="126">bool found = binary_search(a.begin(), a.end(), x);</text>
+        <text class="mono sm" x="500" y="150">auto [lo, hi] = equal_range(a.begin(), a.end(), x);</text>
+        <text class="sm" x="500" y="174">All O(log n) — 20 steps for 10⁶, 30 for 10⁹. Requires a SORTED range.</text>
+        <text class="sm" x="500" y="194">For descending data use a comparator: lower_bound(..., greater&lt;int&gt;())</text>
+
+        <rect x="30" y="228" width="850" height="58" class="bb"/>
+        <text class="t" x="455" y="250" text-anchor="middle">Custom binary search over an abstract predicate (the general form)</text>
+        <text class="mono sm" x="50" y="272">lo=0, hi=n-1; while (lo &lt; hi) { int mid = lo + (hi-lo)/2; if (ok(mid)) hi = mid; else lo = mid+1; }  // first true</text>
+      </svg>
+      <figcaption>Fig 6.1 — <code>lower_bound</code> = first element not less than x; <code>upper_bound</code> = first element greater than x. Their difference is the number of copies.</figcaption>
+    </figure>
+    <pre><code>// ---- lower_bound / upper_bound on sorted containers ---------------------
+vector&lt;int&gt; a{1, 2, 4, 4, 4, 7, 9, 10};
+int lb = lower_bound(a.begin(), a.end(), 4) - a.begin();     // 2
+int ub = upper_bound(a.begin(), a.end(), 4) - a.begin();     // 5
+int copies = ub - lb;                                        // 3
+bool has5 = binary_search(a.begin(), a.end(), 5);            // false
+
+// set / map have their own member versions (O(log n), no linear iterator math)
+set&lt;int&gt; s{1, 4, 9};
+auto it = s.lower_bound(4);          // member: same name, faster than std::lower_bound on a set
+
+// ---- BINARY SEARCH ON THE ANSWER (the highest-value pattern) ------------
+// Use when: "minimise the maximum", "maximise the minimum", "find the smallest
+// value such that a monotonic condition holds". Write the feasibility check first!
+//
+// Example shape: split array into m parts minimising the largest sum.
+bool feasible(const vector&lt;int&gt;&amp; a, int m, long long cap) {
+    int parts = 1; long long cur = 0;
+    for (int x : a) {
+        if (cur + x &gt; cap) { ++parts; cur = 0; }
+        cur += x;
+    }
+    return parts &lt;= m;
+}
+long long minLargestSum(vector&lt;int&gt;&amp; a, int m) {
+    long long lo = *max_element(a.begin(), a.end());     // feasibility bound
+    long long hi = accumulate(a.begin(), a.end(), 0LL);
+    while (lo &lt; hi) {
+        long long mid = lo + (hi - lo) / 2;              // ← never (lo+hi)/2 (overflow)
+        if (feasible(a, m, mid)) hi = mid; else lo = mid + 1;
+    }
+    return lo;
+}
+
+// ---- Binary search over reals (fixed 60–100 iterations, no epsilon loop) --
+double solve(double lo, double hi) {
+    for (int iter = 0; iter &lt; 80; ++iter) {
+        double mid = (lo + hi) / 2;
+        if (ok(mid)) hi = mid; else lo = mid;
+    }
+    return lo;
+}
+
+// ---- Searching in a rotated sorted array (classic twist) -----------------
+int searchRotated(vector&lt;int&gt;&amp; a, int target) {
+    int lo = 0, hi = a.size() - 1;
+    while (lo &lt;= hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (a[mid] == target) return mid;
+        if (a[lo] &lt;= a[mid]) {                            // left half sorted
+            if (a[lo] &lt;= target &amp;&amp; target &lt; a[mid]) hi = mid - 1; else lo = mid + 1;
+        } else {                                          // right half sorted
+            if (a[mid] &lt; target &amp;&amp; target &lt;= a[hi]) lo = mid + 1; else hi = mid - 1;
+        }
+    }
+    return -1;
+}</code></pre>
+    <div class="tip"><b>Overflow in binary search:</b> <code>(lo + hi) / 2</code> overflows when both are near 10¹⁸.
+    Always write <code>lo + (hi - lo) / 2</code>. And use <code>long long</code> for the bounds in answer-search problems
+    even when the array is <code>int</code> — caps are usually sums.</div>
+  </section>
+
+  <section class="sub">
+    <h3>6.3 &lt;numeric&gt; and math helpers</h3>
+    <pre><code>#include &lt;numeric&gt;
+accumulate(v.begin(), v.end(), 0LL);                       // ★ 0LL, not 0, for 64-bit
+accumulate(v.begin(), v.end(), 0LL, [](long long s, int x){ return s + 1LL*x*x; });
+partial_sum(v.begin(), v.end(), out.begin());              // prefix sums
+adjacent_difference(v.begin(), v.end(), out.begin());      // differences
+inner_product(a.begin(), a.end(), b.begin(), 0LL);         // dot product
+gcd(12, 18);  lcm(4, 6);  gcd(0, 5);                       // C++17
+iota(v.begin(), v.end(), 0);                               // 0,1,2,...
+
+// Prefix sums and 2D prefix sums — turn O(n) range queries into O(1)
+vector&lt;long long&gt; pre(n + 1, 0);
+for (int i = 0; i &lt; n; ++i) pre[i+1] = pre[i] + a[i];
+long long rangeSum = pre[r+1] - pre[l];                   // sum of a[l..r]
+
+vector&lt;vector&lt;long long&gt;&gt; P(R + 1, vector&lt;long long&gt;(C + 1, 0));
+for (int i = 1; i &lt;= R; ++i)
+    for (int j = 1; j &lt;= C; ++j)
+        P[i][j] = g[i-1][j-1] + P[i-1][j] + P[i][j-1] - P[i-1][j-1];
+long long rectSum = P[r2+1][c2+1] - P[r1][c2+1] - P[r2+1][c1] + P[r1][c1];
+
+// Fast exponentiation + modular arithmetic
+long long mpow(long long b, long long e, long long m) {
+    long long r = 1; b %= m;
+    while (e) { if (e &amp; 1) r = r * b % m; b = b * b % m; e &gt;&gt;= 1; }
+    return r;
+}
+const long long MOD = 1'000'000'007;
+long long inv(long long x) { return mpow(x, MOD - 2, MOD); }   // Fermat inverse (prime modulus)</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Task</th><th>Standard solution</th></tr></thead>
+      <tbody>
+        <tr><td>Sum / product of a range</td><td><code>accumulate</code> (with the right initial type)</td></tr>
+        <tr><td>Prefix sums, range sum queries</td><td><code>partial_sum</code> or a manual prefix array</td></tr>
+        <tr><td>gcd / lcm</td><td><code>std::gcd</code>, <code>std::lcm</code> (C++17); lcm overflows — divide first: <code>a/gcd(a,b)*b</code></td></tr>
+        <tr><td>Modular power</td><td>binary exponentiation (above)</td></tr>
+        <tr><td>Primes up to n</td><td>sieve of Eratosthenes with <code>vector&lt;bool&gt;</code>/bitset, O(n log log n)</td></tr>
+        <tr><td>Integer square root</td><td><code>int r = sqrt((double)x); while (1LL*r*r &gt; x) --r; while (1LL*(r+1)*(r+1) &lt;= x) ++r;</code></td></tr>
+        <tr><td>nCr mod p for small n</td><td>Pascal triangle <code>vector&lt;vector&lt;long long&gt;&gt;</code>, or factorials + Fermat inverse</td></tr>
+      </tbody>
+    </table>
+  </section>
+</section>
+
+<section class="chapter" id="ch7">
+  <h2><span class="num">7</span> Lambdas, comparators and templates</h2>
+  <p class="tagline">The idioms that make C++ solutions short, expressive and fast — and the comparator rules that prevent silent corruption.</p>
+
+  <section class="sub">
+    <h3>7.1 Lambdas</h3>
+    <pre><code>// [capture](parameters) -> return_type { body }
+auto add = [](int a, int b) { return a + b; };            // return type deduced
+auto sq  = [](int x) -&gt; long long { return 1LL * x * x; };
+
+// Captures
+int k = 3;
+auto byValue   = [k](int x) { return x + k; };            // copy of k (const inside)
+auto byRef     = [&amp;k](int x) { k += x; return k; };       // reference — mutations visible
+auto init      = [n = (int)v.size()](int i) { return i &lt; n; };   // init-capture (C++14)
+auto everything= [=]() { /* copies all used variables */ };
+auto refs      = [&amp;]() { /* references all used variables */ };
+auto selfRef   = [&amp;, k]() { /* careful: dangling references if the lambda outlives scope */ };
+
+// The recursive lambda idiom (DFS in 4 lines, no helper function needed)
+auto dfs = [&amp;](auto&amp;&amp; self, int u, int parent) -&gt; void {
+    visited[u] = true;
+    for (int v : adj[u]) if (v != parent) self(self, v, u);
+};
+dfs(dfs, 0, -1);                                   // C++14 generic lambda + explicit self
+
+// Alternative for recursion when you want the classic signature:
+function&lt;void(int,int)&gt; dfs2 = [&amp;](int u, int p) {
+    for (int v : adj[u]) if (v != p) dfs2(v, u);
+};
+dfs2(0, -1);                                       // std::function: convenient, slower
+
+// Immediately-invoked lambda for scoping
+int answer = [&amp;] { /* compute */ return 42; }();</code></pre>
+    <div class="note"><b>Which recursion style for interviews?</b> Use the <code>auto&amp;&amp; self</code> generic lambda (zero
+    overhead) or plain member functions of <code>Solution</code> (what most published solutions use).
+    <code>std::function</code> is the readable but slowest option — it type-erases and blocks inlining; at depth 10⁵ it
+    can be 3–10× slower.</div>
+  </section>
+
+  <section class="sub">
+    <h3>7.2 Comparators — the rules, and the patterns</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 250" role="img" aria-label="Comparator semantics: strict weak ordering">
+        <text class="tt" x="20" y="26">A comparator answers one question: “must <tspan class="mono">a</tspan> come before <tspan class="mono">b</tspan>?”</text>
+        <rect x="30" y="56" width="400" height="76" class="bc"/>
+        <text class="t" x="230" y="80" text-anchor="middle">Valid: strict weak ordering</text>
+        <text class="mono sm" x="50" y="104">[](const T&amp; a, const T&amp; b){ return a.x &lt; b.x; }</text>
+        <text class="sm" x="50" y="124">irreflexive (cmp(a,a)==false), transitive, and equals</text>
+        <text class="sm" x="50" y="122">  </text>
+        <rect x="470" y="56" width="400" height="76" class="bd"/>
+        <text class="t" x="670" y="80" text-anchor="middle">Invalid → UB (crashes / corruption)</text>
+        <text class="mono sm" x="490" y="104">[](int a, int b){ return a &lt;= b; }   // ✗</text>
+        <text class="mono sm" x="490" y="124">[](int a, int b){ return true; }      // ✗</text>
+        <rect x="30" y="150" width="840" height="84" class="bx"/>
+        <text class="t" x="450" y="172" text-anchor="middle">Multi-key sorting: write the comparison in priority order</text>
+        <text class="mono sm" x="50" y="196">sort(v, [](const P&amp;a,const P&amp;b){ if (a.x!=b.x) return a.x&lt;b.x; if (a.y!=b.y) return a.y&gt;b.y; return a.z&lt;b.z; });</text>
+        <text class="sm" x="50" y="220">Shortcut with tuples/pairs: <tspan class="mono">return tie(a.x,a.y,a.z) &lt; tie(b.x,b.y,b.z);</tspan> — but “descending” fields need care (negate or use a custom comparator).</text>
+      </svg>
+      <figcaption>Fig 7.1 — Comparators are contracts. Violating strict weak ordering is UB — the judge may give you a TLE or a crash with no explanation.</figcaption>
+    </figure>
+    <pre><code>struct Point { int x, y; };
+
+// 1 · sort by one field
+sort(v.begin(), v.end(), [](const Point&amp; a, const Point&amp; b){ return a.x &lt; b.x; });
+
+// 2 · multi-key: x ascending, then y descending
+sort(v.begin(), v.end(), [](const Point&amp; a, const Point&amp; b){
+    if (a.x != b.x) return a.x &lt; b.x;      // primary key
+    return a.y &gt; b.y;                      // secondary key
+});
+
+// 3 · pairs sort lexicographically for free — pack keys into a pair/tuple
+vector&lt;pair&lt;int,int&gt;&gt; p;                  // sorts by .first, then .second
+vector&lt;tuple&lt;int,int,int&gt;&gt; t;             // sorts by element order
+sort(t.begin(), t.end());                  // works out of the box
+// To sort by (score desc, index asc) without a comparator:
+vector&lt;pair&lt;int,int&gt;&gt; keys;               // {-score, index}
+sort(keys.begin(), keys.end());
+
+// 4 · sort indices instead of values (keeps the original array intact)
+vector&lt;int&gt; idx(n); iota(idx.begin(), idx.end(), 0);
+sort(idx.begin(), idx.end(), [&amp;a](int i, int j){ return a[i] &lt; a[j]; });
+
+// 5 · min-heap / max-heap comparators
+priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt; minHeap;
+auto cmp = [](const Point&amp; a, const Point&amp; b){ return a.x &gt; b.x; };   // min by x on top
+priority_queue&lt;Point, vector&lt;Point&gt;, decltype(cmp)&gt; pq(cmp);
+
+// 6 · sorting structs with operator&lt; defined (no comparator needed anywhere)
+struct Task {
+    int priority, id;
+    bool operator&lt;(const Task&amp; o) const { return priority &lt; o.priority; }
+};
+sort(tasks.begin(), tasks.end());          // uses operator&lt;
+// ordered containers also need equality/less ONLY (set/map do not use ==)</code></pre>
+    <div class="trap"><b>Two comparator bugs that are invisible in tests:</b>
+    <b>(1)</b> comparing floating point with <code>&lt;</code> is fine, but <code>==</code> on doubles is not — sort keys
+    should be integers or exact comparisons.
+    <b>(2)</b> a comparator that captures by reference and reads a container you then modify during the sort gives
+    non-deterministic results. Sort a copy, or precompute the keys.</div>
+  </section>
+
+  <section class="sub">
+    <h3>7.3 Templates, auto and the small conveniences</h3>
+    <pre><code>// Function template: one implementation, any type
+template &lt;class T&gt;
+T myMax(T a, T b) { return a &gt; b ? a : b; }
+
+template &lt;class T&gt;
+void printAll(const vector&lt;T&gt;&amp; v) { for (const T&amp; x : v) cout &lt;&lt; x &lt;&lt; ' '; }
+
+// Compile-time constants
+template &lt;int N&gt; struct Fixed { int a[N]; };
+constexpr int LIMIT = 100000;
+constexpr long long MOD = 1'000'000'007;
+
+// Generic lambdas (C++14) — great for comparators/dedupe
+auto cmp = [](const auto&amp; a, const auto&amp; b){ return a &lt; b; };
+
+// Structured bindings (C++17) — the readability upgrade you feel immediately
+for (auto&amp; [key, val] : mp) { }
+auto [lo, hi] = equal_range(a.begin(), a.end(), x);
+auto [dist, node] = heap.top();
+
+// auto + decltype
+auto x = 5;                       // int
+decltype(x) y = 7;                // int
+const auto&amp; row = grid[i];        // no copy
+
+// Type aliases and common shorthands used in solutions
+using ll = long long;
+using pii = pair&lt;int,int&gt;;
+using vi = vector&lt;int&gt;;
+#define all(x) (x).begin(), (x).end()          // macros still common in competitive code
+#define sz(x) ((int)(x).size())
+
+// Fast IO for competitive-style input
+ios::sync_with_stdio(false);
+cin.tie(nullptr);
+
+// Unordered containers need explicit hashing only for custom keys (ch. 8.3)</code></pre>
+  </section>
+</section>
+
+<section class="chapter" id="ch8">
+  <h2><span class="num">8</span> Structs, operators, and the LeetCode node types</h2>
+  <p class="tagline">Classes exist in interview C++ mainly for one reason: giving custom types a sorting order, a hash, or a heap priority.</p>
+
+  <section class="sub">
+    <h3>8.1 struct, operator overloading, and why it matters</h3>
+    <pre><code>struct Job {
+    int start, end, profit;
+    // Sorting: define ONE order once, use it everywhere (sort, set, priority_queue)
+    bool operator&lt;(const Job&amp; o) const {
+        if (end != o.end) return end &lt; o.end;
+        return start &lt; o.start;
+    }
+    bool operator==(const Job&amp; o) const { return start == o.start &amp;&amp; end == o.end; }
+};
+vector&lt;Job&gt; jobs;  sort(jobs.begin(), jobs.end());          // uses operator&lt;
+
+// Arithmetic-style operator for coordinates / fractions
+struct Vec {
+    long long x, y;
+    Vec operator+(const Vec&amp; o) const { return {x + o.x, y + o.y}; }
+    Vec operator-(const Vec& o) const { return {x - o.x, y - o.y}; }
+    long long dot(const Vec&amp; o) const { return x*o.x + y*o.y; }
+    long long cross(const Vec&amp; o) const { return x*o.y - y*o.x; }   // sign = turn direction
+};
+// cross &gt; 0 → counter-clockwise; == 0 → collinear. The basis of geometry problems.
+
+// Stream operator is handy for debugging (not needed on the judge)
+struct Node { int id, w; };
+ostream&amp; operator&lt;&lt;(ostream&amp; os, const Node&amp; n) { return os &lt;&lt; "(" &lt;&lt; n.id &lt;&lt; "," &lt;&lt; n.w &lt;&lt; ")"; }
+
+// Constructors, default values, methods
+struct DSU {
+    vector&lt;int&gt; p, r;
+    DSU(int n) : p(n), r(n, 0) { iota(p.begin(), p.end(), 0); }   // init list
+    int find(int x) { return p[x] == x ? x : p[x] = find(p[x]); } // path compression
+    bool unite(int a, int b) {
+        a = find(a); b = find(b);
+        if (a == b) return false;
+        if (r[a] &lt; r[b]) swap(a, b);
+        p[b] = a; if (r[a] == r[b]) ++r[a];                        // union by rank
+        return true;
+    }
+};
+// struct = class with public members by default. That is the entire difference.</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>8.2 LeetCode’s ListNode and TreeNode — the exact code you need</h3>
+    <pre><code>// Provided by LeetCode (do NOT redefine these when submitting):
+struct ListNode {
+    int val;
+    ListNode *next;
+    ListNode() : val(0), next(nullptr) {}
+    ListNode(int x) : val(x), next(nullptr) {}
+    ListNode(int x, ListNode *next) : val(x), next(next) {}
+};
+struct TreeNode {
+    int val;
+    TreeNode *left;
+    TreeNode *right;
+    TreeNode() : val(0), left(nullptr), right(nullptr) {}
+    TreeNode(int x) : val(x), left(nullptr), right(nullptr) {}
+    TreeNode(int x, TreeNode *l, TreeNode *r) : val(x), left(l), right(r) {}
+};
+
+// ---------- linked list: reverse (iterative) ----------
+ListNode* reverseList(ListNode* head) {
+    ListNode* prev = nullptr;
+    while (head) {
+        ListNode* nxt = head-&gt;next;      // save
+        head-&gt;next = prev;               // flip
+        prev = head;                     // advance
+        head = nxt;
+    }
+    return prev;                         // new head
+}
+// ---------- linked list: reverse (recursive) ----------
+ListNode* reverseRec(ListNode* head) {
+    if (!head || !head-&gt;next) return head;
+    ListNode* newHead = reverseRec(head-&gt;next);
+    head-&gt;next-&gt;next = head;
+    head-&gt;next = nullptr;
+    return newHead;
+}
+// ---------- cycle detection: Floyd (two pointers) ----------
+bool hasCycle(ListNode* head) {
+    ListNode *slow = head, *fast = head;
+    while (fast &amp;&amp; fast-&gt;next) {
+        slow = slow-&gt;next;
+        fast = fast-&gt;next-&gt;next;
+        if (slow == fast) return true;
+    }
+    return false;
+}
+// ---------- find middle (slow/fast) ----------
+ListNode* middle(ListNode* head) {
+    ListNode *slow = head, *fast = head;
+    while (fast &amp;&amp; fast-&gt;next) { slow = slow-&gt;next; fast = fast-&gt;next-&gt;next; }
+    return slow;
+}
+// ---------- dummy-head merging (never special-case the first node) --------
+ListNode* mergeTwo(ListNode* a, ListNode* b) {
+    ListNode dummy(0), *tail = &amp;dummy;          // stack dummy: fine, return dummy.next
+    while (a &amp;&amp; b) {
+        if (a-&gt;val &lt;= b-&gt;val) { tail-&gt;next = a; a = a-&gt;next; }
+        else                 { tail-&gt;next = b; b = b-&gt;next; }
+        tail = tail-&gt;next;
+    }
+    tail-&gt;next = a ? a : b;
+    return dummy.next;
+}
+
+// ---------- tree traversals ----------
+void preorder(TreeNode* r, vector&lt;int&gt;&amp; out)  { if (!r) return; out.push_back(r-&gt;val); preorder(r-&gt;left,out); preorder(r-&gt;right,out); }
+void inorder(TreeNode* r, vector&lt;int&gt;&amp; out)   { if (!r) return; inorder(r-&gt;left,out); out.push_back(r-&gt;val); inorder(r-&gt;right,out); }
+void postorder(TreeNode* r, vector&lt;int&gt;&amp; out) { if (!r) return; postorder(r-&gt;left,out); postorder(r-&gt;right,out); out.push_back(r-&gt;val); }
+
+// Iterative inorder (needed when recursion depth is a problem)
+vector&lt;int&gt; inorderIt(TreeNode* root) {
+    vector&lt;int&gt; out; stack&lt;TreeNode*&gt; st; TreeNode* cur = root;
+    while (cur || !st.empty()) {
+        while (cur) { st.push(cur); cur = cur-&gt;left; }
+        cur = st.top(); st.pop();
+        out.push_back(cur-&gt;val);
+        cur = cur-&gt;right;
+    }
+    return out;
+}
+
+// Level-order with a queue, level by level
+vector&lt;vector&lt;int&gt;&gt; levelOrder(TreeNode* root) {
+    vector&lt;vector&lt;int&gt;&gt; res; if (!root) return res;
+    queue&lt;TreeNode*&gt; q; q.push(root);
+    while (!q.empty()) {
+        int sz = q.size(); vector&lt;int&gt; level;
+        while (sz--) {
+            TreeNode* n = q.front(); q.pop();
+            level.push_back(n-&gt;val);
+            if (n-&gt;left)  q.push(n-&gt;left);
+            if (n-&gt;right) q.push(n-&gt;right);
+        }
+        res.push_back(level);
+    }
+    return res;
+}
+// Depth / height, and validating a BST
+int depth(TreeNode* r) { return r ? 1 + max(depth(r-&gt;left), depth(r-&gt;right)) : 0; }
+bool isBST(TreeNode* r, long long lo = LLONG_MIN, long long hi = LLONG_MAX) {
+    if (!r) return true;
+    if (r-&gt;val &lt;= lo || r-&gt;val &gt;= hi) return false;      // long long bounds avoid INT_ edge cases
+    return isBST(r-&gt;left, lo, r-&gt;val) &amp;&amp; isBST(r-&gt;right, r-&gt;val, hi);
+}</code></pre>
+    <div class="tip"><b>Pointer habits for tree/list problems:</b> check <code>nullptr</code> before dereferencing
+    (<code>if (!node) return ...</code>); use a local <code>long long</code> range when validating BSTs to dodge
+    <code>INT_MIN</code>/<code>INT_MAX</code> edge cases; prefer a stack-based traversal if depth may exceed ~10⁴ (no C++
+    recursion limit, but the C stack can still overflow); and remember LeetCode nodes are heap-allocated — never
+    <code>delete</code> them, and never return a pointer to a local.</div>
+  </section>
+
+  <section class="sub">
+    <h3>8.3 Custom hash for unordered containers (anti-hack)</h3>
+    <pre><code>// The problem: unordered_set&lt;int&gt; with keys like 107897 hashes poorly and degrades to O(n)
+// per operation → TLE on LeetCode's anti-hash tests. Fix: a randomized 64-bit mixer.
+
+struct custom_hash {
+    static uint64_t splitmix64(uint64_t x) {
+        x += 0x9e3779b97f4a7c15ULL;
+        x = (x ^ (x &gt;&gt; 30)) * 0xbf58476d1ce4e5b9ULL;
+        x = (x ^ (x &gt;&gt; 27)) * 0x94d049bb133111ebULL;
+        return x ^ (x &gt;&gt; 31);
+    }
+    size_t operator()(uint64_t x) const {
+        static const uint64_t FIXED_RANDOM =
+            chrono::steady_clock::now().time_since_epoch().count();
+        return splitmix64(x + FIXED_RANDOM);
+    }
+};
+
+unordered_map&lt;long long, int, custom_hash&gt; safe;
+unordered_set&lt;long long, custom_hash&gt; safeSet;
+// Use this whenever keys are adversarial-looking (10^7 ranges, multiples of large primes)
+// or when you are close to the time limit. It costs the same but removes the worst case.</code></pre>
+    <h4>Custom key hashing (pairs, tuples, custom structs)</h4>
+    <pre><code>// unordered_map needs hash + equality for a custom key:
+struct PairHash {
+    size_t operator()(const pair&lt;int,int&gt;&amp; p) const {
+        return hash&lt;long long&gt;()((long long)p.first &lt;&lt; 32 ^ (unsigned)p.second);
+    }
+};
+unordered_map&lt;pair&lt;int,int&gt;, int, PairHash&gt; dist;   // works with the C++20 == for pairs
+
+// Key into a single 64-bit integer instead — often simpler and faster
+auto key64 = [](int a, int b) { return ( (long long)a &lt;&lt; 32 ) ^ (unsigned)b; };
+unordered_map&lt;long long, int&gt; mp;
+mp[key64(3, 4)] = 1;
+// Or pack small ranges: (a * 1000 + b) when both &lt; 1000, (a &lt;&lt; 20) | b for values &lt; 2^20
+
+// For sets/maps with a struct key, ORDERED containers only need operator&lt; </code></pre>
+  </section>
+</section>

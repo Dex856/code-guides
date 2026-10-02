@@ -1,0 +1,551 @@
+<section class="chapter" id="ch10">
+  <h2><span class="num">10</span> Modules, packages and imports</h2>
+  <p class="tagline">How the import system really finds your code — and how to structure a project so it never gets confused.</p>
+
+  <section class="sub">
+    <h3>10.1 The import machine</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 340" role="img" aria-label="How the import system resolves a module name">
+        <text class="tt" x="20" y="26">import report.render  →  where does Python look?</text>
+        <rect x="30" y="50" width="200" height="46" class="ba"/><text class="sm" x="130" y="78" text-anchor="middle">sys.modules cache?</text>
+        <text class="sm" x="130" y="112" text-anchor="middle">hit → done (this is why modules are singletons)</text>
+        <path class="ar2" d="M232 73 H286"/>
+        <rect x="286" y="50" width="230" height="46" class="bb"/><text class="sm" x="401" y="78" text-anchor="middle">miss → search sys.path IN ORDER</text>
+        <path class="ar2" d="M518 73 H572"/>
+        <rect x="572" y="50" width="300" height="46" class="bc"/><text class="sm" x="722" y="70" text-anchor="middle">found → run its top-level code ONCE,</text><text class="sm" x="722" y="86" text-anchor="middle">store module object in sys.modules</text>
+
+        <rect x="30" y="130" width="840" height="112" class="bx"/>
+        <text class="t" x="450" y="154" text-anchor="middle">sys.path — checked from top to bottom</text>
+        <text class="mono sm" x="50" y="180">1. '' (script's directory, or CWD for -c/-m)   ← most surprising entry</text>
+        <text class="mono sm" x="50" y="202">2. PYTHONPATH directories (colon/;-separated env var)</text>
+        <text class="mono sm" x="50" y="224">3. stdlib (…/lib/python3.14/, including .zip)   → then site-packages/ (pip|uv installed)</text>
+
+        <rect x="30" y="256" width="410" height="70" class="bp"/>
+        <text class="t" x="235" y="278" text-anchor="middle">Same-directory imports “just work”</text>
+        <text class="sm" x="50" y="300">app.py next to utils.py → <tspan class="mono">import utils</tspan> ✔</text>
+        <text class="sm" x="50" y="318">because the script's folder is sys.path[0]</text>
+        <rect x="460" y="256" width="410" height="70" class="bd"/>
+        <text class="t" x="665" y="278" text-anchor="middle">…but break when you run from elsewhere</text>
+        <text class="sm" x="480" y="300">That is the #1 “ModuleNotFoundError” cause — fix by installing</text>
+        <text class="sm" x="480" y="318">your package (<tspan class="mono">uv sync</tspan> / <tspan class="mono">pip install -e .</tspan>) with a src/ layout</text>
+      </svg>
+      <figcaption>Fig 10.1 — “Module not found” is almost always a <code>sys.path</code> question, not a code question. Print it: <code>print(*sys.path, sep="\n")</code>.</figcaption>
+    </figure>
+    <pre><code># Import syntax you will actually use
+import json                          # module object: json.loads(...)
+import numpy as np                   # alias — community convention (np, pd, plt, tf)
+from pathlib import Path             # names into your namespace
+from collections import deque, Counter
+from . import sibling                # relative import INSIDE a package
+from ..models import User            # parent package
+from mypkg.utils import helper as h
+
+# Never do this (pollutes namespace, hides errors, breaks tooling)
+from module import *
+
+# Lazy import: only pay the cost when the branch is taken
+def to_pdf(html: str) -&gt; bytes:
+    import weasyprint                # heavy optional dependency
+    return weasyprint.HTML(string=html).write_pdf()
+
+# Reload during development (not for production code)
+import importlib, mymod
+importlib.reload(mymod)
+
+# Introspection
+import sys
+sys.modules["json"]                  # the cached module object
+mymod.__file__                       # where it came from
+mymod.__name__, mymod.__package__
+dir(mymod)                           # public names
+help(mymod.func)                     # docstring + signature</code></pre>
+    <div class="note"><b>Modules are executed once, then cached.</b> Importing <code>pkg.a</code> in five files runs
+    <code>pkg/a.py</code> once total. Consequences: module-level mutable state is shared process-wide (great for caches,
+    dangerous for “per-request” data), and a circular import only fails if the names you need are not yet defined when
+    the cycle closes — the fix is to import inside a function or restructure into a lower-level module.</div>
+  </section>
+
+  <section class="sub">
+    <h3>10.2 Packages and the src/ layout</h3>
+    <pre><code># Modern project layout (2026 default)
+my-project/
+├── pyproject.toml          # the single source of truth: deps + tool config
+├── uv.lock                 # committed: exact versions for reproducible installs
+├── README.md
+├── .python-version         # 3.14  (interpreter pin for uv/pyenv)
+├── .gitignore              # __pycache__/, .venv/, dist/, .env, *.egg-info/
+├── src/
+│   └── my_project/         # the importable package (name = distribution name)
+│       ├── __init__.py     # marks a regular package; keep it tiny (version, exports)
+│       ├── __main__.py     # enables `uv run python -m my_project`
+│       ├── cli.py
+│       ├── config.py
+│       ├── core/
+│       │   ├── __init__.py
+│       │   └── engine.py
+│       └── py.typed        # tells type checkers your package ships types
+├── tests/
+│   ├── test_engine.py      # mirrors src/ structure
+│   └── conftest.py         # shared fixtures
+└── docs/</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Concept</th><th>What it is</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Module</td><td>Any <code>.py</code> file</td><td>Its name is the filename without <code>.py</code>.</td></tr>
+        <tr><td>Package</td><td>A directory with <code>__init__.py</code></td><td>Regular packages; <code>__init__.py</code> may be empty but should not be dropped casually — tools and old code expect it.</td></tr>
+        <tr><td>Namespace package</td><td>Directory without <code>__init__.py</code> (PEP 420)</td><td>Allows splitting one package across many installs/locations. Usually applied on purpose, not by accident.</td></tr>
+        <tr><td><code>__main__.py</code></td><td>Entry point for <code>python -m pkg</code></td><td>Pairs well with <code>if __name__ == "__main__":</code>.</td></tr>
+        <tr><td>Distribution</td><td>What you install (<code>my-project</code>)</td><td>Distribution name (hyphens) ≠ import name (underscores). Wheel/sdist live in <code>dist/</code>.</td></tr>
+        <tr><td>Entry point</td><td>Console script</td><td><code>[project.scripts] mytool = "my_project.cli:main"</code> → a <code>mytool</code> executable after install.</td></tr>
+        <tr><td><code>py.typed</code></td><td>PEP 561 marker file</td><td>Ship it if your code has annotations and you want users' type checkers to see them.</td></tr>
+      </tbody>
+    </table>
+    <h4>Packaging &amp; publishing (minimal recipe)</h4>
+    <pre><code># pyproject.toml (PEP 621 metadata + hatchling backend)
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "my-project"
+version = "0.1.0"
+requires-python = "&gt;=3.12"
+dependencies = ["httpx&gt;=0.28"]
+[project.optional-dependencies]
+cli = ["typer&gt;=0.12"]
+
+[dependency-groups]          # PEP 735 dev dependencies
+dev = ["pytest&gt;=8", "ruff&gt;=0.9", "mypy&gt;=1.13"]
+
+[project.scripts]
+mytool = "my_project.cli:main"
+
+[tool.uv]
+package = true
+
+# Publish
+$ uv build                       # creates dist/*.whl + dist/*.tar.gz
+$ uv publish --token $PYPI_TOKEN # or twine upload dist/*
+$ uvx --from my-project mytool   # run a published package without installing
+
+# Local editable install for development
+$ uv pip install -e .            # or: uv sync  (uv does this automatically)</code></pre>
+    <h4>Circular imports — the three fixes</h4>
+    <pre><code># Problem: a.py imports b, b.py imports a → ImportError (partially initialised module)
+# Fix 1 (best): extract shared pieces into a third, lower-level module
+#        a.py -> common.py ; b.py -> common.py
+# Fix 2: import the MODULE, not the name, and use it lazily
+import b            # then call b.thing() inside the function, not at import time
+# Fix 3: import inside the function that needs it
+def run():
+    from . import heavy
+    return heavy.work()
+
+# Detect them early:
+$ python -X importtime -c "import my_project"     # prints a timing tree of imports
+$ uv run python -X importtime app.py 2&gt; imports.txt
+# Goal: keep import time small (fast CLI startup, quick tests, snappy serverless).</code></pre>
+  </section>
+</section>
+
+<section class="chapter" id="ch11">
+  <h2><span class="num">11</span> Files, paths, and data formats</h2>
+  <p class="tagline">Read/write files safely, navigate the filesystem with <code>pathlib</code>, and handle CSV, JSON, TOML, regex, dates, HTTP and SQLite.</p>
+
+  <section class="sub">
+    <h3>11.1 Files: always with <code>with</code>, always with an encoding</h3>
+    <pre><code>from pathlib import Path
+p = Path("data/report.csv")
+
+# Text mode — specify encoding explicitly (don't rely on the locale)
+with p.open("r", encoding="utf-8") as fh:
+    text = fh.read()                       # whole file into memory
+    fh.seek(0)
+    lines = fh.readlines()                 # list of lines (keeps \n)
+    fh.seek(0)
+    for line in fh:                        # ← memory-efficient: one line at a time
+        line = line.rstrip("\n")
+
+# Writing (overwrite) and appending
+Path("out.txt").write_text("hello\n", encoding="utf-8")
+with Path("out.txt").open("a", encoding="utf-8") as fh:
+    fh.write("more\n")
+
+# Binary mode — no encoding, bytes in / bytes out
+with Path("photo.jpg").open("rb") as fh:
+    head = fh.read(16)                     # sniff magic bytes
+with Path("copy.jpg").open("wb") as fh:
+    fh.write(head)
+bytes_data = Path("photo.jpg").read_bytes()
+
+# Atomic writes: write to a temp file, then replace — never leave half a file
+import os, tempfile
+def atomic_write(path: Path, data: str) -&gt; None:
+    tmp = tempfile.NamedTemporaryFile("w", dir=path.parent, delete=False, encoding="utf-8")
+    try:
+        tmp.write(data); tmp.flush(); os.fsync(tmp.fileno())
+    finally:
+        tmp.close()
+    os.replace(tmp.name, path)             # atomic on POSIX and Windows
+
+# Reading very large files without loading them
+def iter_chunks(path: Path, size: int = 1 &lt;&lt; 20) -&gt; Iterator[bytes]:
+    with path.open("rb") as fh:
+        while chunk := fh.read(size):
+            yield chunk
+
+# File modes cheat sheet:
+# r read  ·  w write(truncate)  ·  a append  ·  x exclusive-create  ·  + read&amp;write
+# add b for binary (rb, wb), t is the default text mode</code></pre>
+    <div class="warn"><b>Encoding bugs are the most common file bug.</b> On Windows the default is often a legacy codepage,
+    not UTF-8 — always pass <code>encoding="utf-8"</code>. Python 3.15 makes UTF-8 the default for text files
+    (PEP 686), but explicit is still better. For files with a BOM use <code>encoding="utf-8-sig"</code>; for files from
+    Excel/Windows, <code>cp1252</code> or <code>latin-1</code> may be needed. On decode errors:
+    <code>errors="replace"</code> or <code>errors="ignore"</code> when you must not crash.</div>
+  </section>
+
+  <section class="sub">
+    <h3>11.2 <code>pathlib</code> — the modern path API</h3>
+    <pre><code>from pathlib import Path, PurePath, PurePosixPath
+
+p = Path("/home/ada/data") / "2026" / "report.csv"     # / joins — no more os.path.join
+p.name, p.stem, p.suffix, p.suffixes, p.parent, p.parts
+p.with_suffix(".json"), p.with_name("other.csv"), p.with_stem("summary")
+
+p.exists(), p.is_file(), p.is_dir(), p.is_symlink(), p.stat().st_size
+p.resolve()                      # absolute, symlinks resolved
+p.absolute()
+p.relative_to("/home/ada")       # → data/2026/report.csv
+Path.home(), Path.cwd(), Path("/tmp")
+Path("a/b").mkdir(parents=True, exist_ok=True)
+p.rename(new_path); Path("junk").unlink(missing_ok=True)
+p.touch(); p.chmod(0o644)
+
+list(Path(".").iterdir())                        # direct children
+sorted(Path("src").rglob("*.py"))                # recursive glob
+[par for par in Path(".").glob("*.txt")]         # pattern match
+Path("logs").glob("**/*.log")                    # same as rglob
+sum(f.stat().st_size for f in Path("data").rglob("*") if f.is_file())   # dir size
+Path("a.txt").read_text(encoding="utf-8")
+Path("a.txt").write_text("x", encoding="utf-8")
+
+# Cross-platform niceties
+import os
+os.environ.get("HOME")
+os.environ["APP_ENV"] = "prod"            # process-local env change
+Path(os.environ.get("TMPDIR", "/tmp"))    # env-driven paths, with defaults
+
+# Old-style os.path, still seen in legacy code — know how to read it
+import os.path as op
+op.join("a", "b"), op.basename("/x/y.txt"), op.dirname("/x/y.txt"), op.splitext("a.py")</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Task</th><th>pathlib (preferred)</th><th>os / shutil</th></tr></thead>
+      <tbody>
+        <tr><td>Join paths</td><td><code>Path(a) / b</code></td><td><code>os.path.join(a, b)</code></td></tr>
+        <tr><td>Recursive delete</td><td><code>shutil.rmtree(d)</code></td><td>—</td></tr>
+        <tr><td>Copy tree / file</td><td><code>shutil.copytree(a, b)</code> · <code>shutil.copy2(a, b)</code></td><td>—</td></tr>
+        <tr><td>Disk usage</td><td><code>shutil.disk_usage("/")</code></td><td>—</td></tr>
+        <tr><td>Run a subprocess</td><td><code>subprocess.run([...], capture_output=True, text=True, check=True)</code></td><td>see ch. 14.6</td></tr>
+        <tr><td>Temp file/dir</td><td><code>tempfile.NamedTemporaryFile()</code> · <code>tempfile.TemporaryDirectory()</code></td><td>auto-cleanup</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>11.3 Structured formats: CSV, JSON, TOML, YAML, pickle</h3>
+    <table class="tbl">
+      <thead><tr><th>Format</th><th>Module</th><th>Use for</th><th>Watch out</th></tr></thead>
+      <tbody>
+        <tr><td>CSV / TSV</td><td><code>csv</code></td><td>Tabular exports, spreadsheets, logs</td><td>Always open with <code>newline=""</code>; quoting rules; everything is a string — cast it.</td></tr>
+        <tr><td>JSON</td><td><code>json</code></td><td>APIs, config, nested data</td><td>No comments, no dates, keys are strings; use <code>json.dumps(obj, default=str)</code> for odd types.</td></tr>
+        <tr><td>TOML</td><td><code>tomllib</code> (read) / <code>tomli-w</code>, <code>tomlkit</code> (write)</td><td>Config files (pyproject.toml)</td><td>Stdlib only reads TOML — you need a package to write it.</td></tr>
+        <tr><td>YAML</td><td><code>PyYAML</code>, <code>ruamel.yaml</code></td><td>Human-edited config, k8s, CI</td><td>Indentation-sensitive; always <code>yaml.safe_load()</code> — <code>load()</code> can execute code.</td></tr>
+        <tr><td>Newline-JSON / NDJSON</td><td><code>json</code> per line</td><td>Streaming logs, big datasets</td><td>Read line by line — never <code>json.load</code> the whole file.</td></tr>
+        <tr><td>Parquet / Arrow</td><td><code>pyarrow</code>, <code>polars</code>, <code>pandas</code></td><td>Analytics at scale (100 MB+)</td><td>Columnar, typed and compressed — the right answer for big tabular data.</td></tr>
+        <tr><td>pickle</td><td><code>pickle</code>, <code>joblib</code></td><td>Temporary in-process caching, ML models</td><td><b>Never unpickle untrusted data</b> — it can execute arbitrary code. Not portable across versions.</td></tr>
+        <tr><td>SQLite</td><td><code>sqlite3</code></td><td>Local database, single file, transactions</td><td>One writer at a time; enable WAL for read concurrency.</td></tr>
+      </tbody>
+    </table>
+    <pre><code># ---------- CSV -----------------------------------------------------------
+import csv
+with open("sales.csv", newline="", encoding="utf-8") as fh:
+    reader = csv.DictReader(fh)                    # header row → dicts
+    rows = [{**r, "qty": int(r["qty"])} for r in reader]
+
+with open("out.csv", "w", newline="", encoding="utf-8") as fh:
+    writer = csv.DictWriter(fh, fieldnames=["sku", "qty"])
+    writer.writeheader()
+    writer.writerows([{"sku": "A1", "qty": 3}])
+
+# Excel (binary) needs a package: openpyxl (read/write), pandas.read_excel, xlsxwriter
+# from openpyxl import load_workbook
+# ws = load_workbook("book.xlsx", data_only=True)["Sheet1"]
+# rows = list(ws.values)                # tuple per row, first row = headers
+
+# ---------- JSON ----------------------------------------------------------
+import json
+data = {"id": 1, "name": "Ada", "tags": ["x", "y"], "score": None}
+
+s = json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True)
+back = json.loads(s)
+
+with open("data.json", "w", encoding="utf-8") as fh:
+    json.dump(data, fh, indent=2, ensure_ascii=False)     # writes directly, no big string
+with open("data.json", encoding="utf-8") as fh:
+    data = json.load(fh)
+
+json.dumps({"when": datetime.now()}, default=str)          # ← non-serialisable types
+def enc(o):
+    if isinstance(o, datetime): return o.isoformat()
+    if isinstance(o, set): return sorted(o)
+    raise TypeError(type(o))
+json.dumps({"x": {1, 2}}, default=enc)
+
+# NDJSON streaming — constant memory for huge exports
+def write_ndjson(path, records):
+    with open(path, "w", encoding="utf-8") as fh:
+        for rec in records:
+            fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+def read_ndjson(path):
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            yield json.loads(line)
+
+# ---------- TOML (stdlib reader) -----------------------------------------
+import tomllib
+with open("pyproject.toml", "rb") as fh:      # NOTE: binary mode required
+    config = tomllib.load(fh)
+config["project"]["name"]
+
+# ---------- Config from environment + .env -------------------------------
+import os
+from dataclasses import dataclass
+# pip install python-dotenv  (or use pydantic-settings for typed config)
+@dataclass
+class Settings:
+    db_url: str = os.environ.get("DATABASE_URL", "sqlite:///local.db")
+    debug: bool = os.environ.get("DEBUG", "0") == "1"
+
+# .env file, loaded by python-dotenv / pydantic-settings / direnv — NEVER commit it
+# DATABASE_URL=postgresql://user:pass@host/db
+# .gitignore: .env   ·  commit .env.example instead
+
+# ---------- pickle (read the warning above) ------------------------------
+import pickle
+blob = pickle.dumps({"a": 1})            # bytes
+pickle.loads(blob)
+with open("state.pkl", "wb") as fh:
+    pickle.dump(obj, fh, protocol=pickle.HIGHEST_PROTOCOL)</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>11.4 Regular expressions</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 300" role="img" aria-label="Regex anatomy with named groups">
+        <text class="tt" x="20" y="26">Anatomy of a real regex</text>
+        <text class="mono" x="40" y="66" style="font-size:15px">(?P&lt;year&gt;\d{4})-(?P&lt;month&gt;\d{2})-(?P&lt;day&gt;\d{2})</text>
+        <rect x="40" y="76" width="150" height="26" class="bb" rx="6"/><text class="sm" x="115" y="94" text-anchor="middle">named group</text>
+        <rect x="196" y="76" width="60" height="26" class="bc" rx="6"/><text class="sm" x="226" y="94" text-anchor="middle">4 digits</text>
+        <rect x="262" y="76" width="20" height="26" class="bx" rx="6"/><text class="sm" x="272" y="94" text-anchor="middle">-</text>
+        <rect x="288" y="76" width="150" height="26" class="bb" rx="6"/><text class="sm" x="363" y="94" text-anchor="middle">named group</text>
+        <rect x="444" y="76" width="60" height="26" class="bc" rx="6"/><text class="sm" x="474" y="94" text-anchor="middle">2 digits</text>
+        <rect x="510" y="76" width="20" height="26" class="bx" rx="6"/><text class="sm" x="520" y="94" text-anchor="middle">-</text>
+        <rect x="536" y="76" width="150" height="26" class="bb" rx="6"/><text class="sm" x="611" y="94" text-anchor="middle">named group</text>
+        <rect x="692" y="76" width="60" height="26" class="bc" rx="6"/><text class="sm" x="722" y="94" text-anchor="middle">2 digits</text>
+
+        <rect x="40" y="126" width="400" height="150" class="bx"/>
+        <text class="t" x="240" y="150" text-anchor="middle">Matching: 2026-10-02</text>
+        <text class="mono sm" x="60" y="176">m = re.match(r"(?P&lt;year&gt;\d{4})-(\d{2})-(\d{2})", s)</text>
+        <text class="mono sm" x="60" y="200">m.group(0)      → '2026-10-02'   (whole match)</text>
+        <text class="mono sm" x="60" y="222">m.group(1)      → '2026'</text>
+        <text class="mono sm" x="60" y="244">m.group('year') → '2026'   (named)</text>
+        <text class="mono sm" x="60" y="266">m.groupdict()   → {'year':'2026','month':'10','day':'02'}</text>
+
+        <rect x="460" y="126" width="410" height="150" class="bp"/>
+        <text class="t" x="665" y="150" text-anchor="middle">Four matching functions</text>
+        <text class="mono sm" x="480" y="176">re.match   → anchored at the START only</text>
+        <text class="mono sm" x="480" y="200">re.search  → anywhere in the string</text>
+        <text class="mono sm" x="480" y="224">re.fullmatch → the ENTIRE string must match</text>
+        <text class="mono sm" x="480" y="248">re.finditer → lazy iterator of all matches</text>
+        <text class="sm" x="480" y="270">Also: findall · split · sub · compile (for reuse)</text>
+      </svg>
+      <figcaption>Fig 11.1 — Always use raw strings (<code>r"…"</code>) for patterns: without it, <code>\b</code> is a backspace character.</figcaption>
+    </figure>
+    <table class="tbl">
+      <thead><tr><th>Pattern</th><th>Matches</th><th>Pattern</th><th>Matches</th></tr></thead>
+      <tbody>
+        <tr><td><code>.</code></td><td>any char except newline</td><td><code>\d \D</code></td><td>digit / non-digit</td></tr>
+        <tr><td><code>\w \W</code></td><td>word char / non-word</td><td><code>\s \S</code></td><td>whitespace / non-whitespace</td></tr>
+        <tr><td><code>\b</code></td><td>word boundary</td><td><code>^ $</code></td><td>start / end of string (or line with <code>M</code>)</td></tr>
+        <tr><td><code>*</code> <code>+</code> <code>?</code></td><td>0+, 1+, 0 or 1 (greedy)</td><td><code>*?</code> <code>+?</code></td><td>non-greedy (lazy) versions</td></tr>
+        <tr><td><code>{3}</code> <code>{2,5}</code></td><td>exact / range repetition</td><td><code>[abc] [^abc] [a-z]</code></td><td>char class / negation / range</td></tr>
+        <tr><td><code>(...)</code></td><td>capturing group</td><td><code>(?:...)</code></td><td>non-capturing group</td></tr>
+        <tr><td><code>(?P&lt;n&gt;…)</code></td><td>named group</td><td><code>(?P=n)</code></td><td>back-reference</td></tr>
+        <tr><td><code>|</code></td><td>alternation</td><td><code>(?i) (?m) (?s) (?x)</code></td><td>ignorecase / multiline / dotall / verbose flags</td></tr>
+      </tbody>
+    </table>
+    <pre><code>import re
+pattern = re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b")     # IPv4-ish, compiled once
+
+re.search(r"\d+", "abc 123")            # &lt;Match '123'&gt;
+re.findall(r"\w+@\w+\.\w+", text)       # ['a@b.com', ...]
+re.sub(r"\s+", " ", text)               # collapse whitespace
+re.sub(r"(\w+)@(\w+)", r"\2:\1", "me@here")      # backrefs in the replacement
+re.split(r"\s*,\s*", "a, b ,c")         # ['a','b','c']
+[m.groupdict() for m in re.finditer(pattern, log_text)]
+re.sub(r"(?i)password=\S+", "password=***", log_line)       # redact secrets
+
+# Named groups + verbose mode = maintainable regexes
+DATE = re.compile(r"""
+    (?P&lt;year&gt;\d{4}) - (?P&lt;month&gt;\d{2}) - (?P&lt;day&gt;\d{2})
+""", re.VERBOSE)
+m = DATE.search("on 2026-10-02")
+m.groupdict()
+
+# ⚠ Catastrophic backtracking: nested quantifiers on ambiguous patterns
+# BAD:  ^(\w+\s?)*$      GOOD: ^\w+(?:\s\w+)*$
+# Mitigation: make the pattern specific, avoid nested quantifiers, or use the
+# `regex` package which supports timeouts / atomic groups.
+
+text = "Contact: ada@example.com or linus@kernel.org"
+[dict(zip(("user","domain"), e.split("@"))) for e in re.findall(r"[\w.+-]+@[\w-]+\.[\w.]+", text)]</code></pre>
+    <div class="tip"><b>Practice &amp; debug:</b> regex101.com (explains every token, shows the engine steps) and
+    <code>regexcrossword.com</code> for games. In Python, always <code>re.compile()</code> patterns that run in loops —
+    the internal cache is small and compiling is not free.</div>
+  </section>
+
+  <section class="sub">
+    <h3>11.5 Dates and times</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 260" role="img" aria-label="Naive vs aware datetime">
+        <text class="tt" x="20" y="26">Naive vs aware datetimes — the bug that survives every code review</text>
+        <rect x="30" y="50" width="400" height="90" class="bd"/>
+        <text class="t" x="230" y="74" text-anchor="middle">naive (no tzinfo)</text>
+        <text class="mono" x="230" y="98" text-anchor="middle">datetime(2026, 10, 2, 14, 0)</text>
+        <text class="sm" x="230" y="122" text-anchor="middle">“14:00 … somewhere”. Don't do arithmetic across zones.</text>
+        <rect x="470" y="50" width="400" height="90" class="bc"/>
+        <text class="t" x="670" y="74" text-anchor="middle">aware (has tzinfo)</text>
+        <text class="mono" x="670" y="98" text-anchor="middle">datetime(..., tzinfo=ZoneInfo("Asia/Kolkata"))</text>
+        <text class="sm" x="670" y="122" text-anchor="middle">Unambiguous instant in time — safe to compare, store, convert.</text>
+
+        <rect x="30" y="156" width="840" height="86" class="bx"/>
+        <text class="t" x="450" y="180" text-anchor="middle">Rules that prevent 95% of date bugs</text>
+        <text class="sm" x="50" y="194">1 · Store UTC in databases and APIs · 2 · Convert to local time (ZoneInfo) only for display</text>
+        <text class="sm" x="50" y="212">3 · Never do date maths with <tspan class="mono">timedelta(days=30)</tspan> for “months” — use dateutil.relativedelta</text>
+        <text class="sm" x="50" y="230">4 · Use <tspan class="mono">datetime.now(timezone.utc)</tspan>, not utcnow() · 5 · Parse with <tspan class="mono">fromisoformat</tspan> or dateutil.parser</text>
+      </svg>
+      <figcaption>Fig 11.2 — If a datetime has no timezone, it is an opinion, not a fact.</figcaption>
+    </figure>
+    <pre><code>from datetime import datetime, date, time, timedelta, timezone
+from zoneinfo import ZoneInfo                      # stdlib since 3.9, tz database included
+
+now = datetime.now(ZoneInfo("Asia/Kolkata"))       # aware, India time
+utc = datetime.now(timezone.utc)
+today = date.today()
+delta = timedelta(days=7, hours=3, minutes=30)
+
+now + delta
+now.strftime("%Y-%m-%d %H:%M:%S %Z")               # format for humans/logs
+datetime.strptime("2026-10-02 14:30", "%Y-%m-%d %H:%M")   # parse known format
+datetime.fromisoformat("2026-10-02T14:30:00+05:30")       # parse ISO (3.11+ accepts 'Z')
+
+utc.astimezone(ZoneInfo("America/New_York"))        # same instant, other zone
+now.timestamp(), datetime.fromtimestamp(1759400000, tz=timezone.utc)
+now.date(), now.time(), now.weekday(), now.isocalendar()
+now.replace(year=2027)
+
+# Differences
+(now - (now - delta)).total_seconds() / 3600        # hours
+(d2 := date(2026, 12, 31)) - date(2026, 10, 2)      # timedelta(days=90)
+
+# Format codes you will actually use
+# %Y year  %m month  %d day   %H hour24  %M minute  %S second  %f microseconds
+# %a/%A weekday  %b/%B month name  %j day-of-year  %z offset  %Z zone name
+# %s is NOT supported — use .timestamp()
+
+# Human-friendly parsing and relative deltas
+# pip install python-dateutil
+from dateutil import parser, relativedelta
+parser.parse("2 Oct 2026 2:30pm IST")
+now + relativedelta.relativedelta(months=1)          # true calendar months
+
+# Elapsed timing (monotonic, immune to clock changes)
+import time
+t0 = time.perf_counter(); work(); print(f"{(time.perf_counter()-t0)*1e3:.2f} ms")
+time.monotonic()                    # for timeouts/deadlines
+time.sleep(0.5)                     # blocking sleep (use asyncio.sleep in async code)</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>11.6 Talking to the network (and to databases)</h3>
+    <pre><code># --- HTTP with the standard library (no dependencies) --------------------
+import urllib.request, json
+with urllib.request.urlopen("https://api.github.com/repos/python/cpython", timeout=10) as r:
+    data = json.load(r)                       # response is a binary file object
+    print(r.status, data["stargazers_count"])
+
+# --- requests / httpx (the practical choice) -----------------------------
+import httpx                                   # requests-compatible + async + HTTP/2
+
+r = httpx.get("https://httpbin.org/get", params={"q": "python"}, timeout=10.0)
+r.status_code, r.headers["content-type"], r.json(), r.text
+r.raise_for_status()                           # turn 4xx/5xx into an exception
+
+client = httpx.Client(base_url="https://api.example.com", headers={"Authorization": "Bearer TOKEN"}, timeout=15)
+client.get("/items", params={"page": 2})
+with client.stream("GET", "/big.csv") as s:    # stream a large download
+    for chunk in s.iter_bytes():
+        ...
+client.close()
+
+# POST JSON, retries, timeouts
+httpx.post("https://api.example.com/items", json={"name": "x"})
+# robust pattern:
+for attempt in range(3):
+    try:
+        resp = httpx.get(url, timeout=5.0); resp.raise_for_status(); break
+    except (httpx.TimeoutException, httpx.HTTPStatusError) as e:
+        if attempt == 2: raise
+        time.sleep(2 ** attempt)
+
+# async version
+async with httpx.AsyncClient() as ac:
+    results = await asyncio.gather(*(ac.get(u) for u in urls))
+
+# --- SQLite: a real database in one file ---------------------------------
+import sqlite3
+con = sqlite3.connect("app.db")
+con.row_factory = sqlite3.Row                    # rows behave like dicts
+con.execute("PRAGMA journal_mode=WAL")           # better concurrency
+
+con.execute("""CREATE TABLE IF NOT EXISTS orders(
+    id INTEGER PRIMARY KEY, sku TEXT NOT NULL, qty INTEGER, created TEXT DEFAULT CURRENT_TIMESTAMP)""")
+
+# ALWAYS parameterise — never f-string values into SQL (injection)
+con.execute("INSERT INTO orders(sku, qty) VALUES (?, ?)", ("A1", 3))
+con.executemany("INSERT INTO orders(sku, qty) VALUES (?, ?)", [("B2", 1), ("C3", 5)])
+con.commit()
+
+for row in con.execute("SELECT sku, qty FROM orders WHERE qty &gt; ? ORDER BY qty DESC", (1,)):
+    print(row["sku"], row["qty"])
+
+with con:                                        # transaction: commit on success, rollback on error
+    con.execute("UPDATE orders SET qty = qty + 1 WHERE sku = ?", ("A1",))
+
+con.execute("SELECT count(*) FROM orders").fetchone()[0]
+con.close()
+
+# --- ORMs and query builders (when tables outnumber ~5) ------------------
+# SQLAlchemy 2.0  — the standard: Core (SQL builder) + ORM (typed models)
+# SQLModel       — SQLAlchemy + pydantic types, great with FastAPI
+# Django ORM     — batteries included, migrations, admin
+# Alembic        — migrations for SQLAlchemy
+# DuckDB         — "SQLite for analytics": query CSV/parquet with SQL, in-process
+import duckdb
+duckdb.sql("SELECT sku, sum(qty) FROM 'orders.csv' GROUP BY 1 ORDER BY 2 DESC").fetchall()</code></pre>
+    <div class="warn"><b>Security basics for data handling:</b> parameterise every SQL query; never
+    <code>yaml.load</code> or <code>pickle.loads</code> untrusted input; keep secrets in environment variables or a
+    secret manager (never in git — use <code>.env.example</code> as the committed template); validate anything that comes
+    from a user, a file or the network with pydantic before using it. See ch. 18.5 for the full checklist.</div>
+  </section>
+</section>

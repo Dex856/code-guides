@@ -1,0 +1,554 @@
+
+<section class="chapter" id="start">
+  <h2><span class="num">0</span> How to use this guide</h2>
+  <p class="tagline">Java reduced to exactly what wins coding-round problems: the Collections you actually type, the idioms
+  that make solutions short, and the traps — boxing, equality, overflow — that cost submissions.</p>
+
+  <div class="hero">
+    <h1>Java for LeetCode</h1>
+    <p class="lede">Java is verbose on purpose and that verbosity hides traps: an <code>Integer</code> is not an <code>int</code>,
+    <code>==</code> is not <code>equals</code>, a <code>HashMap</code> is not ordered, and <code>int * int</code> overflows silently.
+    This guide covers the subset that solves problems — <b>HashMap, HashSet, ArrayList, ArrayDeque, PriorityQueue, TreeMap,
+    Arrays/Collections helpers</b> — plus the patterns mapped onto those APIs, paste-ready templates for graphs, DSU,
+    binary search and DP, and the pit-falls that separate “works on my machine” from “accepted”.</p>
+    <div class="stats" id="stats">
+      <div class="stat"><b>—</b>chapters</div><div class="stat"><b>—</b>topics</div>
+      <div class="stat"><b>—</b>snippets</div><div class="stat"><b>—</b>diagrams</div>
+    </div>
+    <div class="badges">
+      <span class="pill hot">LeetCode judge: Java 25</span>
+      <span class="pill">Java 21 LTS base · Java 27 latest</span>
+      <span class="pill">Java 11-compatible code marked ✅</span>
+      <span class="pill">Interview-ready templates</span>
+    </div>
+  </div>
+
+  <section class="sub">
+    <h3>0.1 Three ways to read this</h3>
+    <div class="grid3">
+      <div class="card"><h4>🌱 New to Java</h4><b>Ch. 2 → 6</b> in order, typing every snippet. In Java the type system
+      (<code>int</code> vs <code>Integer</code>) and the Collections are 80% of the battle.</div>
+      <div class="card"><h4>🎯 Interview in a week</h4><b>Ch. 5</b> (collections), <b>ch. 7</b> (Comparators &amp; sorting),
+      <b>ch. 11</b> (pattern → Java API map), <b>ch. 12</b> (pitfalls), <b>ch. 13</b> (templates).</div>
+      <div class="card"><h4>🐍 Coming from Python</h4><b>Ch. 2.1–2.2</b> (boxing &amp; overflow), <b>ch. 5.1</b>
+      (which collection replaces list/dict/set), <b>ch. 12</b> — then go straight to <b>ch. 13</b>.</div>
+    </div>
+    <div class="tip"><b>Companion material:</b> pair this with the <a href="java-leetcode.html">Java LeetCode question bank</a>
+    (6 easy / 12 medium / 12 hard per topic, every solution compiled and tested) and the
+    <a href="cpp-guide.html">C++ guide</a> / <a href="python-guide.html">Python guide</a> if you are choosing a language.</div>
+  </section>
+
+  <section class="sub">
+    <h3>0.2 Conventions used in this guide</h3>
+    <table class="tbl">
+      <tbody>
+        <tr><td><span class="pill">✅ Java 11-safe</span></td><td>The snippet compiles with <code>javac --release 11</code>.
+        Any snippet <b>without</b> this pill uses newer syntax (var / records / switch expressions) and is labelled with the
+        minimum version — safe on LeetCode, which runs Java 25.</td></tr>
+        <tr><td><code class="mono">class Solution</code></td><td>All templates are written exactly as LeetCode sees them:
+        a single public class named <code>Solution</code> with the given method signature, no <code>main</code>, helpers as
+        extra methods.</td></tr>
+        <tr><td>Complexity lines</td><td>Every template and every bank solution ends with <code>// O(time) time · O(space) space</code>
+        where <i>n</i> is the primary input size.</td></tr>
+        <tr><td>Figures</td><td>Hand-drawn inline SVG, captioned <code>Fig x.y</code>. They are diagrams of memory layouts,
+        API choices and algorithm states — not decoration.</td></tr>
+        <tr><td>Copy buttons</td><td>Hover any dark code block and click <b>copy</b> to get the raw text, comments included.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>0.3 The LeetCode Java environment in 60 seconds</h3>
+    <p>LeetCode compiles your submission as a single <code>Solution</code> class (Java 25 on the judge) with the common
+    <code>java.util.*</code> classes already imported, so you can type <code>ArrayList&lt;Integer&gt;</code> or <code>Map.Entry&lt;K,V&gt;</code>
+    without adding imports. There is no <code>main</code>: your method is called once per test case on the <i>same</i> class instance.</p>
+    <pre><code>// What LeetCode runs for "Two Sum" — the skeleton you fill in
+class Solution {
+    public int[] twoSum(int[] nums, int target) {
+        Map&lt;Integer, Integer&gt; seen = new HashMap&lt;&gt;();   // java.util.* is pre-imported on the judge
+        for (int i = 0; i &lt; nums.length; i++) {
+            int need = target - nums[i];
+            if (seen.containsKey(need)) return new int[]{seen.get(need), i};
+            seen.put(nums[i], i);
+        }
+        return new int[]{-1, -1};                        // never reached for valid input
+    }
+}   // O(n) time · O(n) space</code></pre>
+    <div class="warn"><b>Three consequences of the judge model — all covered later, all real:</b>
+    <ul>
+      <li><b>Fields persist across test cases.</b> A <code>static</code> or instance field you “reset by intuition” is
+      re-used for the next case. Declare state <i>inside</i> the method (ch. 12.5).</li>
+      <li><b>No <code>main</code>, no printing.</b> Debugging means the local harness in 1.3 — printing inside a solution
+      is the slowest way to fail.</li>
+      <li><b>Signatures are fixed.</b> You cannot change the return type to <code>long</code>; convert inside (ch. 2.2).</li>
+    </ul></div>
+  </section>
+
+  <section class="sub">
+    <h3>0.4 Java versions that matter (8 → 27)</h3>
+    <table class="tbl">
+      <thead><tr><th>Version</th><th>Feature you will actually use in an interview</th></tr></thead>
+      <tbody>
+        <tr><td><b>8</b></td><td>Lambdas, method references, <code>Stream</code>, <code>Map.getOrDefault</code>,
+        <code>Comparator.comparing</code>, <code>Optional</code>. Still the “minimum” most interviewers assume.</td></tr>
+        <tr><td><b>11 (LTS) ✅</b></td><td><code>var</code> in lambdas, <code>String.isBlank/repeat/strip</code>,
+        <code>List.of</code>, single-file <code>java Sol.java</code> runs without compiling. The safest baseline.</td></tr>
+        <tr><td><b>14–17</b></td><td><code>switch</code> expressions with <code>-&gt;</code> (14), text blocks (15),
+        records (16), pattern matching for <code>instanceof</code> (16), sealed types (17).</td></tr>
+        <tr><td><b>21 (LTS)</b></td><td>Sequenced collections (<code>getFirst()</code>, <code>reversed()</code>),
+        <code>record</code> patterns, virtual threads (irrelevant for LeetCode, useful in real services).</td></tr>
+        <tr><td><b>25 (LTS) / 27</b></td><td>What LeetCode runs today (25). Latest feature release is 27 (Sept 2026);
+        nothing in this guide depends on it.</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><b>Why the guide still teaches Java-8-era APIs first:</b> plain loops, <code>charAt</code>,
+    <code>HashMap</code> and <code>ArrayDeque</code> are faster than streams, always available, and easier to reason about
+    under time pressure. Streams appear where they are genuinely shorter (ch. 6.5).</div>
+  </section>
+
+  <section class="sub">
+    <h3>0.5 What this guide explicitly does <i>not</i> cover</h3>
+    <table class="tbl">
+      <tbody>
+        <tr><td>Spring / Android / JDBC / build tools</td><td>Not asked in algorithms interviews. Covered in the
+        <a href="python-guide.html">Python guide</a> equivalent (packaging) only conceptually.</td></tr>
+        <tr><td>Threads, virtual threads, concurrency collections</td><td>Relevant in system-design rounds, never in a
+        LeetCode judge (which is single-threaded per case). See ch. 9.4 for the one-line summary.</td></tr>
+        <tr><td>Exotic syntax demos</td><td>Anything whose only benefit is looking clever. Interview code is read by a human
+        who is scoring clarity as much as correctness.</td></tr>
+      </tbody>
+    </table>
+  </section>
+</section>
+
+<section class="chapter" id="ch1">
+  <h2><span class="num">1</span> Setup, compile loop, local testing</h2>
+  <p class="tagline">The three files and four commands you need, and the test loop that catches wrong answers before the judge does.</p>
+
+  <div class="hero">
+    <h1>Setup &amp; the compile loop</h1>
+    <p class="lede">You do not need an IDE to solve LeetCode in Java — but you do need a local file you can run in one
+    command, because the judge tells you only “wrong answer”, never <i>why</i>. This chapter sets up a JDK, the exact
+    commands, and a 3-level harness (asserts → randomised stress test → edge-case sweep) that turns a wrong-answer into a
+    reproducible one in under a minute.</p>
+  </div>
+
+  <section class="sub">
+    <h3>1.1 Install a JDK and verify it</h3>
+    <pre><code># any of these works; pick one
+sudo apt install openjdk-25-jdk        # Debian/Ubuntu LTS package
+brew install openjdk@25                # macOS
+sdk install java 25-tem && sdk use java 25-tem   # SDKMAN, any OS
+
+java -version      # openjdk version "25" ...  (17, 21, 25 all fine; LeetCode runs 25)
+javac -version
+jshell --version   # REPL — fastest way to check "what does Integer.parseInt(" 12 ") do?"</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Task</th><th>Command</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td>Compile one file</td><td><code>javac -d out Sol.java</code></td><td><code>-d out</code> keeps <code>.class</code> files out of your source folder</td></tr>
+        <tr><td>Run it</td><td><code>java -cp out Sol</code></td><td>runs <code>Sol.main</code></td></tr>
+        <tr><td>Compile + run in one step</td><td><code>java Sol.java</code></td><td>Java 11+ single-file source launch; no <code>.class</code> anywhere</td></tr>
+        <tr><td>Target an older judge</td><td><code>javac --release 17 Sol.java</code></td><td>fails fast if you used newer syntax than the judge supports ✅</td></tr>
+        <tr><td>Scratch pad</td><td><code>jshell</code></td><td><code>int x = 5; x/2</code> → <code>2</code>; great for verifying a formula before writing the method</td></tr>
+      </tbody>
+    </table>
+    <div class="tip"><b>One folder per problem.</b> <code>~/lc/0001-two-sum/Sol.java</code>. When you revise a topic later,
+    the whole history of that problem — attempts, brute force, notes — is in one place.</div>
+  </section>
+
+  <section class="sub">
+    <h3>1.2 The local harness shape</h3>
+    <p>LeetCode gives you a bare method with no <code>main</code>. Locally, wrap it yourself: keep the <code>Solution</code>
+    class byte-for-byte identical to what you submit, and put all testing in a <i>separate</i> class so nothing you add for
+    debugging can leak into the submission.</p>
+    <pre><code class="nohl">// ---------------- Sol.java — the part you paste into LeetCode ----------------
+class Solution {
+    public int[] twoSum(int[] nums, int target) {
+        java.util.Map&lt;Integer, Integer&gt; seen = new java.util.HashMap&lt;&gt;();
+        for (int i = 0; i &lt; nums.length; i++) {
+            int need = target - nums[i];
+            if (seen.containsKey(need)) return new int[]{seen.get(need), i};
+            seen.put(nums[i], i);
+        }
+        return new int[0];
+    }
+}
+
+// ---------------- Main.java — local only, never submitted --------------------
+public class Main {
+    public static void main(String[] args) {
+        Solution s = new Solution();
+        check(java.util.Arrays.equals(s.twoSum(new int[]{2, 7, 11, 15}, 9), new int[]{0, 1}));
+        check(java.util.Arrays.equals(s.twoSum(new int[]{3, 2, 4}, 6),        new int[]{1, 2}));
+        check(java.util.Arrays.equals(s.twoSum(new int[]{3, 3}, 6),           new int[]{0, 1}));
+        System.out.println("all asserts passed");
+    }
+    // assert() is disabled unless -ea is passed, so use an explicit helper instead
+    static void check(boolean ok) { if (!ok) throw new AssertionError("failed"); }
+}</code></pre>
+    <div class="trap"><b>Trap:</b> <code>assert x == 4;</code> does nothing by default — Java disables assertions unless you
+    run with <code>java -ea</code>. Use an explicit <code>check(...)</code> helper (above) or always pass <code>-ea</code>.</div>
+  </section>
+
+  <section class="sub">
+    <h3>1.3 The 3-level test loop</h3>
+    <table class="tbl">
+      <thead><tr><th>Level</th><th>What you write</th><th>What it catches</th></tr></thead>
+      <tbody>
+        <tr><td><b>1 · Examples</b></td><td>Every sample from the problem statement, plus the empty and size-1 cases.</td>
+        <td>Wrong output on the happy path; null/empty handling; off-by-one on the last element.</td></tr>
+        <tr><td><b>2 · Brute force + random stress</b></td><td>A slow-but-obviously-correct method, then 1,000 random small
+        inputs comparing both outputs.</td><td>Everything subtle: boundary conditions, duplicate handling, tie-breaking,
+        overflow on small-but-nasty values.</td></tr>
+        <tr><td><b>3 · Scale &amp; safety</b></td><td>One max-size random input with a stopwatch; then re-run the samples
+        after changing nothing.</td><td>TLE (wrong complexity), <code>StackOverflowError</code>, quadratic hidden inside a
+        loop, and accidental reliance on test order from leftover fields.</td></tr>
+      </tbody>
+    </table>
+    <pre><code class="nohl">// Level 2: randomised stress test — the highest-value 20 lines you will ever write
+static void stress() {
+    java.util.Random rnd = new java.util.Random(12345);      // fixed seed -&gt; reproducible
+    Solution s = new Solution();
+    for (int t = 0; t &lt; 1000; t++) {
+        int n = 1 + rnd.nextInt(8);
+        int[] a = new int[n];
+        for (int i = 0; i &lt; n; i++) a[i] = rnd.nextInt(21) - 10;   // includes negatives
+        int target = rnd.nextInt(41) - 20;
+        int[] fast = s.twoSum(a, target), slow = brute(a, target);
+        if (fast.length != slow.length || (fast.length == 2 &amp;&amp;
+            !(fast[0] == slow[0] &amp;&amp; fast[1] == slow[1]))) {
+            System.out.println("MISMATCH on " + java.util.Arrays.toString(a) + " target=" + target);
+            System.out.println("fast=" + java.util.Arrays.toString(fast) + " slow=" + java.util.Arrays.toString(slow));
+            return;
+        }
+    }
+    System.out.println("stress passed");
+}
+static int[] brute(int[] a, int t) {                          // O(n^2), obviously correct
+    for (int i = 0; i &lt; a.length; i++)
+        for (int j = i + 1; j &lt; a.length; j++)
+            if (a[i] + a[j] == t) return new int[]{i, j};
+    return new int[0];
+}</code></pre>
+    <div class="tip"><b>Randomise <i>values</i>, not just sizes.</b> Negative numbers, zero, duplicates, and the extreme of the
+    allowed range expose more bugs than 10,000 well-behaved cases. Generate values in <code>[-10, 10]</code> first; if that
+    passes, widen to the real constraints.</div>
+  </section>
+
+  <section class="sub">
+    <h3>1.4 Timing: what Java can do in a second</h3>
+    <p>Judges allow roughly 1–3 s per test file, and LeetCode runs a batch of cases. Java is typically 2–5× slower than C++
+    for the same algorithm, mostly because of bounds checks, memory indirection and boxing. Practical planning numbers for
+    the judge machine:</p>
+    <table class="tbl">
+      <thead><tr><th>Workload</th><th>Rough count in ~1 s</th><th>Consequence for your solution</th></tr></thead>
+      <tbody>
+        <tr><td>Simple <code>int</code> loop, array access</td><td>10<sup>8</sup>–10<sup>9</sup> ops</td><td>O(n) with n ≤ 10<sup>6</sup> is free</td></tr>
+        <tr><td><code>HashMap&lt;Integer,Integer&gt;</code> get/put</td><td>~2–5 × 10<sup>7</sup> ops</td><td>fine at n ≤ 10<sup>5</sup>; boxing starts to hurt at 10<sup>6</sup></td></tr>
+        <tr><td><code>ArrayList&lt;Integer&gt;</code> iteration</td><td>~10<sup>8</sup> boxed reads</td><td>prefer <code>int[]</code> inside hot loops</td></tr>
+        <tr><td><code>TreeMap</code>/<code>TreeSet</code> op</td><td>~10<sup>6</sup>–10<sup>7</sup> ops</td><td>n log n with n = 10<sup>5</sup> is comfortable</td></tr>
+        <tr><td>Deep recursion</td><td>≈ 10<sup>4</sup>–10<sup>5</sup> frames (≈ 5–10 k for heavy frames)</td><td>convert to an explicit <code>ArrayDeque</code> stack beyond that</td></tr>
+        <tr><td>Printing to <code>System.out</code></td><td>~10<sup>5</sup> lines</td><td>never print in the final submission</td></tr>
+      </tbody>
+    </table>
+    <figure class="dg">
+      <svg viewBox="0 0 900 300" role="img" aria-label="Time budget: choosing the intended complexity from the input size">
+        <defs><marker id="ahx" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#7b8798"/></marker></defs>
+        <text class="tt" x="450" y="30" text-anchor="middle">Read the constraints → pick the complexity</text>
+        <rect class="bx" x="30" y="52" width="840" height="56" rx="9"/>
+        <text class="t" x="46" y="76">n ≤ 10 – 12</text>
+        <text class="sm" x="250" y="76">n ≤ 20 (bitmask)</text>
+        <text class="sm" x="470" y="76">n ≤ 100 – 500</text>
+        <text class="sm" x="680" y="76">n ≤ 10⁵ – 10⁶</text>
+        <text class="sm" x="46" y="95">O(2ⁿ·n) · O(n!) backtracking</text>
+        <text class="sm" x="250" y="95">O(2ⁿ) subsets · O(n·2ⁿ) bitmask DP</text>
+        <text class="sm" x="470" y="95">O(n³) / O(n²) loops</text>
+        <text class="sm" x="680" y="95">O(n log n) sort/heap · O(n) two pointers</text>
+        <line class="lnd" x1="30" y1="130" x2="870" y2="130"/>
+        <rect class="bb" x="30" y="150" width="400" height="118" rx="9"/>
+        <text class="t" x="46" y="174">When Java TLEs at the right complexity</text>
+        <text class="sm" x="46" y="196">· boxing in the inner loop  →  int[] / long[]</text>
+        <text class="sm" x="46" y="215">· HashMap&lt;Integer,…&gt; rebuilt per query  →  hoist it out</text>
+        <text class="sm" x="46" y="234">· StringBuilder missing in a string loop  →  O(n²) append</text>
+        <text class="sm" x="46" y="253">· recursion depth  →  explicit stack</text>
+        <rect class="bc" x="470" y="150" width="400" height="118" rx="9"/>
+        <text class="t" x="486" y="174">When it is fine but boxed-slow</text>
+        <text class="sm" x="486" y="196">n·log n with n = 10⁵ → ~1.7·10⁶ ops: free</text>
+        <text class="sm" x="486" y="215">PriorityQueue of 10⁶ ints → ~10⁶·20 compares: fine</text>
+        <text class="sm" x="486" y="234">10⁴ × HashMap on 10⁴ elements → 10⁸ ops: TLE</text>
+      </svg>
+      <figcaption>Fig 1.1 — The constraint table (ch. 14) tells you the intended complexity; this figure tells you where Java
+      implementation choices, not algorithms, become the bottleneck.</figcaption>
+    </figure>
+  </section>
+</section>
+
+<section class="chapter" id="ch2">
+  <h2><span class="num">2</span> Types, numbers, boxing</h2>
+  <p class="tagline">The number-one source of <i>wrong answer</i> in Java submissions is not the algorithm — it is an
+  <code>int</code> that overflowed, an <code>Integer</code> compared with <code>==</code>, or a NULL that got unboxed.</p>
+
+  <div class="hero">
+    <h1>Types &amp; numbers without landmines</h1>
+    <p class="lede">Java has two parallel worlds — primitives (<code>int</code>, <code>long</code>, <code>char</code>,
+    <code>double</code>…) and reference types (<code>Integer</code>, <code>Long</code>, <code>Character</code>…). Collections
+    only store the second world, so every value that enters a <code>List</code> or <code>Map</code> is boxed and unboxed
+    behind your back. This chapter makes that cost and those traps visible, then fixes the arithmetic rules that quietly
+    break solutions.</p>
+  </div>
+
+  <section class="sub">
+    <h3>2.1 primitives vs wrappers</h3>
+    <table class="tbl">
+      <thead><tr><th>Primitive</th><th>Size</th><th>Range</th><th>Wrapper</th><th>Interview note</th></tr></thead>
+      <tbody>
+        <tr><td><code>byte</code></td><td>8 bit</td><td>−128 … 127</td><td><code>Byte</code></td><td>rarely used; always promoted to <code>int</code> in arithmetic</td></tr>
+        <tr><td><code>short</code></td><td>16 bit</td><td>±32 767</td><td><code>Short</code></td><td>same promotion surprise</td></tr>
+        <tr><td><code>char</code></td><td>16 bit</td><td>0 … 65 535</td><td><code>Character</code></td><td><b>unsigned</b>; <code>'a' == 97</code></td></tr>
+        <tr><td><code>int</code></td><td>32 bit</td><td>±2.1 × 10<sup>9</sup></td><td><code>Integer</code></td><td>default choice; overflow is silent (2.2)</td></tr>
+        <tr><td><code>long</code></td><td>64 bit</td><td>±9.2 × 10<sup>18</sup></td><td><code>Long</code></td><td>use whenever products or sums exceed 2 × 10<sup>9</sup></td></tr>
+        <tr><td><code>float</code></td><td>32 bit</td><td>~7 digits</td><td><code>Float</code></td><td>avoid in comparisons</td></tr>
+        <tr><td><code>double</code></td><td>64 bit</td><td>~15–16 digits</td><td><code>Double</code></td><td>geometry/probability answers</td></tr>
+        <tr><td><code>boolean</code></td><td>1 bit (conceptually)</td><td>true/false</td><td><code>Boolean</code></td><td><code>boolean[]</code> for visited flags</td></tr>
+      </tbody>
+    </table>
+    <div class="warn"><b>Java has no unsigned integer types.</b> A 64-bit bitmask needs <code>long</code> plus
+    <code>&gt;&gt;&gt;</code> (unsigned right shift) and <code>Long.toUnsignedString</code> for printing. There is no
+    <code>unsigned int</code> equivalent; for values above 2<sup>63</sup>−1 use <code>BigInteger</code> (ch. 10.6).</div>
+    <table class="tbl">
+      <thead><tr><th>Constant</th><th>Value</th><th>Where it bites</th></tr></thead>
+      <tbody>
+        <tr><td><code>Integer.MAX_VALUE</code></td><td>2 147 483 647</td><td>the standard “infinity”; <code>x + 1</code> wraps to negative</td></tr>
+        <tr><td><code>Integer.MIN_VALUE</code></td><td>−2 147 483 648</td><td><code>Math.abs(MIN_VALUE)</code> is still negative (!)</td></tr>
+        <tr><td><code>Long.MAX_VALUE</code></td><td>9.22 × 10<sup>18</sup></td><td>safe “infinity” for Dijkstra-style distances</td></tr>
+        <tr><td><code>Character.MAX_VALUE</code></td><td>65 535</td><td>counting sort over all UTF-16 units</td></tr>
+      </tbody>
+    </table>
+    <div class="trap"><b>Trap:</b> <code>Math.abs(Integer.MIN_VALUE)</code> returns <code>Integer.MIN_VALUE</code> — there is no
+    positive counterpart in <code>int</code>. If your code takes absolute differences of arbitrary ints, widen first:
+    <code>Math.abs((long) a - b)</code>.</div>
+  </section>
+
+  <section class="sub">
+    <h3>2.2 Overflow — the silent wrong answer</h3>
+    <p>Java arithmetic never tells you it overflowed: <code>int</code> ops wrap around modulo 2<sup>32</sup>. In C++ the same
+    wrap is undefined behaviour; in Java it is <i>defined</i> and therefore quieter.</p>
+    <pre><code>int a = 100_000, b = 100_000;
+System.out.println(a * b);            // 1410065408  ← wrong! (10^10 mod 2^32)
+System.out.println((long) a * b);     // 10000000000 ← correct: one operand long promotes the expression
+long wrong = a * b;                   // ❌ still 1410065408: the multiplication already happened in int
+long right = (long) a * b;            // ✅ widen BEFORE multiplying
+
+// summing an array of 10^5 values up to 10^9 each -> 10^14: needs long
+int badSum = 0;                       // ❌ overflows
+long goodSum = 0; for (int v : arr) goodSum += v;
+
+// midpoint: avoid lo + hi overflow when lo, hi are near Integer.MAX_VALUE
+int mid = (lo + hi) / 2;              // ❌ overflow
+int mid2 = lo + (hi - lo) / 2;        // ✅
+
+// detect overflow explicitly when you must stay in int
+try { int x = Math.multiplyExact(a, b); }
+catch (ArithmeticException e) { /* overflow */ }</code></pre>
+    <figure class="dg">
+      <svg viewBox="0 0 900 330" role="img" aria-label="How int arithmetic wraps around and where the long cast must go">
+        <text class="tt" x="450" y="28" text-anchor="middle">Where the cast goes decides the answer</text>
+        <rect class="bd" x="40" y="52" width="390" height="112" rx="9"/>
+        <text class="t" x="56" y="76">❌ long r = a * b;   (a,b int)</text>
+        <text class="sm" x="56" y="98">1. a * b evaluated in int → wraps mod 2³²</text>
+        <text class="sm" x="56" y="117">2. the wrapped value is widened to long</text>
+        <text class="sm" x="56" y="136">3. r holds a wrong but confident number</text>
+        <text class="mono sm" x="56" y="155">100000 * 100000 → 1410065408</text>
+        <rect class="bc" x="470" y="52" width="390" height="112" rx="9"/>
+        <text class="t" x="486" y="76">✅ long r = (long) a * b;</text>
+        <text class="sm" x="486" y="98">1. cast makes a long → b is promoted to long</text>
+        <text class="sm" x="486" y="117">2. multiplication done in 64 bits</text>
+        <text class="sm" x="486" y="136">3. no wrap for anything below 9.2 × 10¹⁸</text>
+        <text class="mono sm" x="486" y="155">100000 * 100000 → 10000000000</text>
+        <line class="lnd" x1="40" y1="186" x2="860" y2="186"/>
+        <rect class="bb" x="40" y="206" width="820" height="104" rx="9"/>
+        <text class="t" x="56" y="230">The four places overflow actually costs you a submission</text>
+        <text class="sm" x="56" y="252">1 · Products in geometry / combinatorics: n·(n−1)/2 at n = 10⁵ → widen</text>
+        <text class="sm" x="56" y="271">2 · Prefix sums and DP tables: declare long[] when values reach 10⁹</text>
+        <text class="sm" x="56" y="290">3 · Midpoints and averages: lo + (hi − lo)/2, never (lo + hi)/2</text>
+        <text class="sm" x="30" y="252">4 · Hash keys: (a*31 + b) can wrap — fine for mixing, wrong for ordering answers</text>
+        <text class="sm" x="30" y="271">5 · Intermediate products in binary-search predicates: (long) mid * mid, not mid * mid</text>
+      </svg>
+      <figcaption>Fig 2.1 — Widening casts move the arithmetic into 64 bits. The cast must appear on an <i>operand</i>, before
+      the multiply, not on the result.</figcaption>
+    </figure>
+  </section>
+
+  <section class="sub">
+    <h3>2.3 Integer division, modulo and rounding</h3>
+    <table class="tbl">
+      <thead><tr><th>Expression</th><th>Result</th><th>Why / when it matters</th></tr></thead>
+      <tbody>
+        <tr><td><code>7 / 2</code></td><td><code>3</code></td><td>truncation toward zero — the classic off-by-one in midpoints</td></tr>
+        <tr><td><code>-7 / 2</code></td><td><code>-3</code></td><td>truncates toward zero, <b>not</b> floor (C++11 also truncates; Python floors to −4)</td></tr>
+        <tr><td><code>-7 % 2</code></td><td><code>-1</code></td><td>modulo keeps the sign of the dividend → negative indices</td></tr>
+        <tr><td><code>Math.floorMod(-7, 2)</code></td><td><code>1</code></td><td>always non-negative — use for circular indices ✅</td></tr>
+        <tr><td><code>(int) Math.floor(-7.0 / 2)</code></td><td><code>-4</code></td><td>true floor when you need it</td></tr>
+        <tr><td><code>(a + b - 1) / b</code></td><td>ceil(a/b) for a,b &gt; 0</td><td>“how many groups of size b” — assumes non-negative</td></tr>
+        <tr><td><code>-7 &gt;&gt; 1</code></td><td><code>-4</code></td><td><code>&gt;&gt;</code> on negatives is an arithmetic shift (floor by 2) — not the same as <code>/2</code></td></tr>
+        <tr><td><code>-7 &gt;&gt;&gt; 1</code></td><td><code>2147483644</code></td><td><code>&gt;&gt;&gt;</code> fills with zeros: it treats the value as unsigned</td></tr>
+      </tbody>
+    </table>
+    <div class="tip"><b>Circular arrays (rotations, ring buffers):</b> write
+    <code>int idx = ((i % n) + n) % n;</code> or <code>Math.floorMod(i, n)</code>. Both handle negative <code>i</code>, which
+    plain <code>%</code> does not.</div>
+  </section>
+
+  <section class="sub">
+    <h3>2.4 Boxing, unboxing and the <code>Integer</code> cache</h3>
+    <p>Collections store references. <code>List&lt;Integer&gt;</code> means an array of <i>pointers</i> to <code>Integer</code>
+    objects, so <code>1</code> becomes a heap object, costs ~16 bytes instead of 4, and is fetched through a pointer.</p>
+    <pre><code>List&lt;Integer&gt; xs = new ArrayList&lt;&gt;();
+xs.add(5);                       // autoboxing: int -&gt; Integer.valueOf(5)
+int y = xs.get(0);               // auto-unboxing: Integer.intValue()
+
+// The cache trap: valueOf caches -128..127 (Boolean, Byte, Short, Character similarly)
+Integer a = 127, b = 127;
+System.out.println(a == b);      // true  — same cached object
+Integer c = 128, d = 128;
+System.out.println(c == d);      // false — two different objects!
+System.out.println(c.equals(d)); // true  — always compare wrappers with equals
+
+// NPE: unboxing null throws
+Map&lt;String,Integer&gt; freq = new HashMap&lt;&gt;();
+freq.put("a", null);
+int n = freq.get("a");           // ❌ NullPointerException
+int m = freq.getOrDefault("a", 0);  // ✅ 0
+
+// Integer.compare is the overflow-safe comparator
+Integer.compare(a, b);           // ✅
+// a - b as a comparator ❌ overflows for extreme values (Comparator contract violated)</code></pre>
+    <figure class="dg">
+      <svg viewBox="0 0 900 300" role="img" aria-label="Primitive int, boxed Integer, and the Integer cache range">
+        <text class="tt" x="450" y="28" text-anchor="middle">int vs Integer — what actually sits in memory</text>
+        <rect class="bc" x="40" y="50" width="250" height="86" rx="9"/>
+        <text class="t" x="60" y="74">int x = 42;</text>
+        <text class="sm" x="60" y="96">4 bytes, inline, no object, no pointer</text>
+        <text class="sm" x="60" y="115">fast, never null, never cached</text>
+        <rect class="bb" x="320" y="50" width="250" height="86" rx="9"/>
+        <text class="t" x="340" y="74">Integer y = 42;</text>
+        <text class="sm" x="340" y="96">reference (8 B) → object (16 B)</text>
+        <text class="sm" x="340" y="115">can be null; == compares references</text>
+        <rect class="bp" x="600" y="50" width="260" height="86" rx="9"/>
+        <text class="t" x="620" y="74">Integer.valueOf(42)</text>
+        <text class="sm" x="620" y="96">returns the cached object</text>
+        <text class="sm" x="620" y="115">cache range: −128 … 127</text>
+        <line class="lnd" x1="40" y1="158" x2="860" y2="158"/>
+        <text class="t" x="40" y="184">Two rules that fix 90% of boxing bugs</text>
+        <text class="sm" x="40" y="208">1 · Compare wrappers with equals / Integer.compare — never with ==, except against null.</text>
+        <text class="sm" x="40" y="228">2 · In hot loops and DP tables use int[] / long[]; convert to lists only at the boundary.</text>
+        <text class="sm" x="40" y="256">Cost model: List&lt;Integer&gt; of 10⁶ ≈ 24 MB and pointer-chasing per read; int[10⁶] = 4 MB, contiguous.</text>
+        <text class="sm" x="40" y="276">Autoboxing also allocates: summing a List&lt;Integer&gt; of 10⁶ creates no garbage, but building one does.</text>
+      </svg>
+      <figcaption>Fig 2.2 — The cache is why <code>==</code> “works” in small tests and fails on the judge’s 128+ values.</figcaption>
+    </figure>
+    <div class="trap"><b>Trap:</b> <code>map.get(key) + 1</code> on a missing key throws NPE; <code>map.get(key) == other</code>
+    on <code>Integer</code> values compares references for values outside the cache. Idiomatic fix:
+    <code>map.merge(k, 1, Integer::sum)</code> or <code>map.put(k, map.getOrDefault(k, 0) + 1)</code>.</div>
+  </section>
+
+  <section class="sub">
+    <h3>2.5 char, code points and character arithmetic</h3>
+    <pre><code>char c = 'A';
+int  i = c - 'A';                    // 0  (char promotes to int in arithmetic ✅)
+char next = (char) (c + 1);          // 'B' — the cast back to char is mandatory
+System.out.println('a' &lt; 'b');       // true — chars compare by code unit
+System.out.println((int) 'z');       // 122
+
+Character.isDigit(c);  Character.isLetter(c);  Character.isLetterOrDigit(c);
+Character.isWhitespace(c);  Character.toLowerCase(c);  Character.toUpperCase(c);
+Character.getNumericValue('7');      // 7  (works for letters too: 'a' -&gt; 10)
+Character.digit('f', 16);            // 15 (returns -1 if invalid, unlike Integer.parseInt)
+
+// frequency array — always faster and clearer than a HashMap&lt;Character,Integer&gt;
+int[] cnt = new int[26];
+for (char ch : s.toCharArray()) cnt[ch - 'a']++;
+
+// parsing digits without parseInt
+int val = 0; for (char ch : s.toCharArray()) val = val * 10 + (ch - '0');</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Gotcha</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td><code>c + 1</code> is an <code>int</code>, not a <code>char</code></td><td><code>(char)(c + 1)</code></td></tr>
+        <tr><td><code>'a' + 'b'</code> is 195 (an int)</td><td>cast the whole expression, not one operand, when you mean a char</td></tr>
+        <tr><td>String concatenation: <code>"" + a + b</code> converts numbers, but <code>a + b + ""</code> adds first</td><td>put <code>""</code> first, or use <code>StringBuilder</code></td></tr>
+        <tr><td>Emoji / supplementary characters are <i>two</i> chars</td><td><code>codePointAt</code> / <code>codePointCount</code> (rare in problems, but “reverse a string” variants can use it)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>2.6 Doubles: comparison, precision, rounding</h3>
+    <pre><code>// Read-only reference: the lines below are expression forms, not complete statements.
+Math.abs(a - b) &lt; 1e-9                     // ✅ tolerance compare (absolute)
+Math.abs(a - b) &lt;= 1e-9 * Math.max(1.0, Math.max(Math.abs(a), Math.abs(b)))   // ✅ relative
+
+// The judge usually accepts a relative/absolute error (LeetCode: 1e-5). Never use == on doubles.
+0.1 + 0.2 == 0.3                            // ❌ false (0.30000000000000004)
+Double.compare(x, y)                        // ✅ total order, handles NaN/-0.0
+
+Math.sqrt(x)   Math.pow(x, y)   Math.hypot(dx, dy)      // hypot avoids intermediate overflow
+Math.floor(d)  Math.ceil(d)    Math.round(d)            // round: half-up, returns long for double
+(int) Math.sqrt(n)                         // floor sqrt — watch out at 10^15 with double precision
+
+// integer sqrt without floating point risk
+long isqrt(long n) { long r = (long) Math.sqrt((double) n); while (r * r &gt; n) r--; while ((r+1)*(r+1) &lt;= n) r++; return r; }</code></pre>
+    <div class="note"><b>Why <code>Math.hypot</code>:</b> <code>sqrt(dx*dx + dy*dy)</code> overflows <code>int</code> for large
+    coordinate differences and loses precision for <code>double</code>; <code>hypot</code> is scaled internally. For integer
+    answers prefer squared distances and integer comparisons — no floating point at all.</div>
+  </section>
+
+  <section class="sub">
+    <h3>2.7 BigInteger / BigDecimal — when 64 bits are not enough</h3>
+    <table class="tbl">
+      <thead><tr><th>Need</th><th>Use</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td>Factorials, 2<sup>n</sup> for n &gt; 62, huge Fibonacci</td><td><code>BigInteger</code></td><td><code>valueOf</code>, <code>add</code>, <code>multiply</code>, <code>pow</code>, <code>mod</code>, <code>compareTo</code> — no operators</td></tr>
+        <tr><td>Exact decimal money/distribution problems</td><td><code>BigDecimal</code></td><td><code>add</code>, <code>multiply</code>, <code>setScale(r, RoundingMode.HALF_UP)</code></td></tr>
+        <tr><td>Anything else</td><td>Your own <code>long</code> + <code>MOD</code></td><td>LeetCode answers are almost always mod 10<sup>9</sup>+7, not big integers</td></tr>
+      </tbody>
+    </table>
+    <pre><code>import java.math.BigInteger;   // java.util.* does NOT include the math package
+
+BigInteger f = BigInteger.ONE;
+for (int i = 2; i &lt;= n; i++) f = f.multiply(BigInteger.valueOf(i));   // n! exactly
+BigInteger m = f.mod(BigInteger.valueOf(1_000_000_007L));
+System.out.println(m);                                  // mod of a huge factorial: safe
+System.out.println(BigInteger.valueOf(2).pow(200));     // 2^200 exactly, instantly
+
+// BigInteger for nCr when values exceed long
+BigInteger nCr(int n, int r) {
+    BigInteger res = BigInteger.ONE;
+    for (int i = 1; i &lt;= r; i++)
+        res = res.multiply(BigInteger.valueOf(n - r + i)).divide(BigInteger.valueOf(i));
+    return res;
+}</code></pre>
+    <div class="tip"><b>Prefer modular arithmetic over BigInteger</b> when the problem says “answer mod 1e9+7”: BigInteger is
+    correct but 10–100× slower. Use <code>long</code> plus the modular tricks in ch. 10.5.</div>
+  </section>
+
+  <section class="sub">
+    <h3>2.8 Comparison operators and <code>equals</code> — the identity table</h3>
+    <table class="tbl">
+      <thead><tr><th>Types compared</th><th><code>==</code> means</th><th>Correct way</th></tr></thead>
+      <tbody>
+        <tr><td>primitive ↔ primitive</td><td>value equality ✅</td><td><code>a == b</code></td></tr>
+        <tr><td>Integer ↔ Integer</td><td><i>reference</i> equality (cache makes it look right)</td><td><code>a.equals(b)</code> or <code>a.intValue() == b.intValue()</code></td></tr>
+        <tr><td>Integer ↔ int</td><td>value equality (unboxing) ✅ — but NPE if the Integer is null</td><td><code>a == 5</code> is fine for non-null</td></tr>
+        <tr><td>String ↔ String</td><td><i>reference</i> equality (literals are interned, so it “sometimes” works)</td><td><code>a.equals(b)</code> or <code>Objects.equals(a,b)</code></td></tr>
+        <tr><td>char ↔ char</td><td>value equality ✅</td><td><code>c == 'x'</code></td></tr>
+        <tr><td>array ↔ array</td><td><i>reference</i> equality — always false for distinct arrays</td><td><code>Arrays.equals</code>, <code>Arrays.deepEquals</code></td></tr>
+        <tr><td>List/Set/Map ↔ same</td><td>reference equality</td><td><code>.equals()</code> is structural for the standard collections ✅</td></tr>
+      </tbody>
+    </table>
+    <div class="warn"><b>Two rules to memorise:</b> (1) <code>==</code> compares <i>values</i> only when both sides are
+    primitives; (2) <code>equals</code> never throws for a non-null receiver — use <code>Objects.equals(a, b)</code> when
+    either side may be null.</div>
+  </section>
+</section>

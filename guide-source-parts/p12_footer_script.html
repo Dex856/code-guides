@@ -1,0 +1,296 @@
+  </main>
+</div>
+
+<footer>
+  <p><b>The Ultimate Python Guide</b> — a single self-contained HTML reference. Built for Python 3.12–3.15 (current stable: 3.14; 3.15 released 1 Oct 2026).</p>
+  <p class="small">All diagrams are inline SVG · no external requests · works offline and in sandboxed previews · every code block has a copy button.<br>
+  Version-sensitive behaviour is flagged inline; when in doubt, the official docs at <span class="mono">docs.python.org</span> are always the source of truth.</p>
+  <p class="small">Generated 2026-10-02 · 25 chapters · use <span class="kbd">/</span> to search, <span class="kbd">🖨</span> to export a PDF.</p>
+</footer>
+
+<button id="top" class="btn" title="Back to top">↑ Top</button>
+
+<style>
+details{border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:.7rem 0;background:var(--card)}
+details[open]{background:transparent}
+details summary{cursor:pointer;font-weight:650;font-size:15px;padding:2px 0}
+details summary::marker{color:var(--accent)}
+details p{margin:.5rem 0}
+.indexgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px;margin:.8rem 0}
+.indexgrid a{display:block;border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:13.4px;background:var(--card);color:var(--fg)}
+.indexgrid a:hover{border-color:var(--accent);background:var(--accent-soft);text-decoration:none}
+mark{background:var(--accent2);color:#111;border-radius:3px;padding:0 2px}
+</style>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------------------------------------------------------------- theme */
+  var root = document.documentElement;
+  var stored = null;
+  try { stored = localStorage.getItem("upg-theme"); } catch (e) {}
+  if (!stored && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) stored = "dark";
+  if (stored) root.setAttribute("data-theme", stored);
+  var themeBtn = document.getElementById("theme");
+  function label() { themeBtn.textContent = root.getAttribute("data-theme") === "dark" ? "☀️" : "🌙"; }
+  label();
+  themeBtn.addEventListener("click", function () {
+    var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("upg-theme", next); } catch (e) {}
+    label();
+  });
+  document.getElementById("print").addEventListener("click", function () { window.print(); });
+
+  /* -------------------------------------------------------- syntax colour */
+  var KEYWORDS = ["False","None","True","and","as","assert","async","await","break","class","continue",
+    "def","del","elif","else","except","finally","for","from","global","if","import","in","is","lambda",
+    "nonlocal","not","or","pass","raise","return","try","while","with","yield","match","case","type"];
+  var BUILTINS = ["abs","all","any","ascii","bin","bool","breakpoint","bytearray","bytes","callable",
+    "chr","classmethod","compile","complex","delattr","dict","dir","divmod","enumerate","eval","exec",
+    "filter","float","format","frozenset","getattr","globals","hasattr","hash","help","hex","id","input",
+    "int","isinstance","issubclass","iter","len","list","locals","map","max","memoryview","min","next",
+    "object","oct","open","ord","pow","print","property","range","repr","reversed","round","set","setattr",
+    "slice","sorted","staticmethod","str","sum","super","tuple","type","vars","zip","self","cls"];
+  function esc(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  var RE = new RegExp(
+    "(#[^\\n]*)" +                                        // 1 comment
+    "|(\"\"\"[\\s\\S]*?\"\"\"|'''[\\s\\S]*?'''|\"(?:\\\\.|[^\"\\\\\\n])*\"|'(?:\\\\.|[^'\\\\\\n])*')" + // 2 string
+    "|\\b(" + KEYWORDS.join("|") + ")\\b" +                // 3 keyword
+    "|\\b(True|False|None)\\b" +                           // 4 constant
+    "|\\b(0[xX][0-9a-fA-F_]+|0[bB][01_]+|0[oO][0-7_]+|\\d[\\d_]*\\.?[\\d_]*(?:[eE][-+]?\\d+)?)\\b" + // 5 number
+    "|\\b(" + BUILTINS.join("|") + ")(?=\\s*\\()" +        // 6 builtin call
+    "|\\b([A-Z][A-Za-z0-9_]*)\\b" +                        // 7 class-like
+    "|\\b([a-z_][a-z0-9_]*)(?=\\s*\\()",                   // 8 function call
+    "g");
+
+  function highlight(code) {
+    return code.replace(RE, function (m, c, s, k, cons, num, b, cls, fn) {
+      if (c) return '<span class="tok-c">' + c + "</span>";
+      if (s) return '<span class="tok-s">' + s + "</span>";
+      if (k || cons) return '<span class="tok-k">' + (k || cons) + "</span>";
+      if (num) return '<span class="tok-n">' + num + "</span>";
+      if (b) return '<span class="tok-b">' + b + "</span>";
+      if (cls) return '<span class="tok-t">' + cls + "</span>";
+      if (fn) return '<span class="tok-f">' + fn + "</span>";
+      return m;
+    });
+  }
+
+  var blocks = document.querySelectorAll("pre > code");
+  Array.prototype.forEach.call(blocks, function (code) {
+    if (code.dataset.hl) return;
+    var text = code.textContent;
+    code.innerHTML = highlight(esc(text));
+    code.dataset.hl = "1";
+    var pre = code.parentNode;
+    if (getComputedStyle(pre).position === "static") pre.style.position = "relative";
+    var btn = document.createElement("button");
+    btn.className = "copy";
+    btn.type = "button";
+    btn.textContent = "copy";
+    btn.addEventListener("click", function () {
+      var done = function () { btn.textContent = "copied ✓"; setTimeout(function () { btn.textContent = "copy"; }, 1400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, fallback);
+      } else { fallback(); }
+      function fallback() {
+        var ta = document.createElement("textarea");
+        ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); done(); } catch (e) { btn.textContent = "⌘C"; }
+        document.body.removeChild(ta);
+      }
+    });
+    pre.appendChild(btn);
+  });
+
+  /* ------------------------------------------------------------ build TOC */
+  var chapters = document.querySelectorAll("section.chapter");
+  var toc = document.getElementById("toc");
+  var slugOf = function (s) {
+    return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
+  };
+  var html = ['<div class="navhead">Chapters</div>'];
+  Array.prototype.forEach.call(chapters, function (ch) {
+    var h2 = ch.querySelector("h2");
+    var num = h2.querySelector(".num") ? h2.querySelector(".num").textContent : "";
+    var title = h2.textContent.replace(/^\s*\d+\s*/, "").trim();
+    var subs = ch.querySelectorAll("h3");
+    html.push('<div class="navch" data-ch="' + ch.id + '"><a href="#' + ch.id + '"><span style="opacity:.6">' + num + '</span> ' + title + "</a>");
+    if (subs.length) {
+      html.push("<ul>");
+      Array.prototype.forEach.call(subs, function (h3) {
+        var id = h3.parentNode.id || (ch.id + "-" + slugOf(h3.textContent));
+        if (!h3.parentNode.id) h3.parentNode.id = id;
+        html.push('<li><a href="#' + id + '">' + h3.textContent + "</a></li>");
+      });
+      html.push("</ul>");
+    }
+    html.push("</div>");
+  });
+  toc.innerHTML = html.join("");
+
+  /* --------------------------------------------------------- search index */
+  var INDEX = [];
+  Array.prototype.forEach.call(chapters, function (ch) {
+    var chtitle = ch.querySelector("h2").textContent.replace(/^\s*\d+\s*/, "").trim();
+    var blocks2 = ch.querySelectorAll(".sub, details");
+    var source = blocks2.length ? blocks2 : [ch];
+    Array.prototype.forEach.call(source, function (blk) {
+      var heading = blk.querySelector("h3, summary");
+      var title = heading ? heading.textContent.trim() : chtitle;
+      var id = heading ? (blk.id || (ch.id + "-" + slugOf(title))) : ch.id;
+      if (heading && !blk.id) blk.id = id;
+      var text = blk.textContent.replace(/\s+/g, " ").trim();
+      INDEX.push({ id: id, title: title, ch: chtitle, text: text, lower: (title + " " + text).toLowerCase() });
+    });
+  });
+  // also index the chapters themselves
+  Array.prototype.forEach.call(chapters, function (ch) {
+    var t = ch.querySelector("h2").textContent.trim();
+    INDEX.push({ id: ch.id, title: t, ch: t, text: ch.textContent.replace(/\s+/g, " ").slice(0, 4000), lower: (t + " " + ch.textContent).toLowerCase() });
+  });
+
+  var q = document.getElementById("q");
+  var res = document.getElementById("results");
+  var sel = -1;
+
+  function snippet(text, term) {
+    var i = text.toLowerCase().indexOf(term);
+    var raw;
+    if (i < 0) {
+      raw = text.slice(0, 130) + "…";
+    } else {
+      var start = Math.max(0, i - 60);
+      raw = (start ? "…" : "") + text.slice(start, start + 170) + "…";
+    }
+    var safe = esc(raw);
+    var rxTerm = esc(term).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    try {
+      return safe.replace(new RegExp("(" + rxTerm + ")", "ig"), "<mark>$1</mark>");
+    } catch (e) {
+      return safe;
+    }
+  }
+
+  function render() {
+    var term = q.value.trim().toLowerCase();
+    if (term.length < 2) { res.classList.remove("on"); res.innerHTML = ""; sel = -1; return; }
+    var scored = [];
+    for (var i = 0; i < INDEX.length; i++) {
+      var e = INDEX[i];
+      var pos = e.lower.indexOf(term);
+      if (pos < 0) continue;
+      var score = (e.title.toLowerCase().indexOf(term) >= 0 ? 0 : 1000) + pos + (e.text.length > 3000 ? 200 : 0);
+      scored.push({ e: e, score: score });
+    }
+    scored.sort(function (a, b) { return a.score - b.score; });
+    var top = scored.slice(0, 25);
+    if (!top.length) { res.innerHTML = '<div style="padding:10px 12px;color:var(--muted)">No match for “' + esc(term) + '”. Try a shorter term — e.g. <b>asyncio</b>, <b>dict</b>, <b>gotcha</b>.</div>'; res.classList.add("on"); return; }
+    res.innerHTML = top.map(function (t, i2) {
+      return '<a href="#' + t.e.id + '" data-i="' + i2 + '"><b>' + esc(t.e.title) + "</b>" +
+        '<div class="rp">' + esc(t.e.ch) + " · " + snippet(t.e.text, term) + "</div></a>";
+    }).join("") + '<div class="rp" style="padding:8px 12px">' + top.length + " of " + scored.length + " matches · <span class='kbd'>↑↓</span> to navigate, <span class='kbd'>Enter</span> to open</div>";
+    res.classList.add("on");
+    sel = -1;
+  }
+
+  q.addEventListener("input", render);
+  q.addEventListener("focus", function () { if (q.value.trim().length >= 2) render(); });
+  q.addEventListener("keydown", function (ev) {
+    var links = res.querySelectorAll("a");
+    if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+      if (!links.length) return;
+      ev.preventDefault();
+      sel += ev.key === "ArrowDown" ? 1 : -1;
+      if (sel < 0) sel = links.length - 1;
+      if (sel >= links.length) sel = 0;
+      Array.prototype.forEach.call(links, function (a, i2) { a.classList.toggle("sel", i2 === sel); });
+      links[sel].scrollIntoView({ block: "nearest" });
+    } else if (ev.key === "Enter") {
+      var target = links[sel >= 0 ? sel : 0];
+      if (target) { window.location.hash = target.getAttribute("href"); res.classList.remove("on"); q.blur(); }
+    }
+  });
+  document.addEventListener("click", function (ev) {
+    if (!res.contains(ev.target) && ev.target !== q) res.classList.remove("on");
+    var a = ev.target.closest ? ev.target.closest("#results a") : null;
+    if (a) res.classList.remove("on");
+  });
+  document.addEventListener("keydown", function (ev) {
+    var typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+    if (ev.key === "/" && !typing) { ev.preventDefault(); q.focus(); q.select(); }
+    if (ev.key === "Escape") { res.classList.remove("on"); q.blur(); }
+  });
+
+  /* ------------------------------------------------- scroll spy, progress */
+  var progress = document.getElementById("progress");
+  var topBtn = document.getElementById("top");
+  function onScroll() {
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    progress.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%";
+    topBtn.classList.toggle("on", h.scrollTop > 800);
+
+    var best = null, bestTop = -Infinity;
+    Array.prototype.forEach.call(chapters, function (ch) {
+      var t = ch.getBoundingClientRect().top;
+      if (t < 140 && t > bestTop) { bestTop = t; best = ch; }
+    });
+    if (best) {
+      Array.prototype.forEach.call(toc.querySelectorAll(".navch"), function (n) {
+        var on = n.getAttribute("data-ch") === best.id;
+        n.classList.toggle("active", on);
+        n.classList.toggle("open", on);
+      });
+    }
+    // sub-section highlight
+    var subs = document.querySelectorAll(".sub h3");
+    var cur = null;
+    Array.prototype.forEach.call(subs, function (h3) {
+      if (h3.getBoundingClientRect().top < 160) cur = h3;
+    });
+    Array.prototype.forEach.call(toc.querySelectorAll("ul a"), function (a) {
+      a.classList.toggle("on", cur && a.getAttribute("href") === "#" + cur.parentNode.id);
+    });
+  }
+  var ticking = false;
+  window.addEventListener("scroll", function () {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(function () { onScroll(); ticking = false; });
+  }, { passive: true });
+  topBtn.addEventListener("click", function () { window.scrollTo({ top: 0, behavior: "smooth" }); });
+
+  /* ------------------------------------------------------- flash + stats */
+  window.addEventListener("hashchange", function () {
+    var el = document.getElementById(location.hash.slice(1));
+    if (!el) return;
+    el.classList.remove("flash");
+    void el.offsetWidth;
+    el.classList.add("flash");
+  });
+
+  var stats = document.getElementById("stats");
+  if (stats) {
+    var boxes = stats.querySelectorAll(".stat b");
+    if (boxes.length >= 5) {
+      boxes[0].textContent = String(chapters.length);
+      boxes[1].textContent = String(document.querySelectorAll(".sub h3").length + document.querySelectorAll("details").length);
+      boxes[2].textContent = String(blocks.length);
+      boxes[3].textContent = String(document.querySelectorAll("svg[role=img]").length);
+      boxes[4].textContent = "0";
+    }
+    var vt = document.getElementById("versions");
+    if (vt) vt.textContent = "Python 3.12 → 3.15 · " + chapters.length + " chapters · " + blocks.length + " code samples";
+  }
+
+  onScroll();
+})();
+</script>
+</body>
+</html>

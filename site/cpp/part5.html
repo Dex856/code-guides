@@ -1,0 +1,523 @@
+<section class="chapter" id="ch13">
+  <h2><span class="num">13</span> Paste-ready templates</h2>
+  <p class="tagline">Nine templates that cover the heavy patterns. Copy, rename, adapt the marked lines — every one is compiled and tested.</p>
+
+  <section class="sub">
+    <h3>13.1 Graph traversal: adjacency list, BFS, DFS, components</h3>
+    <pre><code>#include &lt;bits/stdc++.h&gt;
+using namespace std;
+
+int n;                                   // number of nodes
+vector&lt;vector&lt;int&gt;&gt; adj;                 // adj[u] = neighbours of u
+
+void buildGraph(int n_, const vector&lt;pair&lt;int,int&gt;&gt;&amp; edges, bool undirected = true) {
+    n = n_;
+    adj.assign(n, {});
+    for (auto [u, v] : edges) { adj[u].push_back(v); if (undirected) adj[v].push_back(u); }
+}
+
+// ---- BFS: shortest path in an unweighted graph --------------------------
+vector&lt;int&gt; bfs(int src) {
+    vector&lt;int&gt; dist(n, -1);
+    queue&lt;int&gt; q;
+    dist[src] = 0; q.push(src);
+    while (!q.empty()) {
+        int u = q.front(); q.pop();
+        for (int v : adj[u])
+            if (dist[v] == -1) { dist[v] = dist[u] + 1; q.push(v); }
+    }
+    return dist;                          // dist[v] == -1 ⇒ unreachable
+}
+
+// ---- Multi-source BFS (rotten oranges, walls and gates) -----------------
+vector&lt;int&gt; bfsMulti(const vector&lt;int&gt;&amp; sources) {
+    vector&lt;int&gt; dist(n, -1);
+    queue&lt;int&gt; q;
+    for (int s : sources) { dist[s] = 0; q.push(s); }
+    while (!q.empty()) {
+        int u = q.front(); q.pop();
+        for (int v : adj[u]) if (dist[v] == -1) { dist[v] = dist[u] + 1; q.push(v); }
+    }
+    return dist;
+}
+
+// ---- DFS with a recursive lambda (C++14 generic lambda) -----------------
+int countComponents() {
+    vector&lt;char&gt; seen(n, 0);
+    int comps = 0;
+    auto dfs = [&amp;](auto&amp;&amp; self, int u) -&gt; void {
+        seen[u] = 1;
+        for (int v : adj[u]) if (!seen[v]) self(self, v);
+    };
+    for (int u = 0; u &lt; n; ++u) if (!seen[u]) { ++comps; dfs(dfs, u); }
+    return comps;
+}
+
+// ---- Cycle detection (undirected: DFS with parent; directed: colours) ----
+bool hasCycleDirected() {
+    vector&lt;int&gt; color(n, 0);                        // 0 = white, 1 = grey, 2 = black
+    auto dfs = [&amp;](auto&amp;&amp; self, int u) -&gt; bool {
+        color[u] = 1;
+        for (int v : adj[u]) {
+            if (color[v] == 1) return true;         // back edge → cycle
+            if (color[v] == 0 &amp;&amp; self(self, v)) return true;
+        }
+        color[u] = 2;
+        return false;
+    };
+    for (int u = 0; u &lt; n; ++u) if (color[u] == 0 &amp;&amp; dfs(dfs, u)) return true;
+    return false;
+}
+
+// ---- Topological sort: Kahn's algorithm (also detects cycles) ----------
+vector&lt;int&gt; topoSort() {
+    vector&lt;int&gt; indeg(n, 0);
+    for (int u = 0; u &lt; n; ++u) for (int v : adj[u]) ++indeg[v];
+    queue&lt;int&gt; q;
+    for (int u = 0; u &lt; n; ++u) if (indeg[u] == 0) q.push(u);
+    vector&lt;int&gt; order;
+    while (!q.empty()) {
+        int u = q.front(); q.pop();
+        order.push_back(u);
+        for (int v : adj[u]) if (--indeg[v] == 0) q.push(v);
+    }
+    if ((int)order.size() != n) return {};           // cycle: no valid order
+    return order;
+}
+
+// ---- Dijkstra: weighted shortest path, non-negative weights ------------
+vector&lt;long long&gt; dijkstra(int src, const vector&lt;vector&lt;pair&lt;int,int&gt;&gt;&gt;&amp; wadj) {
+    const long long INF = LLONG_MAX / 4;
+    vector&lt;long long&gt; dist(n, INF);
+    priority_queue&lt;pair&lt;long long,int&gt;, vector&lt;pair&lt;long long,int&gt;&gt;, greater&lt;&gt;&gt; pq;
+    dist[src] = 0; pq.push({0, src});
+    while (!pq.empty()) {
+        auto [d, u] = pq.top(); pq.pop();
+        if (d &gt; dist[u]) continue;                   // stale entry
+        for (auto [v, w] : wadj[u])
+            if (d + w &lt; dist[v]) { dist[v] = d + w; pq.push({dist[v], v}); }
+    }
+    return dist;
+}
+
+// ---- Grid BFS (no adjacency list needed) -------------------------------
+int shortestPathGrid(const vector&lt;string&gt;&amp; g, pair&lt;int,int&gt; s, pair&lt;int,int&gt; t) {
+    int R = g.size(), C = g[0].size();
+    vector&lt;vector&lt;int&gt;&gt; dist(R, vector&lt;int&gt;(C, -1));
+    const int di[4] = {-1,1,0,0}, dj[4] = {0,0,-1,1};
+    queue&lt;pair&lt;int,int&gt;&gt; q;
+    dist[s.first][s.second] = 0; q.push(s);
+    while (!q.empty()) {
+        auto [i, j] = q.front(); q.pop();
+        if (i == t.first &amp;&amp; j == t.second) return dist[i][j];
+        for (int d = 0; d &lt; 4; ++d) {
+            int ni = i + di[d], nj = j + dj[d];
+            if (ni &lt; 0 || ni &gt;= R || nj &lt; 0 || nj &gt;= C) continue;
+            if (g[ni][nj] == '#' || dist[ni][nj] != -1) continue;   // wall / visited
+            dist[ni][nj] = dist[i][j] + 1; q.push({ni, nj});
+        }
+    }
+    return -1;
+}</code></pre>
+    <div class="note"><b>Which traversal?</b> Unweighted shortest path → BFS. Any reachability/ordering → DFS. Weighted
+    non-negative → Dijkstra. Negative edges → Bellman-Ford (V−1 relaxations). All-pairs, small n → Floyd-Warshall.
+    Ordering with prerequisites → topological sort (and a cycle means “impossible”).</div>
+  </section>
+
+  <section class="sub">
+    <h3>13.2 Union-Find (DSU) — connectivity made trivial</h3>
+    <pre><code>struct DSU {
+    vector&lt;int&gt; parent, rank_, size_;
+    explicit DSU(int n) : parent(n), rank_(n, 0), size_(n, 1) {
+        iota(parent.begin(), parent.end(), 0);          // each node is its own set
+    }
+    int find(int x) {                                   // path compression
+        return parent[x] == x ? x : parent[x] = find(parent[x]);
+    }
+    bool unite(int a, int b) {                          // union by rank
+        a = find(a); b = find(b);
+        if (a == b) return false;                       // already connected
+        if (rank_[a] &lt; rank_[b]) swap(a, b);
+        parent[b] = a;
+        size_[a] += size_[b];
+        if (rank_[a] == rank_[b]) ++rank_[a];
+        return true;
+    }
+    bool connected(int a, int b) { return find(a) == find(b); }
+    int componentSize(int x) { return size_[find(x)]; }
+    int countComponents(int n) {                        // O(n) call, not O(1)
+        int c = 0; for (int i = 0; i &lt; n; ++i) if (find(i) == i) ++c; return c;
+    }
+};
+
+// Usage patterns
+// • Kruskal MST: sort edges by weight, unite, keep edges that merged two sets
+// • Number of provinces / friend circles: union all edges, count distinct roots
+// • Redundant connection: the first edge whose endpoints are already connected
+// • Accounts merge / email grouping: union by shared email, then bucket by root
+// • Grid islands (dynamic): id = i*C + j, union with right/down neighbours</code></pre>
+    <p class="small muted">With path compression + union by rank, the amortised cost per operation is O(α(n)) — effectively
+    constant (α is the inverse Ackermann function, &lt; 5 for any n you will ever see). Say “near-O(1) amortised” in interviews.</p>
+  </section>
+
+  <section class="sub">
+    <h3>13.3 Binary search on the answer — the universal frame</h3>
+    <pre><code>// Use when the answer is monotone: "if capacity C works, any C' &gt; C also works".
+// Steps: (1) state the predicate, (2) find the safe bounds, (3) binary search the bounds.
+
+// Template A — integer answer, find the SMALLEST feasible value
+long long solve(long long lo, long long hi, const function&lt;bool(long long)&gt;&amp; ok) {
+    while (lo &lt; hi) {
+        long long mid = lo + (hi - lo) / 2;
+        if (ok(mid)) hi = mid;            // feasible → try smaller
+        else         lo = mid + 1;        // infeasible → must go bigger
+    }
+    return lo;                            // lo == hi == answer
+}
+
+// Template B — integer answer, find the LARGEST feasible value
+long long solveMax(long long lo, long long hi, const function&lt;bool(long long)&gt;&amp; ok) {
+    while (lo &lt; hi) {
+        long long mid = lo + (hi - lo + 1) / 2;   // ↑ bias up to avoid an infinite loop
+        if (ok(mid)) lo = mid;
+        else         hi = mid - 1;
+    }
+    return lo;
+}
+
+// Template C — floating point answer (never loop on epsilon; fix the iteration count)
+double solveReal(double lo, double hi, const function&lt;bool(double)&gt;&amp; ok) {
+    for (int iter = 0; iter &lt; 100; ++iter) {
+        double mid = lo + (hi - lo) / 2;
+        if (ok(mid)) hi = mid; else lo = mid;
+    }
+    return lo;                            // ~1e-30 precision after 100 halvings
+}
+
+// Worked example: minimum days to ship within D days (capacity search)
+bool canShip(const vector&lt;int&gt;&amp; w, int days, long long cap) {
+    long long cur = 0; int used = 1;
+    for (int x : w) {
+        if (x &gt; cap) return false;                 // single item too big
+        if (cur + x &gt; cap) { ++used; cur = 0; }
+        cur += x;
+    }
+    return used &lt;= days;
+}
+int shipWithinDays(vector&lt;int&gt;&amp; weights, int days) {
+    long long lo = *max_element(weights.begin(), weights.end());
+    long long hi = accumulate(weights.begin(), weights.end(), 0LL);
+    return (int) solve(lo, hi, [&amp;](long long c){ return canShip(weights, days, c); });
+}</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Problem shape</th><th>Predicate</th><th>Bounds</th></tr></thead>
+      <tbody>
+        <tr><td>Minimise the largest sum/load</td><td><code>canSplit(cap)</code></td><td>[max element, total sum]</td></tr>
+        <tr><td>Maximise the minimum distance</td><td><code>canPlace(d)</code></td><td>[1, max gap]</td></tr>
+        <tr><td>Smallest divisor given a threshold</td><td><code>sum(ceil(x/d)) &lt;= t</code></td><td>[1, max element]</td></tr>
+        <tr><td>Min days / min speed / min time</td><td>feasibility simulation</td><td>[1, worst case]</td></tr>
+        <tr><td>K-th smallest in a matrix / value space</td><td><code>count(&lt;= x) &gt;= k</code></td><td>[min, max]</td></tr>
+        <tr><td>Real-valued answer (probability, ratio)</td><td>feasibility check</td><td>[0, bound] + 100 iterations</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>13.4 Dynamic programming — the four shapes</h3>
+    <pre><code>// DP = (1) define the state, (2) write the transition, (3) set the base case,
+//      (4) choose the iteration order (or memoise).
+
+// ---- Shape 1: 1D DP (linear recurrences) --------------------------------
+int climbStairs(int n) {
+    if (n &lt;= 2) return n;
+    int a = 1, b = 2;                         // rolling variables instead of an array
+    for (int i = 3; i &lt;= n; ++i) { int c = a + b; a = b; b = c; }
+    return b;
+}
+
+// ---- Shape 2: 1D DP over a sequence (LIS, house robber) -----------------
+int rob(const vector&lt;int&gt;&amp; nums) {            // no two adjacent
+    int take = 0, skip = 0;
+    for (int x : nums) { int nt = skip + x; skip = max(skip, take); take = nt; }
+    return max(take, skip);
+}
+int lisLength(const vector&lt;int&gt;&amp; a) {          // O(n log n) patience sorting
+    vector&lt;int&gt; tails;
+    for (int x : a) {
+        auto it = lower_bound(tails.begin(), tails.end(), x);
+        if (it == tails.end()) tails.push_back(x);
+        else *it = x;
+    }
+    return (int)tails.size();
+}
+
+// ---- Shape 3: 2D DP (grids, edit distance, knapsack) --------------------
+int editDistance(const string&amp; a, const string&amp; b) {
+    int n = a.size(), m = b.size();
+    vector&lt;vector&lt;int&gt;&gt; dp(n + 1, vector&lt;int&gt;(m + 1, 0));
+    for (int i = 0; i &lt;= n; ++i) dp[i][0] = i;          // base cases
+    for (int j = 0; j &lt;= m; ++j) dp[0][j] = j;
+    for (int i = 1; i &lt;= n; ++i)
+        for (int j = 1; j &lt;= m; ++j)
+            dp[i][j] = (a[i-1] == b[j-1])
+                ? dp[i-1][j-1]
+                : 1 + min({dp[i-1][j], dp[i][j-1], dp[i-1][j-1]});   // delete, insert, replace
+    return dp[n][m];
+}
+
+// 0/1 knapsack, 1D rolling array (capacity iterated DOWNWARD)
+int knapsack(const vector&lt;int&gt;&amp; wt, const vector&lt;int&gt;&amp; val, int cap) {
+    vector&lt;int&gt; dp(cap + 1, 0);
+    for (int i = 0; i &lt; (int)wt.size(); ++i)
+        for (int c = cap; c &gt;= wt[i]; --c)                 // ← downward: each item once
+            dp[c] = max(dp[c], dp[c - wt[i]] + val[i]);
+    return dp[cap];
+}
+// Unbounded knapsack / coin change (fewest coins): iterate capacity UPWARD
+int coinChange(const vector&lt;int&gt;&amp; coins, int amount) {
+    const int INF = 1e9;
+    vector&lt;int&gt; dp(amount + 1, INF);
+    dp[0] = 0;
+    for (int c = 1; c &lt;= amount; ++c)
+        for (int coin : coins) if (coin &lt;= c) dp[c] = min(dp[c], dp[c - coin] + 1);
+    return dp[amount] == INF ? -1 : dp[amount];
+}
+
+// ---- Shape 4: interval DP (palindromes, matrix chain, burst balloons) ---
+int longestPalindromeSubseq(const string&amp; s) {              // O(n²)
+    int n = s.size();
+    vector&lt;vector&lt;int&gt;&gt; dp(n, vector&lt;int&gt;(n, 0));
+    for (int i = 0; i &lt; n; ++i) dp[i][i] = 1;
+    for (int len = 2; len &lt;= n; ++len)
+        for (int l = 0; l + len - 1 &lt; n; ++l) {
+            int r = l + len - 1;
+            dp[l][r] = (s[l] == s[r]) ? dp[l+1][r-1] + 2
+                                      : max(dp[l+1][r], dp[l][r-1]);
+        }
+    return dp[0][n-1];
+}
+
+// ---- Recursion + memoisation (equivalent, often easier to write) --------
+unordered_map&lt;long long,long long&gt; memo;
+long long f(int i, int j) {
+    long long key = ((long long)i &lt;&lt; 32) ^ (unsigned)j;
+    if (memo.count(key)) return memo[key];
+    long long res = /* transition using f(i-1, j), f(i, j-1), … */ 0;
+    return memo[key] = res;
+}</code></pre>
+    <div class="tip"><b>DP checklist:</b> (1) write the brute-force recursion first; (2) identify the state (what does the
+    recursion depend on?); (3) memoise it — if memoisation alone passes, ship it; (4) convert to a table only if you need
+    the speed or the interviewer asks; (5) check the iteration direction (knapsack down, unbounded up); (6) watch
+    overflow — DP answers are often sums, so use <code>long long</code>.</div>
+  </section>
+
+  <section class="sub">
+    <h3>13.5 Trees, tries, heaps and backtracking</h3>
+    <pre><code>// ---- Trie (prefix tree) -------------------------------------------------
+struct Trie {
+    struct Node { int nxt[26]; bool isWord = false; Node() { fill(nxt, nxt + 26, -1); } };
+    vector&lt;Node&gt; t{Node{}};                       // t[0] is the root
+    void insert(const string&amp; w) {
+        int cur = 0;
+        for (char ch : w) {
+            int c = ch - 'a';
+            if (t[cur].nxt[c] == -1) { t[cur].nxt[c] = t.size(); t.push_back(Node{}); }
+            cur = t[cur].nxt[c];
+        }
+        t[cur].isWord = true;
+    }
+    bool contains(const string&amp; w) {
+        int cur = 0;
+        for (char ch : w) { cur = t[cur].nxt[ch - 'a']; if (cur == -1) return false; }
+        return t[cur].isWord;
+    }
+    bool startsWith(const string&amp; p) {
+        int cur = 0;
+        for (char ch : p) { cur = t[cur].nxt[ch - 'a']; if (cur == -1) return false; }
+        return true;
+    }
+};
+
+// ---- Backtracking: subsets, permutations, combinations, N-Queens --------
+void subsets(const vector&lt;int&gt;&amp; a, int i, vector&lt;int&gt;&amp; cur, vector&lt;vector&lt;int&gt;&gt;&amp; out) {
+    if (i == (int)a.size()) { out.push_back(cur); return; }
+    subsets(a, i + 1, cur, out);                 // exclude a[i]
+    cur.push_back(a[i]);
+    subsets(a, i + 1, cur, out);                 // include a[i]
+    cur.pop_back();                              // ← always undo
+}
+void permutations(vector&lt;int&gt;&amp; a, int k, vector&lt;vector&lt;int&gt;&gt;&amp; out) {
+    if (k == (int)a.size()) { out.push_back(a); return; }
+    for (int i = k; i &lt; (int)a.size(); ++i) {
+        swap(a[k], a[i]);
+        permutations(a, k + 1, out);
+        swap(a[k], a[i]);                        // restore
+    }
+}
+void combinations(int n, int k, int start, vector&lt;int&gt;&amp; cur, vector&lt;vector&lt;int&gt;&gt;&amp; out) {
+    if ((int)cur.size() == k) { out.push_back(cur); return; }
+    for (int v = start; v &lt;= n; ++v) {
+        cur.push_back(v);
+        combinations(n, k, v + 1, cur, out);     // v+1 ⇒ no reuse, no duplicates
+        cur.pop_back();
+    }
+}
+// Pruning is what makes backtracking fast: sort the input, skip equal siblings,
+// track running sums to stop early. Without pruning, “hard” backtracking TLEs.
+
+// ---- Merge K sorted lists with a heap ----------------------------------
+// priority_queue&lt;pair&lt;int,ListNode*&gt;, vector&lt;pair&lt;int,ListNode*&gt;&gt;, greater&lt;&gt;&gt; pq;
+// push each head; pop min, append to result, push node-&gt;next.
+
+// ---- Two heaps for a streaming median ---------------------------------
+// low: max-heap of the smaller half; high: min-heap of the larger half
+// invariant: low.size() == high.size() or low.size() == high.size() + 1
+void addNum(int x, priority_queue&lt;int&gt;&amp; low, priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt;&amp; high) {
+    if (low.empty() || x &lt;= low.top()) low.push(x); else high.push(x);
+    if (low.size() &gt; high.size() + 1) { high.push(low.top()); low.pop(); }
+    else if (high.size() &gt; low.size()) { low.push(high.top()); high.pop(); }
+}
+double median(const priority_queue&lt;int&gt;&amp; low, const priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt;&amp; high) {
+    if (low.size() == high.size()) return (low.top() + high.top()) / 2.0;
+    return low.top();
+}</code></pre>
+  </section>
+</section>
+
+<section class="chapter" id="ch14">
+  <h2><span class="num">14</span> Complexity, judging and interview signal</h2>
+  <p class="tagline">Read the constraints, guess the intended complexity, pick the pattern — then explain it in one sentence.</p>
+
+  <section class="sub">
+    <h3>14.1 Read the constraints, reverse-engineer the solution</h3>
+    <table class="tbl">
+      <thead><tr><th>Constraint on n</th><th>Intended complexity</th><th>Typical solution family</th></tr></thead>
+      <tbody>
+        <tr><td>n ≤ 10</td><td>O(n!), O(2ⁿ · n²)</td><td>brute force, permutations, bitmask DP</td></tr>
+        <tr><td>n ≤ 20</td><td>O(2ⁿ), O(2ⁿ · n)</td><td>bitmask / subset DP, meet-in-the-middle</td></tr>
+        <tr><td>n ≤ 100</td><td>O(n³)</td><td>Floyd-Warshall, interval DP, triple loops</td></tr>
+        <tr><td>n ≤ 500</td><td>O(n³) tight or O(n² · log)</td><td>DP with n² states, matrix chain</td></tr>
+        <tr><td>n ≤ 5·10³</td><td>O(n²)</td><td>2D DP, all-pairs, naive pair loops</td></tr>
+        <tr><td>n ≤ 10⁵</td><td>O(n log n)</td><td>sorting, heap, binary search, sweep, hash map</td></tr>
+        <tr><td>n ≤ 10⁵–10⁶</td><td>O(n) / O(n log n)</td><td>two pointers, prefix sums, monotonic stack, BFS/DFS</td></tr>
+        <tr><td>n ≤ 10⁶–10⁷</td><td>O(n), tight constant</td><td>linear scans, arrays not maps, fast IO</td></tr>
+        <tr><td>n ≤ 10⁹ (values, not size)</td><td>O(log n), O(√n)</td><td>binary search, matrix power, number theory</td></tr>
+      </tbody>
+    </table>
+    <div class="tip"><b>The 2-second rule of thumb for C++:</b> with a 1 s limit you can afford roughly <b>10⁸ simple
+    operations</b> (or 10⁷ hash-map operations, or 3·10⁶ heavy operations like recursion with allocations). Halve that for
+    a 500 ms limit, double it for 2 s. If your planned complexity exceeds the budget, change the pattern — not the
+    micro-details.</div>
+  </section>
+
+  <section class="sub">
+    <h3>14.2 The interview sentence that gets you the offer</h3>
+    <div class="grid2">
+      <div class="card"><h4>Structure your answer in four sentences</h4>
+        <ol>
+          <li><b>Restate + edge cases:</b> “Given …, I return …. Edge cases: empty input, single element, k &gt; n, duplicates.”</li>
+          <li><b>Brute force:</b> “The straightforward approach is …, which is O(n²).”</li>
+          <li><b>Insight:</b> “Since X, a hash map / two pointers / monotonic stack lets me ….”</li>
+          <li><b>Complexity + trade-off:</b> “O(n) time, O(k) space; if memory mattered more than time, I could sort instead.”</li>
+        </ol>
+      </div>
+      <div class="card"><h4>Signals interviewers actually score</h4>
+        <ul>
+          <li>Naming the pattern before typing (<i>“this is a sliding window with a count map”</i>).</li>
+          <li>Stating complexity without being asked.</li>
+          <li>Checking the input contract: can it be empty? are values bounded? can sums overflow int?</li>
+          <li>Writing compilable code: <code>const&amp;</code>, <code>(int)v.size()</code>, no uninitialised variables.</li>
+          <li>Testing with a specific example, out loud, including one edge case.</li>
+          <li>Refactoring after it works, and knowing what you would do at 100× the scale.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</section>
+
+<section class="chapter" id="ch15">
+  <h2><span class="num">15</span> Interview questions with answers</h2>
+  <p class="tagline">The C++ questions that come up in interviews and screens, answered the way you should say them out loud.</p>
+  <div class="grid2">
+    <div class="card"><h4>Language &amp; semantics</h4>
+      <ol class="small">
+        <li><b>What is the difference between a pointer and a reference?</b> A pointer is an object holding an address (nullable, reassignable, arithmetic); a reference is an alias bound at creation (not null, not rebindable, no arithmetic).</li>
+        <li><b>Why <code>const T&amp;</code> as the parameter default?</b> No copy (O(1) for containers), no accidental mutation, and it binds temporaries.</li>
+        <li><b>What is a dangling reference/pointer?</b> A reference to an object whose lifetime ended — reading it is UB. Common sources: returning a local by reference, storing <code>string_view</code>/<code>const char*</code> to a temporary.</li>
+        <li><b>What is the difference between <code>struct</code> and <code>class</code>?</b> Only default access (public vs private) and default inheritance. Everything else is identical.</li>
+        <li><b>What does <code>static</code> mean in different places?</b> Inside a function: one instance for the program’s lifetime. At file scope: internal linkage. For a class member: shared by all instances, no <code>this</code>.</li>
+        <li><b>RAII in one sentence.</b> Bind a resource’s lifetime to an object’s lifetime: acquire in the constructor, release in the destructor, so <code>vector</code>/<code>string</code>/<code>unique_ptr</code> free memory automatically — even on exceptions.</li>
+        <li><b><code>move</code> vs <code>copy</code>?</b> A copy duplicates the buffer; a move steals the pointer and leaves the source empty. Use <code>std::move</code> when you will not touch the source again.</li>
+        <li><b>Why is <code>vector&lt;bool&gt;</code> special?</b> It is a bitset optimisation: <code>v[i]</code> returns a proxy, not <code>bool&amp;</code>. Prefer <code>vector&lt;char&gt;</code> or <code>bitset</code> when that matters.</li>
+      </ol>
+    </div>
+    <div class="card"><h4>Containers, algorithms, complexity</h4>
+      <ol class="small" start="9">
+        <li><b><code>vector</code> vs <code>list</code>?</b> <code>vector</code> is contiguous: O(1) indexing, cache-friendly, but O(n) middle insert. <code>list</code> has O(1) middle insert/erase but pointer-chasing, no indexing. In practice <code>vector</code> usually wins because memory bandwidth dominates.</li>
+        <li><b><code>map</code> vs <code>unordered_map</code>?</b> Tree vs hash: O(log n) with ordering/lower_bound vs O(1) average with no order and possible degradation. Reserve/normalise keys to keep hashes healthy.</li>
+        <li><b>What does sort guarantee?</b> O(n log n) comparisons (introsort), not stable. Use <code>stable_sort</code> when equal elements must keep their relative order.</li>
+        <li><b>What is a strict weak ordering?</b> A comparator where <code>cmp(a,a)</code> is false and the relation is transitive. Violating it (e.g. <code>&lt;=</code>) is UB inside <code>sort</code>.</li>
+        <li><b>How do you find the k-th largest?</b> <code>nth_element</code> (O(n) average), a min-heap of size k (O(n log k)), or quickselect. For a stream, min-heap of size k is the answer.</li>
+        <li><b><code>lower_bound</code> vs <code>upper_bound</code>?</b> First ≥ x vs first &gt; x — the pair gives the count of equal elements and the insertion range.</li>
+        <li><b>Why <code>reserve()</code>?</b> Avoids reallocation/rehashing: O(n) pushes become truly O(1) amortised without data movement, and iterators/pointers stay valid.</li>
+        <li><b>What is iterator invalidation?</b> Operations that move the underlying storage (reallocation, erase/insert in vectors, rehash) invalidate iterators/pointers/references into it — using them is UB.</li>
+        <li><b>When can you not use <code>binary_search</code>?</b> When the range is unsorted, or when the predicate is not monotone. For “binary search on the answer” the sequence is implicit, so you write the lo/hi loop yourself.</li>
+        <li><b>Top-K in a stream?</b> Min-heap capped at k: O(n log k) time, O(k) space.</li>
+      </ol>
+    </div>
+    <div class="card"><h4>Pitfalls &amp; performance</h4>
+      <ol class="small" start="19">
+        <li><b>Where does signed overflow bite?</b> Sums/products that exceed 2·10⁹, <code>(lo+hi)/2</code>, <code>accumulate(…, 0)</code>, counting pairs n(n−1)/2, <code>i*i</code> in sieves.</li>
+        <li><b>How do you debug a wrong answer fast?</b> Print inputs at the failing size; compare with brute force on random small cases; compile with <code>-fsanitize=address,undefined</code>; check overflow first, then off-by-one, then container assumptions.</li>
+        <li><b>Why might a correct solution TLE?</b> Hash degradation, <code>endl</code> flushing, no <code>sync_with_stdio(false)</code>, O(n²) in a hidden case, <code>std::function</code> in deep recursion, copying containers per call.</li>
+        <li><b>How do you allocate a 10⁷-element array safely?</b> Heap (<code>vector</code>) or <code>static</code>/global — never a plain local array (stack overflow).</li>
+        <li><b>What is cache locality and why care?</b> Sequential access is 10–100× faster than random access at scale; it is why contiguous <code>vector</code> and flat arrays beat pointer structures.</li>
+        <li><b>Fixed-size vs dynamic arrays for speed?</b> Stack <code>int a[N]</code> or <code>array&lt;int,N&gt;</code> avoids allocation entirely; use them when N is known and small enough for the stack (≲ a few MB).</li>
+      </ol>
+    </div>
+    <div class="card"><h4>Coding-round warm-ups (write from memory)</h4>
+      <pre><code>// 1 Two-sum with a hash map — O(n)
+vector&lt;int&gt; twoSum(vector&lt;int&gt;&amp; a, int t) {
+    unordered_map&lt;int,int&gt; seen;
+    for (int i = 0; i &lt; (int)a.size(); ++i) {
+        auto it = seen.find(t - a[i]);
+        if (it != seen.end()) return {it-&gt;second, i};
+        seen[a[i]] = i;
+    }
+    return {};
+}
+// 2 Reverse a string in place — two pointers
+void rev(string&amp; s) { for (int l = 0, r = s.size()-1; l &lt; r; ++l, --r) swap(s[l], s[r]); }
+// 3 Max subarray (Kadane) — O(n)
+int maxSub(const vector&lt;int&gt;&amp; a) {
+    int best = a[0], cur = a[0];
+    for (int i = 1; i &lt; (int)a.size(); ++i) { cur = max(a[i], cur + a[i]); best = max(best, cur); }
+    return best;
+}
+// 4 Valid parentheses — stack
+bool valid(const string&amp; s) {
+    stack&lt;char&gt; st;
+    for (char c : s) {
+        if (c == '(' || c == '[' || c == '{') st.push(c);
+        else {
+            if (st.empty()) return false;
+            char t = st.top(); st.pop();
+            if ((c == ')' &amp;&amp; t != '(') || (c == ']' &amp;&amp; t != '[') || (c == '}' &amp;&amp; t != '{')) return false;
+        }
+    }
+    return st.empty();
+}
+// 5 Binary search in a sorted array — O(log n)
+int bs(const vector&lt;int&gt;&amp; a, int x) {
+    int lo = 0, hi = a.size() - 1;
+    while (lo &lt;= hi) { int m = lo + (hi - lo) / 2;
+        if (a[m] == x) return m; if (a[m] &lt; x) lo = m + 1; else hi = m - 1; }
+    return -1;
+}
+// 6 Merge two sorted arrays in place (from the back)
+void merge(vector&lt;int&gt;&amp; a, int m, vector&lt;int&gt;&amp; b, int n) {
+    int i = m - 1, j = n - 1, k = m + n - 1;
+    while (j &gt;= 0) a[k--] = (i &gt;= 0 &amp;&amp; a[i] &gt; b[j]) ? a[i--] : b[j--];
+}</code></pre>
+    </div>
+  </div>

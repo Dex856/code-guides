@@ -1,0 +1,383 @@
+<section class="chapter" id="ch21">
+  <h2><span class="num">21</span> Gotchas, traps and “why does it do that?”</h2>
+  <p class="tagline">Twenty-five behaviours that surprise everyone once. Learn them here instead of in production.</p>
+
+  <section class="sub">
+    <h3>21.1 The hall of fame</h3>
+    <div class="gotcha"><b>1 · Mutable default arguments.</b>
+    <pre><code>def bad(x, acc=[]):            # default created ONCE, at def time
+    acc.append(x); return acc
+bad(1); bad(2)                 # [1] then [1, 2]  ← the same list both times
+def good(x, acc=None):
+    acc = [] if acc is None else acc
+    acc.append(x); return acc</code></pre></div>
+
+    <div class="gotcha"><b>2 · Late-binding closures.</b>
+    <pre><code>fns = [lambda: i for i in range(3)]
+[f() for f in fns]             # [2, 2, 2] — i is looked up when CALLED
+fns = [lambda i=i: i for i in range(3)]     # bind at definition
+[f() for f in fns]             # [0, 1, 2]</code></pre></div>
+
+    <div class="gotcha"><b>3 · <code>x = x.sort()</code> / <code>x = x.append(1)</code>.</b>
+    <pre><code>xs = [3, 1, 2]
+xs = xs.sort()                 # xs is now None! sort() sorts in place and returns None
+sorted(xs)                     # use this when you want a new list
+xs = [3, 1, 2]; xs.sort()      # or call it as a statement</code></pre></div>
+
+    <div class="gotcha"><b>4 · <code>is</code> is not <code>==</code>.</b>
+    <pre><code>a = 257; b = 257
+a is b                         # may be False (small ints are cached, big ones are not)
+a == b                         # True — compare VALUES with ==
+x is None                      # correct: singletons use is
+if value is 0: ...             # SyntaxWarning — and semantically wrong</code></pre></div>
+
+    <div class="gotcha"><b>5 · Empty containers are falsy, and <code>0 == False</code>.</b>
+    <pre><code>def render(count=0):
+    if count: return "items"   # 0 → "no items"! maybe you meant "is not None"
+if not user_input: ...          # treats "" and 0 the same as None
+scores = {1: "a", True: "b", 1.0: "c"}    # one key! → {1: 'c'}</code></pre></div>
+
+    <div class="gotcha"><b>6 · Modifying a list while iterating skips items.</b>
+    <pre><code>nums = [1, 2, 3, 4]
+for n in nums:
+    if n % 2 == 0: nums.remove(n)      # ⚠ index shifts under you
+nums = [n for n in nums if n % 2]      # build a new list instead
+for k in list(d):                      # dicts: iterate over a COPY of the keys
+    if d[k] is None: del d[k]</code></pre></div>
+
+    <div class="gotcha"><b>7 · Dict order and set order.</b>
+    <pre><code>d = {"b": 1, "a": 2}           # dicts keep INSERTION order (3.7+), not sorted order
+list(d)                        # ['b', 'a']
+sorted(d)                      # ['a', 'b'] — sort explicitly
+{3, 1, 2}                      # sets are unordered and print in arbitrary order</code></pre></div>
+
+    <div class="gotcha"><b>8 · String concatenation in a loop is O(n²).</b>
+    <pre><code>s = ""
+for w in words: s += w          # quadratic; each += copies the whole string
+"".join(words)                  # linear — the correct idiom</code></pre></div>
+
+    <div class="gotcha"><b>9 · <code>float</code> equality and money.</b>
+    <pre><code>0.1 + 0.2 == 0.3               # False → 0.30000000000000004
+math.isclose(a, b)              # float comparisons
+Decimal("0.1") + Decimal("0.2") == Decimal("0.3")     # True — use for money
+round(2.5), round(3.5)          # 2 4 — banker's rounding, not "round half up"</code></pre></div>
+
+    <div class="gotcha"><b>10 · Shallow copies keep sharing the inside.</b>
+    <pre><code>grid = [[0] * 3] * 3           # ⚠ all three rows are THE SAME list
+grid[0][0] = 1                 # [[1,0,0],[1,0,0],[1,0,0]]
+grid = [[0] * 3 for _ in range(3)]     # correct
+matrix2 = [row[:] for row in grid]     # shallow copy of rows
+deep = copy.deepcopy(grid)</code></pre></div>
+
+    <div class="gotcha"><b>11 · Integer division, negative modulo, and chained comparisons.</b>
+    <pre><code>7 / 2        # 3.5  (always float)     7 // 2       # 3
+-7 // 2      # -4  (floor, not truncate!) -7 % 3    # 2 (sign of the DIVISOR)
+int(-7 / 2)  # -3 ← truncation, different from //. Use math.trunc / -(-a // b) deliberately.
+0 &lt;= x &lt; 10  # chains correctly (no double evaluation of x)</code></pre></div>
+
+    <div class="gotcha"><b>12 · <code>bool</code> is an <code>int</code>; <code>and/or</code> return operands.</b>
+    <pre><code>True + True        # 2
+isinstance(True, int)   # True
+val = user_input or "default"     # returns 'default' when user_input is falsy (incl. 0!)
+count += 1 if found else 0        # ternary needs the else branch</code></pre></div>
+
+    <div class="gotcha"><b>13 · Tuple unpacking counts must match.</b>
+    <pre><code>a, b = (1, 2, 3)        # ValueError: too many values to unpack
+a, *b = (1, 2, 3)       # a=1, b=[2,3]
+x, y = 5                # TypeError: cannot unpack non-iterable int
+one = (5,)              # a 1-tuple needs the comma — (5) is just 5</code></pre></div>
+
+    <div class="gotcha"><b>14 · <code>global</code> vs <code>nonlocal</code>, and reading before assigning.</b>
+    <pre><code>total = 0
+def add(n):
+    total += n          # UnboundLocalError! Python sees the assignment → total is local
+def add(n):
+    global total; total += n        # explicit
+def outer():
+    n = 0
+    def inner():
+        nonlocal n; n += 1          # rebinds the enclosing scope</code></pre></div>
+
+    <div class="gotcha"><b>15 · <code>except Exception</code> does not catch everything — and <code>finally: return</code> eats exceptions.</b>
+    <pre><code>try: sys.exit(0)
+except Exception: pass       # SystemExit is BaseException → NOT caught
+def f():
+    try: raise ValueError("boom")
+    finally: return 1        # swallows the exception; 3.14 warns on this (PEP 765)
+raise NewError(str(e))       # loses the traceback → use `raise NewError(...) from e`</code></pre></div>
+
+    <div class="gotcha"><b>16 · Assertions disappear with <code>-O</code>.</b>
+    <pre><code>assert user.is_admin         # gone when running python -O (production optimised)
+if not user.is_admin: raise PermissionError   # real checks must be real code</code></pre></div>
+
+    <div class="gotcha"><b>17 · Class attributes are shared — until you assign.</b>
+    <pre><code>class C:
+    items = []               # ⚠ shared by every instance
+a, b = C(), C()
+a.items.append(1)            # b.items is [1] too!
+class C:
+    def __init__(self): self.items = []       # per instance — correct</code></pre></div>
+
+    <div class="gotcha"><b>18 · Method resolution and <code>super()</code> in multiple inheritance.</b>
+    <pre><code>class A:
+    def ping(self): print("A")
+class B(A):
+    def ping(self): super().ping(); print("B")
+class C(A):
+    def ping(self): print("C")          # note: no super() call → breaks the chain
+class D(B, C): pass
+D().ping()      # C, B — because C does not cooperate. Always call super() in mixins.</code></pre></div>
+
+    <div class="gotcha"><b>19 · <code>+=</code> on lists mutates; on tuples/strings it rebinds.</b>
+    <pre><code>a = b = [1]
+a += [2]        # list.__iadd__ mutates in place → b is [1, 2]
+a = b = (1,)
+a += (2,)       # rebinds a new tuple → b still (1,)
+t = ([1],)
+t[0] += [2]     # TypeError AND the list got mutated — the famous tuple trap</code></pre></div>
+
+    <div class="gotcha"><b>20 · Module-level code runs on import (and runs once).</b>
+    <pre><code># utils.py
+print("loading")            # runs at import — annoying side effect
+cache = {}                  # shared, process-wide mutable state
+# Importing utils from five modules prints once; the same cache object is shared.</code></pre></div>
+
+    <div class="gotcha"><b>21 · Files, encodings and line endings.</b>
+    <pre><code>open("data.csv").read()                       # locale encoding — may crash on UTF-8
+open("data.csv", encoding="utf-8")            # explicit
+open("data.csv", newline="")                  # required for the csv module
+open("x")                                     # never forget to close → use `with`</code></pre></div>
+
+    <div class="gotcha"><b>22 · <code>datetime.utcnow()</code> is deprecated and naive.</b>
+    <pre><code>datetime.utcnow()                              # ❌ naive, deprecated
+datetime.now(timezone.utc)                     # ✅ aware
+dt.isoformat()                                 # serialise with offset
+dt.astimezone(ZoneInfo("Asia/Kolkata"))        # convert for display only</code></pre></div>
+
+    <div class="gotcha"><b>23 · Threads + shared counters.</b>
+    <pre><code>counter = 0
+def bump():
+    global counter
+    counter += 1            # read-modify-write: NOT atomic, even with the GIL
+# 10 threads × 1000 bumps ≈ 8200 instead of 10000. Guard with a Lock, or use a queue.</code></pre></div>
+
+    <div class="gotcha"><b>24 · JSON keys, serialisation and non-string types.</b>
+    <pre><code>json.dumps({1: "a"})            # '{"1": "a"}' — keys become strings
+json.loads('{"1": "a"}')[1]     # KeyError — the key is "1", not 1
+json.dumps({"t": datetime.now()})   # TypeError → default=str or an encoder
+json.dumps({"f": float("nan")})     # 'NaN' — invalid strict JSON; use allow_nan=False</code></pre></div>
+
+    <div class="gotcha"><b>25 · Iterators are single-use (and <code>zip</code>/<code>map</code>/<code>filter</code> are lazy).</b>
+    <pre><code>zs = zip(a, b)
+list(zs)        # [(...), ...]
+list(zs)        # [] ← already consumed! re-create it or materialise once
+gen = (x for x in data)
+sum(gen); len(list(gen))    # 0 — same trap with generators
+zip(a, b)                   # stops at the shortest by default → zip(a, b, strict=True) raises</code></pre></div>
+  </section>
+
+  <section class="sub">
+    <h3>21.2 Subtle-but-real: newer version behaviours</h3>
+    <table class="tbl">
+      <thead><tr><th>Behaviour</th><th>Detail</th></tr></thead>
+      <tbody>
+        <tr><td>f-string limits before 3.12</td><td>No backslashes, no reuse of the same quote type, no nesting the same quote. Fixed in 3.12 (PEP 701) — old code that works on 3.11 may look “wrong” but is fine.</td></tr>
+        <tr><td>Annotations are no longer eagerly evaluated</td><td><span class="pill hot">3.14</span> PEP 649 defers evaluation. Code relying on <code>__annotations__</code> side effects (or on <code>NameError</code> at definition time) can behave differently. Use <code>typing.get_type_hints()</code> to force resolution.</td></tr>
+        <tr><td><code>return</code>/<code>break</code>/<code>continue</code> in <code>finally</code></td><td>Disallowed (SyntaxError) in 3.14 — it used to silently swallow exceptions (PEP 765).</td></tr>
+        <tr><td>Free-threaded builds</td><td><code>sys._is_gil_enabled()</code> tells you which mode you are in; C extensions must declare support; single-threaded speed still lags slightly.</td></tr>
+        <tr><td>UTF-8 default for files</td><td><span class="pill hot">3.15</span> PEP 686: <code>open()</code> defaults to UTF-8 instead of the locale. Explicit <code>encoding=</code> remains best practice, especially for libraries.</td></tr>
+        <tr><td>Deprecated / removed</td><td><code>imp</code>, <code>distutils</code>, <code>asynchat</code>, <code>cgi</code>, <code>telnetlib</code>, <code>pipes</code>, <code>smtpd</code> (3.12–3.13 removals); <code>datetime.utcnow()</code>, <code>typing.List</code> in favour of <code>list</code>, <code>pkg_resources</code>.</td></tr>
+      </tbody>
+    </table>
+  </section>
+</section>
+
+<section class="chapter" id="ch22">
+  <h2><span class="num">22</span> Idioms and interview questions</h2>
+  <p class="tagline">Write code that looks like Python, then survive the interview with the answers to the 30 questions that keep coming up.</p>
+
+  <section class="sub">
+    <h3>22.1 Idioms: the “obviously Python” way</h3>
+    <table class="tbl">
+      <thead><tr><th>Instead of</th><th>Write</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><code>if x == None:</code></td><td><code>if x is None:</code></td><td>Identity, not equality.</td></tr>
+        <tr><td><code>if len(items) &gt; 0:</code></td><td><code>if items:</code></td><td>Truthiness.</td></tr>
+        <tr><td><code>for i in range(len(xs)): xs[i]</code></td><td><code>for x in xs:</code> / <code>enumerate(xs)</code></td><td>Direct iteration, no index maths.</td></tr>
+        <tr><td><code>d[key]</code> after <code>if key in d</code></td><td><code>d.get(key, default)</code></td><td>One lookup, no race, no KeyError.</td></tr>
+        <tr><td><code>open/close</code> pairs</td><td><code>with open(...) as fh:</code></td><td>Guaranteed cleanup.</td></tr>
+        <tr><td><code>s = ""; for …: s += x</code></td><td><code>"".join(parts)</code></td><td>Linear instead of quadratic.</td></tr>
+        <tr><td><code>if a == "x" or a == "y"</code></td><td><code>if a in {"x", "y"}:</code></td><td>Shorter, and O(1) with a set literal.</td></tr>
+        <tr><td><code>try: v = d[k] except KeyError: v = 0</code></td><td><code>v = d.get(k, 0)</code></td><td>EAFP is fine, but do not re-implement get().</td></tr>
+        <tr><td>Manual index juggling for pairs</td><td><code>zip(xs, ys)</code>, <code>zip(*rows)</code></td><td>Built for it.</td></tr>
+        <tr><td>Class with <code>__init__</code> full of boilerplate</td><td><code>@dataclass(slots=True)</code></td><td>Generated, correct, documented.</td></tr>
+        <tr><td><code>os.path.join</code> everywhere</td><td><code>pathlib.Path</code></td><td>Object API, cross-platform.</td></tr>
+        <tr><td><code>%</code>/<code>.format()</code></td><td>f-strings</td><td>Faster, readable, debuggable (<code>f"{x=}"</code>).</td></tr>
+        <tr><td><code>type(x) == int</code></td><td><code>isinstance(x, int)</code></td><td>Subclass-friendly.</td></tr>
+        <tr><td><code>def f(x): return x + 1</code> as a lambda in <code>map</code></td><td>List comprehension / genexp</td><td>Clearer and usually faster.</td></tr>
+        <tr><td><code>except: pass</code></td><td>Name the exception and handle it</td><td>Debugging is not a hobby.</td></tr>
+        <tr><td>Nested <code>if</code> pyramids</td><td>Early returns, guards</td><td>Flat is better than nested (PEP 20).</td></tr>
+        <tr><td>Passing <code>True/False</code> flags as args</td><td>Keyword-only or a small enum</td><td><code>f(mode=Mode.FAST)</code> reads better than <code>f(True)</code>.</td></tr>
+        <tr><td>Global mutable config</td><td>Explicit parameters, or a dataclass passed in</td><td>Testable and concurrency-safe.</td></tr>
+      </tbody>
+    </table>
+    <pre><code>import this        # the Zen of Python: 19 aphorisms, read them once a year
+
+# The same task, five ways — learn to spot which one belongs in a codebase
+def top_earners_v1(rows):                    # verbose, index juggling
+    out = []
+    for i in range(len(rows)):
+        if rows[i]["salary"] &gt; 100000:
+            out.append(rows[i]["name"])
+    return out
+
+def top_earners_v2(rows):                    # pythonic and readable
+    return [r["name"] for r in rows if r["salary"] &gt; 100000]
+
+def top_earners_v3(rows, limit=10):          # with a limit, stable and clear
+    return [r["name"] for r in sorted(rows, key=itemgetter("salary"), reverse=True)[:limit]]
+
+# Guard clauses instead of nesting
+def process(order):
+    if order is None: raise ValueError("order required")
+    if order.status != Status.PAID: raise InvalidState(order.status)
+    return ship(order)
+
+# Keyword-only arguments make call sites self-documenting
+def resize(img, *, width: int, height: int, keep_ratio: bool = True): ...
+resize(img, width=100, height=50)            # ✓ resize(img, 100, 50, True) ✗</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>22.2 Interview questions — with answers</h3>
+    <details open><summary><b>Language fundamentals</b></summary>
+      <p><b>1. Is Python interpreted or compiled?</b> Both: source is compiled to bytecode (<code>.pyc</code>) and that
+      bytecode is executed by the CPython virtual machine. 3.13+ adds an optional JIT.</p>
+      <p><b>2. List vs tuple vs set vs dict — when do you use each?</b> list: ordered, mutable sequence · tuple: fixed
+      record, hashable · set: uniqueness and membership · dict: key→value mapping with O(1) lookup. (Table in ch. 5.2.)</p>
+      <p><b>3. Shallow vs deep copy?</b> Shallow copies the outer container but shares the inner objects;
+      <code>deepcopy</code> recursively copies everything. <code>l2 = l1.copy()</code> then
+      <code>l2[0].append(x)</code> still changes <code>l1</code>.</p>
+      <p><b>4. What does <code>if __name__ == "__main__"</code> do?</b> Runs the block only when the file is executed
+      directly, not when imported — enabling dual use as script and module, and required for safe multiprocessing on
+      spawn platforms.</p>
+      <p><b>5. <code>is</code> vs <code>==</code>?</b> Identity (same object) vs value equality. Use <code>is</code> only
+      for singletons (<code>None</code>, <code>True</code>, <code>False</code>, sentinels) — interning makes
+      <code>is</code> unreliable for values.</p>
+      <p><b>6. Why are default arguments evaluated once?</b> They are stored on the function object at definition time
+      (<code>f.__defaults__</code>), so mutable defaults are shared across calls — the classic bug.</p>
+      <p><b>7. What is a closure?</b> A nested function that captures variables from its enclosing scope; the cell
+      survives after the outer function returns. Combined with late binding, this powers decorators.</p>
+      <p><b>8. Explain LEGB.</b> Local → Enclosing → Global → Builtins name resolution; assignment makes a name local
+      unless declared <code>global</code>/<code>nonlocal</code>.</p>
+      <p><b>9. What are <code>*args</code> and <code>**kwargs</code>?</b> Positional and keyword variadic parameters;
+      <code>*</code> also unpacks at call sites, and <code>*</code> alone in a signature marks keyword-only parameters.</p>
+      <p><b>10. Are Python strings mutable? What about bytes?</b> No — both immutable. All “modifying” methods return new
+      objects; build with <code>join</code> or <code>bytearray</code>.</p>
+    </details>
+    <details><summary><b>Data model, OOP and typing</b></summary>
+      <p><b>11. What are dunder methods? Give useful examples.</b> Hooks the language calls: <code>__init__</code>,
+      <code>__repr__</code>, <code>__eq__</code>/<code>__hash__</code>, <code>__len__</code>, <code>__getitem__</code>,
+      <code>__iter__</code>, <code>__enter__/__exit__</code>, <code>__call__</code>, <code>__add__</code>.</p>
+      <p><b>12. If you define <code>__eq__</code>, what else must you define?</b> <code>__hash__</code> (or set it to
+      <code>None</code> to make instances unhashable), otherwise equal objects can have different hashes and break dicts.</p>
+      <p><b>13. How does <code>super()</code> work?</b> It returns a proxy that dispatches to the next class in the MRO,
+      not necessarily “the parent” — which is why cooperative multiple inheritance requires <code>*args, **kwargs</code>
+      pass-through.</p>
+      <p><b>14. Composition vs inheritance?</b> Prefer composition; inherit for genuine “is-a” plus shared implementation.
+      Use Protocols/ABCs to define interfaces instead of deep hierarchies.</p>
+      <p><b>15. What is a property?</b> A computed attribute implemented via the descriptor protocol; allows validation
+      and lazy computation behind plain attribute access.</p>
+      <p><b>16. Difference between <code>@staticmethod</code>, <code>@classmethod</code>, instance method?</b> No
+      <code>self</code>, gets <code>cls</code> (alternative constructors, polymorphic factories), or gets the instance.</p>
+      <p><b>17. When use <code>__slots__</code>?</b> Many small objects, tight memory: removes per-instance
+      <code>__dict__</code> and speeds attribute access; costs flexibility (no dynamic attributes, needs care with
+      inheritance and pickling).</p>
+      <p><b>18. What does “duck typing” mean, and how do Protocols improve it?</b> Behaviour over type: if it walks and
+      quacks… <code>typing.Protocol</code> expresses that structurally so type checkers can verify it without inheritance.</p>
+      <p><b>19. Are type hints enforced at runtime?</b> No. They are checked statically by mypy/pyright or validated at
+      runtime by libraries like pydantic.</p>
+      <p><b>20. What is a metaclass?</b> The class of a class — controls class creation (<code>type</code> subclass,
+      <code>__init_subclass__</code>, <code>__prepare__</code>). Rarely needed; use <code>__init_subclass__</code> or
+      decorators first.</p>
+    </details>
+    <details><summary><b>Runtime, memory and concurrency</b></summary>
+      <p><b>21. What is the GIL and why does it exist?</b> A lock allowing one thread at a time to execute Python
+      bytecode, protecting reference counting and C extension assumptions. It is released during I/O and by C code that
+      opts out. 3.14 ships officially supported free-threaded builds (PEP 703/779) where it is removed.</p>
+      <p><b>22. Threads vs processes vs asyncio?</b> Threads for I/O-bound work with blocking libraries (shared memory,
+      GIL limits CPU) · processes for CPU-bound parallelism (separate interpreters, pickle IPC) · asyncio for thousands
+      of concurrent I/O operations in one thread with cooperative scheduling.</p>
+      <p><b>23. Does the GIL make code thread-safe?</b> No. <code>x += 1</code> is multiple bytecodes — races still
+      happen. Protect shared state with locks (or avoid sharing).</p>
+      <p><b>24. How does CPython manage memory?</b> Reference counting frees objects immediately at zero refs, plus a
+      generational cycle collector for reference cycles; 3.14 made collection incremental to reduce pauses.</p>
+      <p><b>25. What is the difference between <code>__del__</code> and a context manager?</b> <code>__del__</code> timing
+      is unspecified and may never run; <code>with</code> guarantees cleanup deterministically.</p>
+      <p><b>26. Generators vs lists?</b> Generators are lazy, single-use, O(1) memory, and can represent infinite
+      sequences; lists are materialised, indexable and reusable.</p>
+      <p><b>27. What is a decorator and how do you write one that takes arguments?</b> A callable that returns a
+      replacement for the decorated object; with arguments it becomes a three-level closure
+      (<code>retry(times=3)</code> → <code>decorator(func)</code> → <code>wrapper(*a, **kw)</code>), ideally
+      <code>@wraps(func)</code>-preserved.</p>
+      <p><b>28. How would you find a performance bottleneck?</b> Measure first: <code>cProfile</code>/<code>py-spy</code>
+      to find the hotspot, <code>line_profiler</code> for the line, <code>tracemalloc</code>/<code>memray</code> for
+      memory; then fix the algorithm, push loops into C, batch I/O, and parallelise last.</p>
+      <p><b>29. What happens when you import a module twice?</b> The second import is a no-op: the module object is
+      cached in <code>sys.modules</code>. Its top-level code runs exactly once per process
+      (<code>importlib.reload</code> forces re-execution).</p>
+      <p><b>30. How do you handle secrets and configuration?</b> Environment variables or a secret manager, loaded into
+      typed settings (pydantic-settings), never committed; <code>.env.example</code> documents the shape; rotate anything
+      that ever touched git.</p>
+    </details>
+    <details><summary><b>Coding-round warm-ups (write these from memory)</b></summary>
+      <pre><code># 1  Reverse words in a sentence, preserving spaces collapsed
+def rev_words(s: str) -&gt; str: return " ".join(reversed(s.split()))
+
+# 2  Count character frequency, most common first
+from collections import Counter
+def freq(s: str): return Counter(s).most_common()
+
+# 3  Two-sum with a hash map — O(n)
+def two_sum(nums, target):
+    seen = {}
+    for i, n in enumerate(nums):
+        if (need := target - n) in seen:
+            return (seen[need], i)
+        seen[n] = i
+
+# 4  Flatten one level / deep-flatten recursively
+def flatten(nested):
+    return [x for sub in nested for x in sub]
+def deep_flatten(x):
+    if isinstance(x, (list, tuple)):
+        for item in x: yield from deep_flatten(item)
+    else: yield x
+
+# 5  Group by a key
+from collections import defaultdict
+def group_by(rows, key):
+    g = defaultdict(list)
+    for r in rows: g[key(r)].append(r)
+    return dict(g)
+
+# 6  Memoised Fibonacci with an lru_cache (and why it is linear)
+from functools import cache
+@cache
+def fib(n): return n if n &lt; 2 else fib(n-1) + fib(n-2)
+
+# 7  Read a file and yield parsed records lazily
+def records(path):
+    with open(path, encoding="utf-8") as fh:
+        header = next(fh).rstrip().split(",")
+        for line in fh: yield dict(zip(header, line.rstrip().split(",")))
+
+# 8  Retry with exponential backoff (see ch. 6.3) and a context manager for timing (ch. 9.4)
+# 9  Merge two sorted lists
+def merge(a, b):
+    import heapq
+    return list(heapq.merge(a, b))
+# 10 Validate and normalise input with pydantic (see ch. 13.3)</code></pre>
+    </details>
+  </section>
+</section>

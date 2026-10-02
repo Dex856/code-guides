@@ -1,0 +1,406 @@
+<section class="chapter" id="ch23">
+  <h2><span class="num">23</span> Every resource worth knowing</h2>
+  <p class="tagline">Curated links — official, free books, courses, channels, newsletters, communities and practice sites. Nothing here is filler.</p>
+
+  <section class="sub">
+    <h3>23.1 Official — the source of truth</h3>
+    <ul class="reslist">
+      <li><b>docs.python.org/3/</b> — the reference manual. Start with the <i>Tutorial</i>, then <i>Library Reference</i>. <span class="muted">Every answer you will ever need is somewhere in here, with examples.</span></li>
+      <li><b>docs.python.org/3/tutorial/</b> — official tutorial, ~15 chapters, excellent for a first pass.</li>
+      <li><b>docs.python.org/3/library/index.html</b> — standard library index. <span class="muted">Bookmark the “Numeric and Mathematical”, “Data Types”, “File and Directory Access” and “Concurrency” sections.</span></li>
+      <li><b>docs.python.org/3/howto/</b> — focused how-tos: regex, sorting, logging, sockets, functional programming, descriptors, enums, annotations.</li>
+      <li><b>docs.python.org/3/whatsnew/</b> — read one per version; the fastest way to learn the language’s evolution (3.11–3.15 especially).</li>
+      <li><b>peps.python.org</b> — the design documents. Must-reads: PEP 8 (style), PEP 20 (Zen), PEP 257 (docstrings), PEP 484/695 (typing), PEP 703/779 (free-threading), PEP 602 (release cadence).</li>
+      <li><b>devguide.python.org</b> — how CPython itself is developed, plus the supported-version table.</li>
+      <li><b>docs.python.org/3/reference/</b> — the language reference (grammar, data model). Read “Data model” once, properly.</li>
+      <li><b>packaging.python.org</b> — authoritative packaging guide: pyproject.toml, build backends, publishing.</li>
+      <li><b>pyfound.blogspot.com</b> — PSF news; <b>python.org/blogs/</b> — release announcements.</li>
+      <li><b>Python Packaging Authority (PyPA)</b> on GitHub — pip, setuptools, build, twine, wheel specs.</li>
+      <li><b>discuss.python.org</b> — where the language is debated. The <i>Ideas</i> and <i>Typing</i> categories are fascinating; searching here beats guessing.</li>
+    </ul>
+  </section>
+
+  <section class="sub">
+    <h3>23.2 Free books — read online, legally</h3>
+    <table class="tbl">
+      <thead><tr><th>Book</th><th>Author / where</th><th>Best for</th></tr></thead>
+      <tbody>
+        <tr><td><b>Automate the Boring Stuff with Python</b> (3rd ed.)</td><td>Al Sweigart · automatetheboringstuff.com</td><td>Absolute beginners who want to do useful things (Excel, PDFs, files, web) in week one.</td></tr>
+        <tr><td><b>Think Python</b></td><td>Allen B. Downey · greenteapress.com</td><td>Learning programming <i>and</i> computing fundamentals with Python.</td></tr>
+        <tr><td><b>Python Crash Course</b> (paid, worth it)</td><td>Eric Matthes</td><td>The best-structured paid beginner book; three project chapters.</td></tr>
+        <tr><td><b>Fluent Python</b> (2nd ed., paid)</td><td>Luciano Ramalho</td><td>The single best intermediate→advanced book. If you buy one Python book, this is it.</td></tr>
+        <tr><td><b>Effective Python</b> (paid)</td><td>Brett Slatkin</td><td>125 short, opinionated recipes for writing better code today.</td></tr>
+        <tr><td><b>Architecture Patterns with Python</b></td><td>Percival &amp; Gregory · cosmicpython.com (free)</td><td>How to structure real applications: repository, unit of work, events, DDD-lite.</td></tr>
+        <tr><td><b>Python for Data Analysis</b> (3rd ed.)</td><td>Wes McKinney · free online</td><td>pandas from its creator; the data-work foundation.</td></tr>
+        <tr><td><b>Dive Into Python 3 / A Byte of Python / Python 101</b></td><td>Various · free</td><td>Alternative beginner paths if you prefer older-school or terse explanations.</td></tr>
+        <tr><td><b>The Python Cookbook</b> (Beazley)</td><td>Paid; older but timeless recipes</td><td>Specific “how do I…?” answers on iteration, metaprogramming, concurrency.</td></tr>
+        <tr><td><b>Real Python books / talks</b> (Python Tricks, Python concurrency)</td><td>realpython.com</td><td>Tight, practical, well-edited.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>23.3 Courses, videos and interactive learning</h3>
+    <table class="tbl">
+      <thead><tr><th>Resource</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><b>Corey Schafer — Python Tutorials</b></td><td>YouTube playlist</td><td>The classic: decorators, generators, threading, Flask, virtualenv. Still the best free video course structure.</td></tr>
+        <tr><td><b>ArjanCodes</b></td><td>YouTube</td><td>Software design, clean architecture, refactoring — intermediate+ level thinking.</td></tr>
+        <tr><td><b>mCoding</b></td><td>YouTube</td><td>Deeper internals: GIL, asyncio internals, bytecode, optimisation.</td></tr>
+        <tr><td><b>Tech With Tim · Programming with Mosh · freeCodeCamp</b></td><td>YouTube</td><td>Beginner-friendly long-form courses (freeCodeCamp has 4–12 h full courses).</td></tr>
+        <tr><td><b>CS50P (Harvard)</b></td><td>Free course</td><td>Rigorous, university-grade intro with problem sets.</td></tr>
+        <tr><td><b>Python for Everybody (Charles Severance)</b></td><td>Free course</td><td>Gentle, very popular entry point.</td></tr>
+        <tr><td><b>Real Python</b></td><td>Tutorials + video</td><td>The highest-quality written tutorials on the internet; free tier is generous.</td></tr>
+        <tr><td><b>Talk Python Training / Podcast</b></td><td>Courses + podcast</td><td>Practical, modern; podcast interviews with library authors.</td></tr>
+        <tr><td><b>Exercism (Python track)</b></td><td>Practice + mentorship</td><td>Free human code review — the highest-value learning loop available.</td></tr>
+        <tr><td><b>Advent of Code</b></td><td>Annual puzzles</td><td>December tradition; great for algorithms + parsing discipline.</td></tr>
+        <tr><td><b>LeetCode / HackerRank / Codewars / Project Euler</b></td><td>Practice</td><td>Interview prep (LeetCode), kata (Codewars), maths (Euler).</td></tr>
+        <tr><td><b>futurecoder.io / Python Tutor (pythontutor.com)</b></td><td>Interactive</td><td>Visualises execution step-by-step — brilliant for understanding references and frames.</td></tr>
+        <tr><td><b>Kaggle Learn</b></td><td>Micro-courses</td><td>Pandas, ML, SQL, feature engineering — free, hands-on with notebooks.</td></tr>
+        <tr><td><b>fast.ai</b></td><td>Course</td><td>Practical deep learning, top-down teaching style.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>23.4 Blogs, newsletters, podcasts and communities</h3>
+    <div class="grid2">
+      <div class="card"><h4>Read regularly</h4>
+        <ul>
+          <li><b>realpython.com/blog</b> — steady stream of high-quality articles.</li>
+          <li><b>pythonweekly.com</b> — the newsletter to subscribe to (news + releases + articles).</li>
+          <li><b>PyCoder’s Weekly</b> (pycoders.com) — the other essential weekly.</li>
+          <li><b>talkpython.fm</b> + <b>Python Bytes</b> — podcasts; Python Bytes is the 20-minute news show.</li>
+          <li><b>lwn.net</b> and <b>Phoronix</b> — follow CPython perf/ideas when you want depth.</li>
+          <li><b>Blogs:</b> Ned Batchelder, Brett Cannon, Raymond Hettinger talks, Armin Ronacher, Anthony Shaw, Trey Hunner, Simon Willison (AI + Python).</li>
+        </ul>
+      </div>
+      <div class="card"><h4>Ask and discuss</h4>
+        <ul>
+          <li><b>discuss.python.org</b> — official, high signal.</li>
+          <li><b>r/learnpython</b> — beginner help, no gatekeeping; <b>r/Python</b> — news/projects.</li>
+          <li><b>Stack Overflow</b> — search first; the Python tag FAQ answers most errors.</li>
+          <li><b>Python Discord</b> (pythondiscord.com) — real-time help, very active.</li>
+          <li><b>Local &amp; regional communities</b> — PyCon India (Hyderabad/Bengaluru alternating), BangPypers (Bengaluru), PyDelhi, ChennaiPy; most meet monthly and stream talks.</li>
+          <li><b>Conferences:</b> PyCon US/India/EU, EuroPython, PyData, SciPy — most upload every talk to YouTube, which is a free university.</li>
+        </ul>
+      </div>
+      <div class="card"><h4>Awesome lists &amp; curated hubs</h4>
+        <ul>
+          <li><b>github.com/vinta/awesome-python</b> — the master index of libraries by category.</li>
+          <li><b>github.com/awesome-foss/awesome-sysadmin</b>, <b>awesome-data-engineering</b>, <b>awesome-mlops</b>.</li>
+          <li><b>Python Cheatsheet</b> (gto76.github.io/python-cheatsheet) — dense one-page reference.</li>
+          <li><b>Python Guide</b> (docs.python-guide.org) — opinionated guide to setup, tooling and structure.</li>
+          <li><b>Design Patterns in Python</b> (refactoring.guru/design-patterns/python) — visual explanations.</li>
+        </ul>
+      </div>
+      <div class="card"><h4>Practice in public</h4>
+        <ul>
+          <li><b>Contribute:</b> search GitHub for <code>good first issue language:python</code>; start with docs/tests in a library you use.</li>
+          <li><b>Write:</b> a blog post explaining something you just learned is the fastest way to actually learn it.</li>
+          <li><b>Build in public:</b> ship small tools to PyPI (<code>uv publish</code>) — packaging teaches you more than any tutorial.</li>
+          <li><b>Read source:</b> <code>flask</code>, <code>requests</code>, <code>httpx</code>, <code>rich</code>, <code>polars</code> internals, CPython’s <code>Lib/</code>.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="sub">
+    <h3>23.5 Reference sites and tools you will use weekly</h3>
+    <table class="tbl">
+      <thead><tr><th>Need</th><th>Site / tool</th></tr></thead>
+      <tbody>
+        <tr><td>Regex building/testing</td><td>regex101.com (token-by-token explanation), debuggex.com</td></tr>
+        <tr><td>Date/time formats</td><td>strftime.org, strfti.me</td></tr>
+        <tr><td>Comparing library speed</td><td>benchmarks: <code>pyperf</code>, GitHub “benchmark” repos, DuckDB/polars/pandas benchmark suites</td></tr>
+        <tr><td>Checks about Python versions</td><td>devguide.python.org/versions, pypi.org/project/&lt;name&gt; (requires-python), python3readiness.org (for library 3.x support)</td></tr>
+        <tr><td>Package health</td><td>snyk.io/advisor, deps.dev, libraries.io</td></tr>
+        <tr><td>Searching docs offline</td><td><code>python -m pydoc -b</code>, <code>help(obj)</code>, Dash/Zeal with Python docsets</td></tr>
+        <tr><td>Colour palettes for plots</td><td>colorbrewer2.org, matplotlib colormaps reference</td></tr>
+        <tr><td>Throwaway notebooks</td><td>Google Colab, Kaggle Notebooks, marimo (free hosting)</td></tr>
+        <tr><td>Learning by diagram</td><td>pythontutor.com (memory model), asciiflow/draw.io for your own architecture sketches</td></tr>
+      </tbody>
+    </table>
+  </section>
+</section>
+
+<section class="chapter" id="ch24">
+  <h2><span class="num">24</span> Roadmaps, cheat-sheets and the index</h2>
+  <p class="tagline">A plan for the next 90 days, a one-page syntax refresher, and an A–Z index into this guide.</p>
+
+  <section class="sub">
+    <h3>24.1 The 90-day roadmap</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 300" role="img" aria-label="90 day Python learning roadmap">
+        <text class="tt" x="20" y="26">From zero to employable, in four phases</text>
+        <rect x="30" y="50" width="200" height="230" class="ba"/>
+        <text class="t" x="130" y="76" text-anchor="middle">Weeks 1–3 · FOUNDATION</text>
+        <text class="sm" x="50" y="102">• Install + REPL + venv</text>
+        <text class="sm" x="50" y="124">• ch 3–5: types, flow, containers</text>
+        <text class="sm" x="50" y="146">• ch 6–7: functions, generators</text>
+        <text class="sm" x="50" y="168">• 30 min of typing code daily</text>
+        <text class="sm" x="50" y="190">• Exercises: Exercism, futurecoder</text>
+        <text class="sm" x="50" y="212">Project: file organiser script</text>
+        <text class="sm" x="50" y="234">Success: you stop googling syntax</text>
+        <text class="sm" x="50" y="256">and can write a 100-line script alone</text>
+
+        <rect x="245" y="50" width="200" height="230" class="bb"/>
+        <text class="t" x="345" y="76" text-anchor="middle">Weeks 4–6 · WORKING CODE</text>
+        <text class="sm" x="265" y="102">• ch 8–11: OOP, exceptions, files,</text>
+        <text class="sm" x="265" y="120">data formats, pathlib</text>
+        <text class="sm" x="265" y="142">• ch 18: pytest, debugging</text>
+        <text class="sm" x="265" y="164">• ch 13: type hints basics</text>
+        <text class="sm" x="265" y="186">• ch 19: project structure + uv</text>
+        <text class="sm" x="265" y="208">Project: CLI tool (ch 19.2) with tests</text>
+        <text class="sm" x="265" y="230">Success: your project installs, has</text>
+        <text class="sm" x="265" y="252">tests and runs in CI</text>
+
+        <rect x="460" y="50" width="200" height="230" class="bc"/>
+        <text class="t" x="560" y="76" text-anchor="middle">Weeks 7–9 · REAL STACK</text>
+        <text class="sm" x="480" y="102">• Pick a track: web / data / automation</text>
+        <text class="sm" x="480" y="124">• FastAPI or Django + Postgres</text>
+        <text class="sm" x="480" y="146">• or pandas/polars + DuckDB + charts</text>
+        <text class="sm" x="480" y="168">• ch 15: async or threads where needed</text>
+        <text class="sm" x="480" y="190">• ch 17: profile and optimise once</text>
+        <text class="sm" x="480" y="212">Project: deploy an API or pipeline</text>
+        <text class="sm" x="480" y="234">Success: someone else can use it via</text>
+        <text class="sm" x="480" y="256">a URL, a package, or a command</text>
+
+        <rect x="675" y="50" width="195" height="230" class="bp"/>
+        <text class="t" x="772" y="76" text-anchor="middle">Weeks 10–13 · DEPTH</text>
+        <text class="sm" x="695" y="102">• ch 16: memory &amp; internals</text>
+        <text class="sm" x="695" y="124">• ch 21–22: gotchas + idioms</text>
+        <text class="sm" x="695" y="146">• ch 12: packaging, versioning</text>
+        <text class="sm" x="695" y="168">• Contribute to one OSS project</text>
+        <text class="sm" x="695" y="190">• Write a blog post per week</text>
+        <text class="sm" x="695" y="212">• Read Fluent Python, cover to cover</text>
+        <text class="sm" x="695" y="234">Success: you can explain why, not</text>
+        <text class="sm" x="695" y="256">just how — and hireable in your track</text>
+      </svg>
+      <figcaption>Fig 24.1 — Consistency beats intensity: 1 focused hour daily for 90 days is enough (≈90 hours) to become genuinely productive.</figcaption>
+    </figure>
+    <div class="tip"><b>The rule that makes it work:</b> after each chapter, write something that <i>uses</i> it. Reading
+    Python is not learning Python. The 90-hour budget is roughly 60% writing code, 25% reading, 15% debugging your own
+    mistakes — and the debugging is where the real learning is.</div>
+  </section>
+
+  <section class="sub">
+    <h3>24.2 One-page cheat sheet — syntax refresher</h3>
+    <pre><code># ---------- values &amp; operators ------------------------------------------
+x = 5; y = 2.5; s = "hi"; b = True; n = None
+a, *rest = [1,2,3]          # a=1 rest=[2,3]        7//2=3  7%3=1  2**10=1024  7/2=3.5
+0 &lt;= x &lt; 10                 # chained compare       x is None / x is not None
+"a" * 3, "a" + "b"          # 'aaa' 'ab'            f"{x:&gt;5} {y:.2f} {'s':*^7}"
+s[0], s[-1], s[1:3], s[::-1]                        # indexing / slicing
+
+# ---------- collections --------------------------------------------------
+xs = [1, 2, 3]; xs.append(4); xs.sort(key=abs); xs[-1]
+t = (1, 2); one = (1,); a, b = t
+d = {"a": 1}; d.get("z", 0); d.setdefault("b", 2); d | {"c": 3}; list(d.items())
+st = {1, 2}; st | {3}; st &amp; {2}; st - {1}; st ^ {2, 3}
+[x*2 for x in xs if x &gt; 1]      {k: v for k, v in d.items()}      {x for x in xs}
+frozenset(st)                   counter = {}  # or collections.Counter(iterable)
+
+# ---------- control flow -------------------------------------------------
+if x &gt; 0: ... elif x == 0: ... else: ...
+result = "yes" if x else "no"
+for i, v in enumerate(xs, 1): ...
+for a, b in zip(xs, ys, strict=True): ...
+while (line := fh.readline()): ...
+for n in nums:
+    if n &lt; 0: break
+else: ...                        # no-break branch
+match obj:
+    case {"type": "a", "n": int(n)} if n &gt; 0: ...
+    case [x, y, *rest]: ...
+    case Point(x=0): ...
+    case _: ...
+match cmd:
+    case "go" | "move": ...
+try: risky()
+except (ValueError, KeyError) as e: handle(e)
+except Exception: log(); raise
+else: ok()
+finally: cleanup()
+
+# ---------- functions ----------------------------------------------------
+def f(a, b=1, *args, c, **kw) -&gt; int: return a
+def g(x, /, y, *, z): ...                   # positional-only / keyword-only
+lambda x: x + 1
+@decorator
+@functools.wraps           @functools.cache        @functools.singledispatch
+def gen(n):
+    yield n                # generator; g.send(v) / yield from sub
+def cm():
+    yield                  # @contextmanager
+sorted(xs, key=lambda r: (-r[1], r[0]), reverse=False)
+# map(f, xs) · filter(p, xs) · reduce(f, xs, start) · sum(x for x in xs)
+functools.partial(f, c=3)   operator.itemgetter(1)   itertools.groupby(rows, key=key)
+functools.cache             itertools.islice(xs, 10)  itertools.batched(xs, 100)
+
+# ---------- classes ------------------------------------------------------
+class C(Base, Mixin):
+    attr = 1                                    # class attribute
+    __slots__ = ("x",)
+    def __init__(self, x): self.x = x
+    def __repr__(self): return f"C({self.x!r})"
+    def __eq__(self, o): return isinstance(o, C) and o.x == self.x
+    def __hash__(self): return hash(self.x)
+    def __len__(self): return 1
+    def __iter__(self): yield self.x
+    @property
+    def double(self): return self.x * 2
+    @classmethod
+    def make(cls, v): return cls(v)
+    @staticmethod
+    def helper(): ...
+@dataclass(slots=True, frozen=True)   # dataclasses
+class D: a: int = 0; b: list[str] = field(default_factory=list)
+class Color(StrEnum): RED = "red"
+class Proto(Protocol): def close(self) -&gt; None: ...
+
+# ---------- files, paths, data -------------------------------------------
+from pathlib import Path
+p = Path("a") / "b.txt"; p.read_text(encoding="utf-8"); p.write_text("x")
+with p.open("r", encoding="utf-8", newline="") as fh: ...
+import csv, json, tomllib, sqlite3, re, datetime as dt
+csv.DictReader(fh); json.dumps(obj, indent=2); tomllib.load(fh2)
+re.findall(r"\d+", s); re.sub(r"\s+", " ", s); re.compile(r"...").search(s)
+dt.datetime.now(dt.timezone.utc); dt.timedelta(days=7); dt.datetime.fromisoformat(s)
+
+# ---------- the 15 tools you type most -----------------------------------
+$ python -m venv .venv          $ uv init / add / sync / run / lock / build
+$ python -m pip install -U pkg  $ ruff format . ; ruff check --fix .
+$ pytest -q -x --lf             $ mypy src          $ python -m pdb app.py
+$ py-spy top --pid N            $ python -m cProfile -s cumtime app.py
+$ python -m json.tool f.json    $ python -m http.server 8000
+$ python -m timeit "expr"       $ python -m pydoc -b   (browse docs offline)</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>24.3 Sixty answers you can copy today</h3>
+    <div class="grid2">
+      <div class="card"><h4>Strings &amp; text</h4>
+        <pre><code>"a,b".split(",")                # ['a','b']
+",".join(["a","b"])             # 'a,b'
+s.strip().lower()               # clean
+f"{n:,}"                        # 1,234,567
+textwrap.wrap(s, 79)            # wrap text
+s.removeprefix("v")             # 3.9+
+re.sub(r"\s+", " ", s)          # collapse spaces
+"".join(dict.fromkeys(xs))      # dedupe chars, keep order
+s.isdigit(), s.startswith("x")
+difflib.get_close_matches(w, xs)</code></pre></div>
+      <div class="card"><h4>Lists, dicts, sets</h4>
+        <pre><code>sorted(xs, key=len)
+sorted(d.items(), key=lambda kv: kv[1])
+max(xs, default=0); min(xs)
+sum(x["qty"] for x in rows)
+list(dict.fromkeys(xs))         # dedupe, keep order
+d.setdefault(k, []).append(v)
+d1 | d2; d1.update(d2)
+{x: y for y, x in d.items()}    # invert
+set(a) &amp; set(b)                 # common items
+list(zip(*matrix))              # transpose
+[x for row in m for x in row]   # flatten
+collections.Counter(xs).most_common(5)</code></pre></div>
+      <div class="card"><h4>Files &amp; data</h4>
+        <pre><code>Path("f.txt").read_text(encoding="utf-8")
+Path("out").mkdir(parents=True, exist_ok=True)
+list(Path(".").rglob("*.py"))
+json.loads(s) / json.dumps(o, indent=2)
+csv.DictReader(open(p, newline=""))
+sqlite3.connect("a.db").execute(...)
+with open(p, "a", encoding="utf-8") as fh: fh.write(x)
+shutil.copytree(a, b)
+tempfile.TemporaryDirectory()
+gzip.open("f.gz", "rt", encoding="utf-8")</code></pre></div>
+      <div class="card"><h4>Dates, numbers, ids</h4>
+        <pre><code>datetime.now(timezone.utc)
+dt.strftime("%Y-%m-%d %H:%M")
+datetime.fromisoformat("2026-10-02T14:00+05:30")
+(date.today() - date(2020,1,1)).days
+round(x, 2); math.isclose(a, b)
+Decimal("19.99") * 3
+secrets.token_urlsafe(32)
+uuid.uuid7()
+random.sample(xs, 3)
+statistics.median(xs)
+time.perf_counter()</code></pre></div>
+      <div class="card"><h4>Functions &amp; classes</h4>
+        <pre><code>def f(x: int = 0) -&gt; str: ...
+@functools.cache
+@functools.lru_cache(maxsize=128)
+@contextmanager
+def c():
+    try: yield r
+    finally: cleanup()
+@dataclass(slots=True)
+class P: x: int = 0
+functools.partial(f, y=2)
+itertools.groupby(sorted(xs, key=k), key=k)</code></pre></div>
+      <div class="card"><h4>Debugging &amp; tooling</h4>
+        <pre><code>breakpoint()                    # pdb
+python -m pdb script.py
+python -m cProfile -s cumtime x.py
+py-spy dump --pid 123
+python -X importtime app.py
+tracemalloc.start(); snapshot()
+logging.basicConfig(level=logging.INFO)
+python -m timeit -s setup "stmt"
+python -m venv .venv &amp;&amp; uv sync</code></pre></div>
+    </div>
+  </section>
+
+  <section class="sub">
+    <h3>24.4 Index — jump straight to any topic</h3>
+    <div class="indexgrid">
+      <a href="#ch1">versions, install, venv, uv, editors</a>
+      <a href="#ch2">bytecode, frames, tracebacks, exit codes, __main__</a>
+      <a href="#ch3">names, objects, types, numbers, strings, slicing, truthiness</a>
+      <a href="#ch4">if, ternary, match/case, for/else, iteration, zip, enumerate</a>
+      <a href="#ch5">list, tuple, dict, set, deque, Counter, complexity, comprehensions</a>
+      <a href="#ch6">functions, args/kwargs, defaults, LEGB, closures, lambda, decorators, recursion</a>
+      <a href="#ch7">generators, yield, lazy pipelines, itertools</a>
+      <a href="#ch8">classes, dunder methods, MRO, super, dataclasses, enums, properties, Protocols</a>
+      <a href="#ch9">exceptions, hierarchy, EAFP, ExceptionGroup, context managers</a>
+      <a href="#ch10">imports, sys.path, packages, src layout, packaging, circular imports</a>
+      <a href="#ch11">files, encodings, pathlib, csv, json, toml, regex, datetime, HTTP, SQLite</a>
+      <a href="#ch12">version specifiers, uv/pip/poetry, lock files, publishing, Docker</a>
+      <a href="#ch13">type hints, generics, Protocols, mypy, pydantic</a>
+      <a href="#ch14">collections, math, statistics, random, secrets, logging, subprocess, argparse, hashing</a>
+      <a href="#ch15">GIL, threads, processes, asyncio, free-threading, subinterpreters</a>
+      <a href="#ch16">memory, refcounting, GC, interning, __slots__, weakref, copy semantics</a>
+      <a href="#ch17">profiling, timeit, cProfile, py-spy, memray, optimisation checklist</a>
+      <a href="#ch18">pytest, coverage, hypothesis, pdb, ruff, mypy, CI, security checklist</a>
+      <a href="#ch19">architecture, project layout, CLI/API/pipeline examples</a>
+      <a href="#ch20">web, data/ML, AI, scraping, automation, GUI, science libraries</a>
+      <a href="#ch21">gotchas: mutable defaults, late binding, is vs ==, += traps, and 20 more</a>
+      <a href="#ch22">idioms, PEP 20, interview questions with answers</a>
+      <a href="#ch23">docs, free books, courses, blogs, newsletters, practice sites</a>
+      <a href="#ch24">roadmap, cheat sheets, index</a>
+    </div>
+  </section>
+
+  <section class="sub">
+    <h3>24.5 Final checklist — are you actually fluent?</h3>
+    <table class="tbl">
+      <thead><tr><th>✓</th><th>Skill</th><th>Test yourself</th></tr></thead>
+      <tbody>
+        <tr><td>☐</td><td>Set up a project from scratch</td><td>Without googling: create a project with uv, add deps, write a module, run tests, build a wheel.</td></tr>
+        <tr><td>☐</td><td>Data structures by feel</td><td>Given a problem, name the right container and its complexity in under 5 seconds.</td></tr>
+        <tr><td>☐</td><td>Comprehensions and generators</td><td>Rewrite any 10-line loop as a comprehension; stream a 5 GB file in constant memory.</td></tr>
+        <tr><td>☐</td><td>OOP and the data model</td><td>Implement a class with <code>__eq__</code>, <code>__hash__</code>, <code>__iter__</code>, a property and a classmethod factory.</td></tr>
+        <tr><td>☐</td><td>Exceptions and cleanup</td><td>Design a custom exception hierarchy; write a context manager both as a class and with <code>@contextmanager</code>.</td></tr>
+        <tr><td>☐</td><td>Type hints</td><td>Annotate a module and pass <code>mypy --strict</code> without <code>Any</code> escapes.</td></tr>
+        <tr><td>☐</td><td>Concurrency judgement</td><td>Classify five tasks as threads/processes/async and justify each in one sentence.</td></tr>
+        <tr><td>☐</td><td>Debugging</td><td>Take an unfamiliar traceback and locate the bug in under a minute; attach a profiler to a slow process.</td></tr>
+        <tr><td>☐</td><td>Testing</td><td>Write parametrised tests with fixtures; explain why a test is failing from its output alone.</td></tr>
+        <tr><td>☐</td><td>Ship something</td><td>Publish a package to PyPI or deploy a service — the only test that really counts.</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><b>Keep this file.</b> It is fully offline: bookmark it, keep it in your repo (<code>docs/ultimate-python-guide.html</code>),
+    or print it to PDF with the 🖨 button in the top bar. When something surprises you in Python, the answer is very likely
+    already in chapters 21, 16 or 5 — and if it is not, you have just found the next entry to add.</div>
+  </section>
+</section>

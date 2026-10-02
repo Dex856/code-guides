@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Ultimate Python Guide — Offline Reference (2026)</title>
+<meta name="description" content="A complete offline Python reference: language, standard library, tooling, performance, ecosystem and resources — with diagrams. Built for Python 3.12–3.15.">
+<style>
+:root{
+  --bg:#ffffff; --fg:#151b26; --muted:#5a6577; --line:#e3e8f1; --card:#f6f8fc; --card2:#eef2f9;
+  --accent:#2f6f9f; --accent-soft:#eaf2fb; --accent2:#c99700; --warn:#b23b32; --warn-soft:#fdecea;
+  --ok:#1f7a4d; --ok-soft:#e8f6ee; --zebra:#fafbfe;
+  --code:#0e1626; --codefg:#dce6f5;
+  --dg-bx:#eaf2fb; --dg-line:#9dbcd8; --dg-a:#eaf2fb; --dg-b:#fff5d6; --dg-c:#e7f6ec; --dg-d:#fdeceb; --dg-p:#f2ecfb;
+  --shadow:0 1px 2px rgba(16,24,40,.06),0 8px 24px rgba(16,24,40,.06);
+}
+html[data-theme=dark]{
+  --bg:#0d1117; --fg:#e5edf6; --muted:#98a5b8; --line:#222c3a; --card:#141b25; --card2:#1a2230;
+  --accent:#79b8ff; --accent-soft:#132234; --accent2:#e8c14a; --warn:#f08a80; --warn-soft:#2a1a19;
+  --ok:#6dd39b; --ok-soft:#12261c; --zebra:#111823;
+  --code:#080d16; --codefg:#dce6f5;
+  --dg-bx:#16202e; --dg-line:#3d5a75; --dg-a:#16202e; --dg-b:#2b2410; --dg-c:#12281d; --dg-d:#2b1716; --dg-p:#221a30;
+  --shadow:0 1px 2px rgba(0,0,0,.5),0 8px 24px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:78px}
+body{margin:0;background:var(--bg);color:var(--fg);font:15.5px/1.68 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;-webkit-font-smoothing:antialiased}
+code,pre,kbd,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ---------- top bar ---------- */
+#progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,#3776ab,#ffd43b);width:0;z-index:60}
+.topbar{position:sticky;top:0;z-index:50;display:flex;gap:12px;align-items:center;padding:9px 16px;background:var(--bg);background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;white-space:nowrap}
+.brand svg{width:24px;height:24px;flex:0 0 auto}
+.brand small{font-weight:500;color:var(--muted);font-size:11.5px}
+.searchwrap{position:relative;flex:1;max-width:620px;margin-left:auto}
+#q{width:100%;padding:9px 64px 9px 34px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--fg);font-size:14px;outline:none}
+#q:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.searchwrap .ico{position:absolute;left:11px;top:9px;opacity:.55}
+.searchwrap .hint{position:absolute;right:9px;top:7px;font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:1px 6px;background:var(--bg)}
+#results{position:absolute;top:46px;left:0;right:0;background:var(--bg);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);max-height:60vh;overflow:auto;display:none;padding:6px}
+#results.on{display:block}
+#results a{display:block;padding:7px 10px;border-radius:8px;color:var(--fg)}
+#results a:hover,#results a.sel{background:var(--card2);text-decoration:none}
+#results .rp{color:var(--muted);font-size:12px}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:9px;padding:7px 10px;font-size:13px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+@media(max-width:720px){.brand small{display:none}#q{padding-right:12px}.searchwrap .hint{display:none}}
+
+/* ---------- layout ---------- */
+.layout{display:grid;grid-template-columns:288px minmax(0,1fr);gap:30px;max-width:1420px;margin:0 auto;padding:0 18px 80px}
+#toc{position:sticky;top:62px;align-self:start;max-height:calc(100vh - 84px);overflow:auto;padding:14px 6px 40px 0;font-size:13.5px;border-right:1px solid var(--line)}
+#toc .navhead{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:6px 8px 8px}
+.navch>a{display:block;padding:5px 9px;border-radius:8px;color:var(--fg);font-weight:600}
+.navch>a:hover{background:var(--card);text-decoration:none}
+.navch.active>a{background:var(--accent-soft);color:var(--accent)}
+.navch ul{list-style:none;margin:0 0 6px;padding:0 0 0 12px;display:none}
+.navch.open ul{display:block}
+.navch ul a{display:block;padding:3px 8px;border-radius:6px;color:var(--muted);font-size:12.5px;border-left:2px solid var(--line)}
+.navch ul a:hover,.navch ul a.on{color:var(--accent);border-left-color:var(--accent);text-decoration:none;background:var(--card)}
+main{min-width:0;padding-top:8px}
+@media(max-width:1030px){.layout{grid-template-columns:1fr}#toc{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line);padding-bottom:16px}.navch ul{display:block}}
+
+/* ---------- hero ---------- */
+.hero{margin:22px 0 6px;border:1px solid var(--line);border-radius:20px;padding:30px 28px;background:
+  radial-gradient(1100px 380px at 6% -30%,rgba(55,118,171,.20),transparent 62%),
+  radial-gradient(900px 320px at 100% 0%,rgba(255,212,59,.22),transparent 60%),var(--card)}
+.hero h1{margin:0 0 6px;font-size:clamp(26px,4.4vw,40px);line-height:1.14;letter-spacing:-.4px}
+.hero p.lede{color:var(--muted);font-size:16px;margin:.4rem 0 1.1rem;max-width:70ch}
+.stats{display:flex;flex-wrap:wrap;gap:10px}
+.stat{border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:8px 13px;font-size:12.5px;color:var(--muted)}
+.stat b{display:block;font-size:19px;color:var(--fg);line-height:1.2}
+.badges{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}
+.pill{font-size:11.5px;border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:3px 10px;color:var(--muted)}
+.pill.hot{border-color:var(--accent2);color:var(--accent2)}
+
+/* ---------- chapters ---------- */
+.chapter{margin:44px 0 0;scroll-margin-top:80px}
+.chapter>h2{display:flex;align-items:center;gap:12px;font-size:clamp(20px,3vw,27px);margin:0 0 4px;letter-spacing:-.3px}
+.chapter>h2 .num{flex:0 0 auto;display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:linear-gradient(145deg,#3776ab,#2b5d8a);color:#fff;font-size:15px;font-weight:700}
+.chapter>.tagline{color:var(--muted);margin:0 0 6px;font-size:14.5px}
+.sub{margin:26px 0 0;scroll-margin-top:80px}
+.sub h3{font-size:17.5px;margin:0 0 8px;padding-bottom:5px;border-bottom:1px solid var(--line)}
+h4{font-size:15px;margin:16px 0 6px}
+p{margin:.55rem 0}
+ul,ol{margin:.5rem 0 .5rem 1.1rem;padding:0}
+li{margin:.22rem 0}
+hr{border:0;border-top:1px solid var(--line);margin:26px 0}
+.flash{animation:fl 1.8s ease}
+@keyframes fl{0%{background:var(--accent-soft)}100%{background:transparent}}
+
+/* ---------- code ---------- */
+pre{position:relative;background:var(--code);color:var(--codefg);border-radius:13px;padding:15px 16px;overflow:auto;font-size:13.4px;line-height:1.6;border:1px solid #1c2839;margin:.7rem 0}
+pre code{white-space:pre}
+.copy{position:absolute;top:8px;right:8px;font-size:11px;background:#1b2635;color:#9fb2c9;border:1px solid #2b3a4d;border-radius:7px;padding:3px 8px;cursor:pointer;opacity:0;transition:.15s}
+pre:hover .copy{opacity:1}
+.copy:hover{color:#fff;border-color:#4d6b8f}
+:not(pre)>code{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:1px 5px;font-size:.88em;color:var(--accent)}
+.tok-k{color:#ff7ab2;font-weight:600}.tok-s{color:#9ae08a}.tok-c{color:#7b8ba3;font-style:italic}
+.tok-n{color:#f2cc60}.tok-f{color:#79c0ff}.tok-d{color:#ffa657}.tok-b{color:#ffa657;font-style:italic}.tok-t{color:#7fd1c4}
+
+/* ---------- boxes ---------- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:.8rem 0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:13px;margin:.8rem 0}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:.8rem 0}
+.card h4{margin-top:0}
+.note,.warn,.tip,.gotcha{border-radius:12px;padding:11px 14px;margin:.8rem 0;border:1px solid;font-size:14.4px}
+.note{background:var(--accent-soft);border-color:var(--accent)}
+.warn{background:var(--warn-soft);border-color:var(--warn)}
+.tip{background:var(--ok-soft);border-color:var(--ok)}
+.gotcha{background:var(--card2);border-color:var(--line)}
+.note b,.warn b,.tip b{color:var(--fg)}
+.tbl{width:100%;border-collapse:collapse;font-size:13.8px;margin:.75rem 0;display:block;overflow-x:auto}
+.tbl th,.tbl td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+.tbl th{background:var(--card);font-weight:650;white-space:nowrap}
+.tbl tbody tr:nth-child(even) td{background:var(--zebra)}
+.tbl code{font-size:.86em}
+figure{margin:1.1rem 0;padding:0}
+figure svg{display:block;width:100%;height:auto;max-width:920px;margin:0 auto;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+figcaption{text-align:center;color:var(--muted);font-size:12.6px;margin-top:7px}
+figure.plain svg{border:0;background:transparent}
+/* svg diagram helpers */
+.dg text{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;fill:var(--fg)}
+.dg .t{font-weight:700;font-size:13px}
+.dg .tt{font-weight:700;font-size:15px}
+.dg .sm{font-size:11px;fill:var(--muted)}
+.dg .mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+.dg .w{fill:#fff}
+html[data-theme=dark] .dg .w{fill:#0d1117}
+.bx{fill:var(--dg-bx);stroke:var(--dg-line);stroke-width:1.4;rx:9}
+.ba{fill:var(--dg-a);stroke:#3776ab;stroke-width:1.5;rx:9}
+.bb{fill:var(--dg-b);stroke:#c99700;stroke-width:1.5;rx:9}
+.bc{fill:var(--dg-c);stroke:#2e9e63;stroke-width:1.5;rx:9}
+.bd{fill:var(--dg-d);stroke:#c9524a;stroke-width:1.5;rx:9}
+.bp{fill:var(--dg-p);stroke:#8e6fc0;stroke-width:1.5;rx:9}
+.ar{stroke:#7b8798;stroke-width:1.6;fill:none;marker-end:url(#ah)}
+.ar2{stroke:#3776ab;stroke-width:1.8;fill:none;marker-end:url(#ahb)}
+.ar-d{stroke:#7b8798;stroke-width:1.4;fill:none;stroke-dasharray:5 4;marker-end:url(#ah)}
+.ln{stroke:#9aa7b8;stroke-width:1.3;fill:none}
+.lnd{stroke:#9aa7b8;stroke-width:1.3;fill:none;stroke-dasharray:5 4}
+text.ctr{text-anchor:middle}
+text.end{text-anchor:end}
+
+/* ---------- misc ---------- */
+.kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:0 5px;font-size:12px;background:var(--card)}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.mono{font-size:12.8px}
+.reslist{list-style:none;margin-left:0}
+.reslist li{border-bottom:1px dashed var(--line);padding:6px 0}
+.reslist b{display:inline}
+footer{border-top:1px solid var(--line);margin-top:60px;padding:24px 18px 60px;color:var(--muted);font-size:13.5px;text-align:center}
+#top{position:fixed;right:18px;bottom:18px;z-index:50;display:none}
+#top.on{display:block}
+@media print{
+  .topbar,#toc,#top,.copy,#progress{display:none!important}
+  .layout{display:block;max-width:none}
+  .chapter{page-break-before:always}
+  body{font-size:11.5pt}
+  pre{background:#f5f7fa;color:#111;border-color:#ccc}
+  .tok-k,.tok-s,.tok-c,.tok-n,.tok-f,.tok-d,.tok-b,.tok-t{color:#111!important;font-style:normal}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#7b8798"/></marker>
+  <marker id="ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#3776ab"/></marker>
+</defs></svg>
+
+<header class="topbar">
+  <div class="brand">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><path fill="#3776ab" d="M15.9 2c-3 0-5.6.2-7.1.6-2.9.8-4.2 2.4-4.2 5v3.6h11.2v1.2H5.2C2 12.4.6 14.6.6 18.4v4.1c0 3 1.9 5 5.1 5.4 2.2.3 4.3.4 6.6.2 2.6-.2 4.3-2.2 4.3-5.2v-3.3c0-3-1.9-4.9-5.1-4.9h-4v-1.4h7.6c2.8 0 4.4-2.1 4.4-4.9V8.6c0-2.7-1.7-4.5-4.4-5.2C13.5 2.9 12 2 15.9 2zM10.3 4.3c.8 0 1.5.7 1.5 1.5s-.7 1.5-1.5 1.5S8.8 6.6 8.8 5.8s.7-1.5 1.5-1.5z"/><path fill="#ffd43b" d="M16.1 30c3 0 5.6-.2 7.1-.6 2.9-.8 4.2-2.4 4.2-5v-3.6H16.2v-1.2h10.6c3.2 0 4.6-2.2 4.6-6v-4.1c0-3-1.9-5-5.1-5.4-2.2-.3-4.3-.4-6.6-.2-2.6.2-4.3 2.2-4.3 5.2v3.3c0 3 1.9 4.9 5.1 4.9h4v1.4h-7.6c-2.8 0-4.4 2.1-4.4 4.9v3.4c0 2.7 1.7 4.5 4.4 5.2 1.3.3 2.8 1.2-1.1 1.2zm5.6-2.3c-.8 0-1.5-.7-1.5-1.5s.7-1.5 1.5-1.5 1.5.7 1.5 1.5-.7 1.5-1.5 1.5z"/></svg>
+    <div>The Ultimate Python Guide<br><small id="versions">Python 3.12 → 3.15 · offline reference</small></div>
+  </div>
+  <div class="searchwrap">
+    <span class="ico">🔍</span>
+    <input id="q" type="search" placeholder="Search 400+ topics — try “decorator”, “GIL”, “walrus”, “pytest”…" autocomplete="off" spellcheck="false">
+    <span class="hint">/</span>
+    <div id="results"></div>
+  </div>
+  <button class="btn" id="theme" title="Toggle dark / light">🌙</button>
+  <button class="btn" id="print" title="Print or save as PDF">🖨</button>
+</header>
+
+<div class="layout">
+  <nav id="toc" aria-label="Table of contents"></nav>
+  <main id="content">
+
+<section class="chapter" id="start">
+  <h2><span class="num">0</span> Start here — how to use this guide</h2>
+  <p class="tagline">Everything about Python in one file: the language, the standard library, the tooling, the
+  performance model, the ecosystem and the best resources on the internet. No account, no network, no ads.</p>
+
+  <div class="hero">
+    <h1>The Ultimate Python Guide</h1>
+    <p class="lede">A single, self-contained reference you can keep open in a browser tab (or print to PDF) while you
+    code — written against <b>Python 3.12–3.15</b>, the versions you will actually meet in 2026. Every major topic has a
+    diagram, a decision table, and runnable code you can copy in one click.</p>
+    <div class="stats" id="stats">
+      <div class="stat"><b>25</b>chapters</div>
+      <div class="stat"><b>—</b>topics</div>
+      <div class="stat"><b>—</b>code examples</div>
+      <div class="stat"><b>—</b>diagrams</div>
+      <div class="stat"><b>0</b>network calls</div>
+    </div>
+    <div class="badges">
+      <span class="pill hot">Updated for Python 3.14 / 3.15</span>
+      <span class="pill">Free-threading (no-GIL) covered</span>
+      <span class="pill">uv · ruff · pytest · mypy</span>
+      <span class="pill">Searchable offline</span>
+    </div>
+  </div>
+
+  <section class="sub">
+    <h3>0.1 Four ways to read this</h3>
+    <div class="grid2">
+      <div class="card"><h4>🌱 I'm learning from zero</h4>Read chapters <b>1 → 9</b> in order, typing every example into a REPL. Do not skip chapter 5 (data structures) — it is the single highest-value chapter for a beginner. Then build the three starter projects in chapter 19.</div>
+      <div class="card"><h4>⚡ I need it for work, now</h4>Jump straight to the reference tables: <b>ch. 14</b> (standard library recipes), <b>ch. 11</b> (files &amp; data), <b>ch. 15</b> (concurrency), <b>ch. 19</b> (project setup). Use <span class="kbd">/</span> to search instead of scrolling.</div>
+      <div class="card"><h4>🎯 I have an interview</h4><b>Ch. 21</b> (gotchas), <b>ch. 22</b> (idioms + interview Q&amp;A), <b>ch. 16</b> (memory &amp; internals) and the complexity tables in ch. 5. Those four cover ~90% of Python interview questions.</div>
+      <div class="card"><h4>🔬 I want to know how Python really works</h4><b>Ch. 2</b> (interpreter pipeline), <b>ch. 16</b> (objects, refcounting, GC, bytecode), <b>ch. 8</b> (the data model), <b>ch. 17</b> (profiling). Then read CPython's <span class="mono">Objects/</span> source with chapter 16 as your map.</div>
+    </div>
+    <div class="tip"><b>Tip:</b> press <span class="kbd">/</span> anywhere to jump to search, <span class="kbd">Esc</span> to close
+    results, and <span class="kbd">🌙</span> in the top bar for dark mode. “🖨” turns the whole guide into a clean PDF for offline reading.</div>
+  </section>
+
+  <section class="sub">
+    <h3>0.2 The map of Python — what this guide covers</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 470" role="img" aria-label="Map of Python knowledge areas">
+        <text class="tt" x="450" y="26" text-anchor="middle">The Python landscape — 25 chapters, 6 rings</text>
+        <text class="sm" x="450" y="45" text-anchor="middle">Inner rings you must know cold · outer rings you look up when needed</text>
+
+        <rect x="300" y="70" width="300" height="70" rx="14" fill="#3776ab"/>
+        <text class="w t" x="450" y="100" text-anchor="middle" style="fill:#fff">CORE LANGUAGE · ch 3–4</text>
+        <text class="sm" x="450" y="120" text-anchor="middle" style="fill:#dbe9f6">values · operators · strings · if/for · match</text>
+
+        <rect x="150" y="165" width="270" height="80" class="ba"/>
+        <text class="t" x="285" y="190" text-anchor="middle">DATA &amp; FUNCTIONS · ch 5–7</text>
+        <text class="sm" x="285" y="209" text-anchor="middle">list/dict/set · comprehensions</text>
+        <text class="sm" x="285" y="225" text-anchor="middle">iterators · generators · decorators</text>
+
+        <rect x="480" y="165" width="270" height="80" class="ba"/>
+        <text class="t" x="615" y="190" text-anchor="middle">DESIGN · ch 8–10</text>
+        <text class="sm" x="615" y="209" text-anchor="middle">classes · MRO · dunders</text>
+        <text class="sm" x="615" y="225" text-anchor="middle">exceptions · modules · imports</text>
+
+        <rect x="90" y="270" width="220" height="80" class="bb"/>
+        <text class="t" x="200" y="295" text-anchor="middle">STD LIBRARY · ch 11, 13, 14</text>
+        <text class="sm" x="200" y="314" text-anchor="middle">pathlib · json · re · sqlite3</text>
+        <text class="sm" x="200" y="330" text-anchor="middle">typing · collections · itertools</text>
+
+        <rect x="340" y="270" width="220" height="80" class="bb"/>
+        <text class="t" x="450" y="295" text-anchor="middle">RUNTIME · ch 15–17</text>
+        <text class="sm" x="450" y="314" text-anchor="middle">GIL · threads · asyncio</text>
+        <text class="sm" x="450" y="330" text-anchor="middle">memory · refcount · profiling</text>
+
+        <rect x="590" y="270" width="220" height="80" class="bb"/>
+        <text class="t" x="700" y="295" text-anchor="middle">QUALITY · ch 18–19</text>
+        <text class="sm" x="700" y="314" text-anchor="middle">pytest · pdb · logging</text>
+        <text class="sm" x="700" y="330" text-anchor="middle">uv · ruff · mypy · CI</text>
+
+        <rect x="150" y="375" width="260" height="70" class="bc"/>
+        <text class="t" x="280" y="400" text-anchor="middle">ECOSYSTEM · ch 20</text>
+        <text class="sm" x="280" y="419" text-anchor="middle">web · data/ML · automation · CLI · science</text>
+
+        <rect x="440" y="375" width="310" height="70" class="bc"/>
+        <text class="t" x="595" y="400" text-anchor="middle">MASTERY · ch 21–24</text>
+        <text class="sm" x="595" y="419" text-anchor="middle">gotchas · idioms · interview Qs · resources &amp; roadmaps</text>
+
+        <path class="ar" d="M450 140 V162"/>
+        <path class="ar" d="M300 205 H147" />
+        <path class="ar" d="M600 205 H777"/>
+        <path class="ar" d="M255 245 V267"/>
+        <path class="ar" d="M615 245 V267"/>
+      </svg>
+      <figcaption>Fig 0.1 — Learn the inner rings first; outer rings are reference, not memorisation.</figcaption>
+    </figure>
+  </section>
+
+  <section class="sub">
+    <h3>0.3 Conventions used in this guide</h3>
+    <table class="tbl">
+      <thead><tr><th>Notation</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>&gt;&gt;&gt;</code></td><td>A line typed into the interactive REPL; the following line is its output.</td></tr>
+        <tr><td><span class="pill hot">3.12+</span> <span class="pill hot">3.14+</span></td><td>Minimum Python version required for that feature.</td></tr>
+        <tr><td><span class="mono">$</span></td><td>A shell/terminal command (Linux/macOS; Windows equivalents are given in ch. 1).</td></tr>
+        <tr><td>Blue / yellow / red boxes</td><td>Note (extra context) / Tip (do this) / Warning (this will bite you).</td></tr>
+        <tr><td><b>⏱ O(...)</b></td><td>Big-O time complexity for the average case.</td></tr>
+      </tbody>
+    </table>
+    <p class="small muted">Code blocks are copy-paste runnable unless marked <i>pseudo-code</i>. Version-sensitive behaviour is
+    flagged inline. Everything here works on CPython 3.12 and later unless stated otherwise.</p>
+  </section>
+</section>
+
+<section class="chapter" id="ch1">
+  <h2><span class="num">1</span> Python in 2026 — versions, install, environment</h2>
+  <p class="tagline">What Python is, which version to use, and how to get a clean, isolated setup on any OS.</p>
+
+  <section class="sub">
+    <h3>1.1 What Python actually is</h3>
+    <p>Python is a <b>high-level, dynamically typed, garbage-collected, multi-paradigm</b> language whose reference
+    implementation (CPython) compiles source to bytecode and interprets it on a virtual machine. It is also the
+    <b>glue language</b> of computing: most modern Python is a thin layer of Python calling fast C, C++, Rust or GPU code
+    (NumPy, PyTorch, polars, pydantic, uv).</p>
+    <div class="grid3">
+      <div class="card"><h4>Design philosophy</h4>PEP 20 “The Zen of Python” — readability counts, explicit beats implicit, simple beats complex. Run <code>import this</code>.</div>
+      <div class="card"><h4>Execution model</h4>Compiled to bytecode → executed by the PVM on a stack machine. No compile step you manage; <code>.pyc</code> files cache bytecode.</div>
+      <div class="card"><h4>Typing</h4>Dynamically typed at runtime, optionally <i>statically type-checked</i> by tools (mypy/pyright/ty) via annotations. Types are never enforced at runtime by the language.</div>
+    </div>
+  </section>
+
+  <section class="sub">
+    <h3>1.2 Which version should you use?</h3>
+    <p>Since PEP 602, Python ships <b>one feature release per year</b> in October, supported for 5 years (2 years bugfix + 3
+    years security). In 2026 you should be targeting <b>3.12+</b> in production and learning on <b>3.13/3.14</b>.</p>
+    <figure class="dg">
+      <svg viewBox="0 0 900 300" role="img" aria-label="Python version timeline">
+        <text class="tt" x="20" y="26">Release timeline &amp; what each version gave you</text>
+        <line x1="60" y1="180" x2="860" y2="180" stroke="#9aa7b8" stroke-width="2"/>
+        <g class="mono">
+          <circle cx="90"  cy="180" r="6" fill="#9aa7b8"/><text x="90"  y="205" text-anchor="middle" class="sm">3.6</text><text x="90"  y="221" text-anchor="middle" class="sm">2016</text>
+          <circle cx="185" cy="180" r="6" fill="#9aa7b8"/><text x="185" y="205" text-anchor="middle" class="sm">3.8</text><text x="185" y="221" text-anchor="middle" class="sm">2019</text>
+          <circle cx="280" cy="180" r="6" fill="#9aa7b8"/><text x="280" y="205" text-anchor="middle" class="sm">3.9</text><text x="280" y="221" text-anchor="middle" class="sm">2020</text>
+          <circle cx="375" cy="180" r="6" fill="#9aa7b8"/><text x="375" y="205" text-anchor="middle" class="sm">3.10</text><text x="375" y="221" text-anchor="middle" class="sm">2021</text>
+          <circle cx="470" cy="180" r="6" fill="#c99700"/><text x="470" y="205" text-anchor="middle" class="sm">3.11</text><text x="470" y="221" text-anchor="middle" class="sm">2022</text>
+          <circle cx="560" cy="180" r="6" fill="#c99700"/><text x="560" y="205" text-anchor="middle" class="sm">3.12</text><text x="560" y="221" text-anchor="middle" class="sm">2023</text>
+          <circle cx="650" cy="180" r="7" fill="#2e9e63"/><text x="650" y="205" text-anchor="middle" class="sm">3.13</text><text x="650" y="221" text-anchor="middle" class="sm">2024</text>
+          <circle cx="740" cy="180" r="8" fill="#3776ab"/><text x="740" y="205" text-anchor="middle" class="sm">3.14</text><text x="740" y="221" text-anchor="middle" class="sm">2025</text>
+          <circle cx="830" cy="180" r="8" fill="#8e6fc0"/><text x="830" y="205" text-anchor="middle" class="sm">3.15</text><text x="830" y="221" text-anchor="middle" class="sm">2026</text>
+        </g>
+        <rect x="60"  y="60" width="180" height="54" class="bx"/><text class="sm" x="150" y="80" text-anchor="middle">3.6–3.8 · era of</text><text class="sm" x="150" y="96" text-anchor="middle">f-strings &amp; walrus (:&#61;)</text>
+        <rect x="250" y="60" width="180" height="54" class="bb"/><text class="sm" x="340" y="80" text-anchor="middle">3.9–3.10 · dict merge |</text><text class="sm" x="340" y="96" text-anchor="middle">match/case · better errors</text>
+        <rect x="440" y="60" width="180" height="54" class="bc"/><text class="sm" x="530" y="80" text-anchor="middle">3.11–3.12 · +25% faster</text><text class="sm" x="530" y="96" text-anchor="middle">type params · f-string 2.0</text>
+        <rect x="630" y="60" width="250" height="54" class="ba"/><text class="sm" x="755" y="80" text-anchor="middle">3.13–3.15 · experimental JIT</text><text class="sm" x="755" y="96" text-anchor="middle">free-threading · t-strings · lazy imports</text>
+        <path class="lnd" d="M150 114 V176"/><path class="lnd" d="M340 114 V176"/><path class="lnd" d="M530 114 V176"/><path class="lnd" d="M755 114 V176"/>
+        <text class="sm" x="60" y="255">▪ 3.12 = safe floor for new production code in 2026 &nbsp;&nbsp; ▪ 3.14 = current stable &nbsp;&nbsp; ▪ 3.15 = released Oct 2026</text>
+        <text class="sm" x="60" y="275">▪ Support window: 2 years bug fixes + 3 years security · see devguide.python.org/versions</text>
+      </svg>
+      <figcaption>Fig 1.1 — One release a year since 3.9. Pick the newest version your dependencies support.</figcaption>
+    </figure>
+
+    <table class="tbl">
+      <thead><tr><th>Version</th><th>Headline features you will actually use</th></tr></thead>
+      <tbody>
+        <tr><td><b>3.9</b></td><td><code>dict | dict</code> merge, <code>str.removeprefix/suffix</code>, generic builtins in annotations <code>list[int]</code>.</td></tr>
+        <tr><td><b>3.10</b></td><td><code>match/case</code>, <code>X | Y</code> union types, <code>zip(strict=True)</code>, far better error messages.</td></tr>
+        <tr><td><b>3.11</b> <span class="pill hot">big win</span></td><td>Adaptive interpreter: <b>10–60% faster</b> than 3.10; <code>ExceptionGroup</code>/<code>except*</code>; <code>tomllib</code>; task groups arrive in asyncio; self-typed <code>Self</code>.</td></tr>
+        <tr><td><b>3.12</b></td><td>PEP 695 <code>type X = …</code>, <code>class C[T]:</code>, <code>def f[T]()</code>; f-strings can reuse quotes and span lines; per-interpreter GIL; <code>itertools.batched</code>; <code>sys.monitoring</code>.</td></tr>
+        <tr><td><b>3.13</b></td><td>Experimental <b>JIT</b> and <b>free-threaded (no-GIL) build</b>; improved REPL; <code>copy.replace()</code>; <code>random</code> CLI; dead-battery modules removed.</td></tr>
+        <tr><td><b>3.14</b> <span class="pill hot">current</span></td><td><b>Free-threading officially supported</b> (PEP 779); <b>t-strings</b> (PEP 750); deferred annotations (PEP 649); <code>compression.zstd</code>; multiple interpreters in stdlib (PEP 734); incremental GC; UUID 6–8; colour REPL; zero-overhead remote debugging (PEP 768).</td></tr>
+        <tr><td><b>3.15</b> <span class="pill hot">new</span></td><td><b>frozendict</b> builtin (PEP 814); <b>explicit lazy imports</b> (PEP 810); <code>sentinel()</code> builtin (PEP 661); dedicated <b>profiling package</b> + Tachyon sampling profiler (PEP 799); UTF-8 default file encoding (PEP 686); upgraded JIT; free-threading installed by default on macOS builds.</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><b>Reality check for 2026:</b> the free-threaded build and JIT are real but optional. The default
+    <code>python3</code> you install is still the GIL build. Choose free-threading only when a benchmark on <i>your</i>
+    workload shows a win (multi-threaded CPU work), and expect ~5–15% slower single-threaded code in exchange.</div>
+  </section>
+
+  <section class="sub">
+    <h3>1.3 Installing Python cleanly</h3>
+    <table class="tbl">
+      <thead><tr><th>OS</th><th>Recommended install</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><b>Windows</b></td><td><code>winget install Python.Python.3.14</code> — or the official installer from python.org</td><td>Tick “Add python.exe to PATH”. Avoid the Microsoft Store build for dev work. Use <code>py -3.14</code> to select a version.</td></tr>
+        <tr><td><b>macOS</b></td><td><code>brew install python@3.14</code> or <code>uv python install 3.14</code></td><td>Never use the ancient system <code>/usr/bin/python3</code>. Homebrew or uv-managed builds only.</td></tr>
+        <tr><td><b>Debian/Ubuntu</b></td><td><code>sudo apt install python3.14 python3.14-venv pipx</code> — or <b>uv</b>/pyenv for the latest</td><td>Distro Python can lag a year or two behind. <code>python3.14-venv</code> is a separate package — don't forget it.</td></tr>
+        <tr><td><b>Any</b></td><td><code>uv python install 3.14</code> then <code>uv venv --python 3.14</code></td><td><b>uv</b> installs, pins and switches interpreters per project faster than pyenv, and needs no admin rights.</td></tr>
+      </tbody>
+    </table>
+    <div class="warn"><b>Windows PATH pain:</b> if <code>python</code> opens the Microsoft Store, you have an App-Execution
+    Alias shadowing your install. Settings → “App execution aliases” → turn off <i>python.exe</i> / <i>python3.exe</i>. If
+    <code>pip</code> is not found, use <code>python -m pip</code> — it always works and always targets the interpreter you named.</div>
+
+    <h4>Verify and know your tools</h4>
+    <pre><code>$ python3 -V            # Python 3.14.8  → interpreter version
+$ python3 -c "import sys; print(sys.executable, sys.version_info)"
+$ which -a python3      # Linux/macOS: which installs are on PATH
+> where python          # Windows
+$ python3 -m site       # where do site-packages live for THIS interpreter?
+$ python3 -m pip --version   # is pip tied to this interpreter?</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>1.4 The environment stack — how isolation actually works</h3>
+    <p>Every Python problem you will ever have with “wrong version” or “module not found” is visible in this picture.
+    Memorise it.</p>
+    <figure class="dg">
+      <svg viewBox="0 0 900 420" role="img" aria-label="Interpreter, virtual environment and site-packages layout">
+        <text class="tt" x="20" y="26">Where your code, packages and interpreter live</text>
+
+        <rect x="30" y="46" width="380" height="330" class="bx"/>
+        <text class="t" x="220" y="70" text-anchor="middle">MACHINE / SYSTEM</text>
+        <rect x="50" y="84" width="340" height="26" class="bb"/><text class="mono" x="220" y="102" text-anchor="middle">/usr/bin/python3  ·  C:\Python314\python.exe</text>
+        <rect x="50" y="120" width="340" height="44" class="bx"/><text class="sm" x="220" y="139" text-anchor="middle">Standard library (compiled into the runtime)</text><text class="sm" x="220" y="156" text-anchor="middle">os · json · pathlib · sqlite3 · asyncio · tkinter …</text>
+
+        <rect x="60" y="180" width="150" height="180" class="bc"/>
+        <text class="t" x="135" y="202" text-anchor="middle">venv A</text>
+        <text class="sm" x="135" y="222" text-anchor="middle">.venv/</text>
+        <rect x="72" y="232" width="126" height="24" class="bx"/><text class="sm" x="135" y="249" text-anchor="middle">bin/ · Scripts/</text>
+        <rect x="72" y="262" width="126" height="86" class="bx"/>
+        <text class="sm" x="135" y="281" text-anchor="middle">lib/python3.14/</text>
+        <text class="mono" x="135" y="299" text-anchor="middle" style="font-size:10.5px">site-packages/</text>
+        <text class="sm" x="135" y="316" text-anchor="middle">django 5.2</text>
+        <text class="sm" x="135" y="332" text-anchor="middle">requests 2.32</text>
+
+        <rect x="240" y="180" width="150" height="180" class="bc"/>
+        <text class="t" x="315" y="202" text-anchor="middle">venv B</text>
+        <text class="sm" x="315" y="222" text-anchor="middle">.venv/</text>
+        <rect x="252" y="232" width="126" height="24" class="bx"/><text class="sm" x="315" y="249" text-anchor="middle">bin/ · Scripts/</text>
+        <rect x="252" y="262" width="126" height="86" class="bx"/>
+        <text class="sm" x="315" y="281" text-anchor="middle">lib/python3.14/</text>
+        <text class="mono" x="315" y="299" text-anchor="middle" style="font-size:10.5px">site-packages/</text>
+        <text class="sm" x="315" y="316" text-anchor="middle">numpy 2.3</text>
+        <text class="sm" x="315" y="332" text-anchor="middle">pandas 2.3</text>
+
+        <rect x="450" y="90" width="420" height="112" class="ba"/>
+        <text class="t" x="660" y="114" text-anchor="middle">Your project (git repo)</text>
+        <rect x="468" y="126" width="384" height="24" class="w" stroke="#9dbcd8" rx="5"/><text class="mono" x="660" y="143" text-anchor="middle">pyproject.toml  ← dependencies + config</text>
+        <rect x="468" y="156" width="184" height="24" class="w" stroke="#9dbcd8" rx="5"/><text class="mono" x="560" y="173" text-anchor="middle">uv.lock</text>
+        <rect x="668" y="156" width="184" height="24" class="w" stroke="#9dbcd8" rx="5"/><text class="mono" x="760" y="173" text-anchor="middle">src/app/</text>
+
+        <rect x="450" y="222" width="420" height="154" class="bd"/>
+        <text class="t" x="660" y="246" text-anchor="middle">NEVER do this</text>
+        <text class="sm" x="660" y="268" text-anchor="middle">✗ pip install into the system Python</text>
+        <text class="sm" x="660" y="288" text-anchor="middle">✗ two projects sharing one global environment</text>
+        <text class="sm" x="660" y="308" text-anchor="middle">✗ committing .venv/ to git</text>
+        <text class="sm" x="660" y="330" text-anchor="middle">✗ <tspan class="mono" style="font-size:10.5px">sudo pip install</tspan> — breaks your OS tools</text>
+        <text class="sm" x="660" y="352" text-anchor="middle">✓ one venv per project, always · commit the lock file</text>
+
+        <path class="ar" d="M450 200 H320"/>
+        <path class="ar" d="M450 254 H400"/>
+      </svg>
+      <figcaption>Fig 1.2 — One interpreter, many isolated environments. <code>sys.path</code> decides which
+      <span class="mono">site-packages</span> wins (ch. 10).</figcaption>
+    </figure>
+  </section>
+
+  <section class="sub">
+    <h3>1.5 Create a project in 60 seconds (the 2026 way)</h3>
+    <pre><code># --- Option A: uv (fastest; recommended for new projects) -------------------
+$ uv init my-app        &amp;&amp; cd my-app      # creates src layout + pyproject.toml
+$ uv python pin 3.14                     # writes .python-version
+$ uv add requests httpx                  # adds deps + uv.lock
+$ uv add --dev pytest ruff mypy          # dev tools in [dependency-groups]
+$ uv run python -c "print('hello')"      # runs inside the project env — no activate needed
+$ uv run pytest -q
+
+# --- Option B: classic venv + pip ----------------------------------------
+$ python3 -m venv .venv
+$ source .venv/bin/activate              # Windows: .venv\Scripts\activate
+(.venv) $ python -m pip install -U pip
+(.venv) $ python -m pip install requests pytest
+(.venv) $ python -c "import requests; print(requests.__version__)"
+$ deactivate
+
+# --- Option C: Poetry (mature, great for libraries) ----------------------
+$ pipx install poetry
+$ poetry new my-lib --src &amp;&amp; cd my-lib
+$ poetry add httpx        # dependency
+$ poetry add -G dev pytest
+$ poetry run python -m my_lib</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Task</th><th>Command</th></tr></thead>
+      <tbody>
+        <tr><td>Run a script in the project env</td><td><code>uv run script.py</code> · <code>poetry run python script.py</code> · or activate the venv</td></tr>
+        <tr><td>Add / remove a dependency</td><td><code>uv add numpy</code> · <code>uv remove numpy</code> (never hand-edit the lock file)</td></tr>
+        <tr><td>Reproduce a teammate's env exactly</td><td><code>git clone … &amp;&amp; uv sync</code> (reads <span class="mono">uv.lock</span>)</td></tr>
+        <tr><td>Update everything safely</td><td><code>uv lock --upgrade</code> → run tests → commit the new lock file</td></tr>
+        <tr><td>Install a CLI tool globally, sanely</td><td><code>uv tool install ruff</code> · <code>pipx install ruff</code> (isolated, no pollution)</td></tr>
+        <tr><td>Free-threaded interpreter</td><td><code>uv venv --python 3.14+freethreaded</code> then benchmark before adopting</td></tr>
+        <tr><td>Find the interpreter a script uses</td><td><code>python -c "import sys;print(sys.executable)"</code> · <code>uv run which python</code></td></tr>
+      </tbody>
+    </table>
+    <div class="tip"><b>Never again:</b> “it works on my machine” → commit <span class="mono">pyproject.toml</span> +
+    <span class="mono">uv.lock</span> (or <span class="mono">poetry.lock</span>). A lock file pins the exact version and
+    hash of every transitive dependency for every platform.</div>
+  </section>
+
+  <section class="sub">
+    <h3>1.6 Editors and notebooks</h3>
+    <div class="grid2">
+      <div class="card"><h4>VS Code (most popular)</h4>Install <b>Python</b>, <b>Pylance</b> (types + autocomplete), <b>Ruff</b>, <b>Jupyter</b>. Select the interpreter with <span class="kbd">Ctrl/Cmd+Shift+P</span> → “Python: Select Interpreter” → your <span class="mono">.venv</span>. Set <code>"python.analysis.typeCheckingMode": "basic"</code> to catch bugs as you type.</div>
+      <div class="card"><h4>PyCharm / PyCharm CE</h4>The best refactoring and debugger experience for large codebases. Community edition is free and includes type-aware inspection, pytest runner and a database tool window.</div>
+      <div class="card"><h4>Cursor / Zed / Neovim</h4>AI-first editors (Cursor) or speed (Zed, Neovim + pyright + ruff-lsp). Neovim: <code>nvim-lspconfig</code> + <code>pyright</code> + <code>ruff</code> gives you the same engine as VS Code.</div>
+      <div class="card"><h4>Jupyter / marimo</h4>Use JupyterLab for data exploration; <code>marimo</code> or <code>jupytext</code> if you want notebooks that diff cleanly in git. Rule: notebooks for exploring, modules + tests for shipping.</div>
+    </div>
+    <div class="note"><b>REPL upgrades worth knowing (3.13/3.14):</b> the default <code>python</code> REPL now has colour
+    syntax highlighting, multi-line editing, <code>F1</code> for help, <code>F2</code> for history, <code>F3</code> paste-mode
+    and block-level undo. For a richer shell install <code>pip install ipython</code> (tab-completion of attributes,
+    <code>%magic</code>, <code>obj?</code>).</div>
+  </section>
+</section>

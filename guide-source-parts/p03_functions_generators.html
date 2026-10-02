@@ -1,0 +1,497 @@
+<section class="chapter" id="ch6">
+  <h2><span class="num">6</span> Functions, scopes and decorators</h2>
+  <p class="tagline">Arguments, closures, the LEGB rule, first-class functions, and decorators explained with a picture.</p>
+
+  <section class="sub">
+    <h3>6.1 Defining and calling</h3>
+    <pre><code>def greet(name: str, punct: str = "!", *, upper: bool = False) -&gt; str:
+    """One-line summary.
+
+    Args:
+        name: who to greet.
+        punct: trailing punctuation.
+        upper: shout it.
+    """
+    msg = f"hi {name}{punct}"
+    return msg.upper() if upper else msg
+
+greet("Ada")                      # positional
+greet("Ada", "!!")                # positional
+greet(name="Ada", punct="?")      # keyword
+greet("Ada", upper=True)          # keyword-only (after the bare *)
+
+def area(w, /, h, *, unit="cm"):  # `/` = positional-only, `*` = keyword-only
+    return w * h
+
+# Everything is an object: functions have attributes, are hashable, can be stored
+f = greet
+f.__name__, f.__doc__, f.__annotations__, f.__defaults__
+callables = [greet, str.upper, len]
+list(map(lambda s: s.strip(), [" a ", "b "]))</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Parameter kind</th><th>Syntax</th><th>Called how</th></tr></thead>
+      <tbody>
+        <tr><td>Positional-or-keyword</td><td><code>def f(a, b)</code></td><td>Either, in order or by name.</td></tr>
+        <tr><td>Positional-only</td><td><code>def f(a, /)</code></td><td>Only <code>f(1)</code>; the name is private to the implementation (3.8+).</td></tr>
+        <tr><td>Keyword-only</td><td><code>def f(*, a)</code></td><td>Only <code>f(a=1)</code> — makes call sites self-documenting.</td></tr>
+        <tr><td>Varargs</td><td><code>def f(*args)</code></td><td>Extra positionals arrive as a tuple.</td></tr>
+        <tr><td>Var-keyword</td><td><code>def f(**kwargs)</code></td><td>Extra keywords arrive as a dict.</td></tr>
+        <tr><td>Forwarding</td><td><code>def f(*args, **kwargs): g(*args, **kwargs)</code></td><td>Perfect pass-through — the basis of decorators and wrappers.</td></tr>
+      </tbody>
+    </table>
+    <pre><code>def stats(*numbers, **options):
+    scale = options.get("scale", 1)
+    print(f"{len(numbers)} values, scale={scale}")
+
+stats(1, 2, 3, scale=2)
+stats(*[1, 2, 3], **{"scale": 3})     # unpack at the call site
+
+# ⚠ THE #1 PYTHON TRAP: mutable default arguments
+def bad(item, bucket=[]):        # the SAME list is reused for every call
+    bucket.append(item); return bucket
+bad(1); bad(2)                   # → [1] then [1, 2]  (!)
+
+def good(item, bucket=None):     # fix: sentinel default, create inside
+    if bucket is None:
+        bucket = []
+    bucket.append(item); return bucket</code></pre>
+    <div class="warn"><b>Why it happens:</b> default values are evaluated <i>once</i>, when the <code>def</code> statement
+    runs, and stored on the function object (<code>f.__defaults__</code>). Applies to <code>[] {} set()</code> and any
+    custom mutable object. Use <code>None</code>, or better, a sentinel: <code>_MISSING = object()</code> — needed when
+    <code>None</code> is a meaningful value.</div>
+  </section>
+
+  <section class="sub">
+    <h3>6.2 Scope: the LEGB rule</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 300" role="img" aria-label="LEGB name resolution rule">
+        <text class="tt" x="20" y="26">Name lookup order: Local → Enclosing → Global → Builtins</text>
+        <rect x="40" y="46" width="380" height="230" class="ba"/>
+        <text class="t" x="60" y="70">B · Builtins (len, print, ValueError …)</text>
+        <rect x="60" y="82" width="340" height="180" class="bb"/>
+        <text class="t" x="80" y="106">G · Module/global (top-level names, imports)</text>
+        <rect x="80" y="118" width="300" height="130" class="bc"/>
+        <text class="t" x="100" y="142">E · Enclosing function</text>
+        <rect x="100" y="154" width="260" height="80" class="bp"/>
+        <text class="t" x="120" y="178">L · Local (this function's vars)</text>
+        <text class="sm" x="120" y="200">name found here wins</text>
+        <text class="sm" x="120" y="218">↑ search goes outwards only</text>
+
+        <rect x="450" y="46" width="420" height="230" class="bx"/>
+        <text class="t" x="660" y="70" text-anchor="middle">Rules &amp; tools</text>
+        <text class="sm" x="470" y="96">• Assignment inside a function makes the name local for</text>
+        <text class="sm" x="486" y="114">the WHOLE function → <tspan class="mono">UnboundLocalError</tspan> if read before set.</text>
+        <text class="sm" x="470" y="140">• <tspan class="mono">global x</tspan> — declare you mean the module-level name.</text>
+        <text class="sm" x="470" y="164">• <tspan class="mono">nonlocal x</tspan> — rebind a name in the enclosing function.</text>
+        <text class="sm" x="470" y="188">• <tspan class="mono">globals()</tspan> / <tspan class="mono">locals()</tspan> — dict views (do not assign into them).</text>
+        <text class="sm" x="470" y="212">• Closures capture VARIABLES, not values → late binding (below).</text>
+        <text class="sm" x="470" y="238">• Avoid <tspan class="mono">from mod import *</tspan>: it pollutes and shadows globals.</text>
+        <text class="sm" x="470" y="262">• Module-level code runs once at import; keep it side-effect-light.</text>
+      </svg>
+      <figcaption>Fig 6.1 — LEGB. Most “variable not defined / strange value” bugs are a scope misunderstanding.</figcaption>
+    </figure>
+    <pre><code>count = 0
+def bump():
+    global count        # without this → UnboundLocalError
+    count += 1
+
+def outer():
+    n = 0
+    def inner():
+        nonlocal n      # rebinds outer's n
+        n += 1
+        return n
+    return inner
+
+# Late binding: closures look up the variable when CALLED
+funcs = [lambda: i for i in range(3)]
+[f() for f in funcs]                  # [2, 2, 2]  ← surprise!
+funcs = [lambda i=i: i for i in range(3)]     # bind now via default arg
+[f() for f in funcs]                  # [0, 1, 2]
+# or use functools.partial / a factory function
+from functools import partial
+funcs = [partial(lambda i: i, i) for i in range(3)]
+# Python 3.12+ PEP 709 inlines comprehensions, so the classic
+#   [lambda: x for x in range(3)] gotcha no longer leaks `x` — but the
+#   late-binding rule for lambdas in loops still stands.
+
+# Inspecting scope at runtime
+def probe():
+    x = 1
+    print(locals())        # {'x': 1}
+probe()
+print(globals()["__name__"])</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>6.3 First-class functions, lambda, and functional tools</h3>
+    <pre><code># Functions as values
+def apply(fn, xs): return [fn(x) for x in xs]
+apply(str.upper, ["a", "b"])
+
+# lambda: a one-expression anonymous function (no statements, no return keyword)
+key = lambda r: (r["score"], -r["age"])
+sorted(rows, key=key)
+
+# Prefer operator module over lambdas for speed & clarity
+from operator import itemgetter, attrgetter, methodcaller, add, mul
+rows.sort(key=itemgetter("score"))
+sorted(users, key=attrgetter("last_name", "first_name"))
+from functools import reduce, partial, lru_cache, cache, cmp_to_key, wraps
+
+reduce(lambda acc, x: acc + x, range(10), 0)      # 45  (prefer sum() instead)
+
+def power(base, exp): return base ** exp
+square = partial(power, exp=2)
+square(9)                                          # 81
+
+@cache                       # unbounded memoisation (3.9+); lru_cache(maxsize=n) to bound
+def fib(n): return n if n &lt; 2 else fib(n-1) + fib(n-2)
+
+# Composing small functions
+def compose(*fns):
+    def run(x):
+        for fn in reversed(fns):
+            x = fn(x)
+        return x
+    return run
+clean = compose(str.strip, str.lower, lambda s: s.replace("-", "_"))</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Tool</th><th>Use</th><th>Watch out</th></tr></thead>
+      <tbody>
+        <tr><td><code>map(f, it)</code></td><td>lazy transform</td><td>Prefer a comprehension for readability; <code>map</code> wins with an existing named function.</td></tr>
+        <tr><td><code>filter(p, it)</code></td><td>lazy selection</td><td><code>filter(None, xs)</code> drops all falsy items.</td></tr>
+        <tr><td><code>reduce(f, it, init)</code></td><td>fold to one value</td><td>Prefer <code>sum/min/max/any/all</code> or an explicit loop; a loop is clearer for non-associative ops.</td></tr>
+        <tr><td><code>functools.cache</code></td><td>memoise pure functions</td><td>Arguments must be hashable; unbounded memory for unbounded inputs. Exclude mutable state from the key.</td></tr>
+        <tr><td><code>functools.singledispatch</code></td><td>type-based overloading</td><td>Cleaner than <code>isinstance</code> chains for plugin-style dispatch.</td></tr>
+        <tr><td><code>functools.total_ordering</code></td><td>free comparison operators</td><td>Define <code>__eq__</code> + one of <code>__lt__/__le__/__gt__/__ge__</code>.</td></tr>
+      </tbody>
+    </table>
+    <pre><code>from functools import singledispatch
+@singledispatch
+def render(x): return str(x)
+
+@render.register
+def _(x: int): return f"{x:,}"
+
+@render.register
+def _(x: list): return ", ".join(map(str, x))
+
+render(1234567)     # '1,234,567'
+render([1, 2, 3])   # '1, 2, 3'
+render("text")      # 'text'  ← falls back to the base implementation</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>6.4 Decorators — with and without the magic</h3>
+    <p>A decorator is just a function that takes a function and returns a replacement. <code>@timer</code> above
+    <code>def f</code> is exactly <code>f = timer(f)</code>.</p>
+    <figure class="dg">
+      <svg viewBox="0 0 900 300" role="img" aria-label="Decorator mechanics">
+        <text class="tt" x="20" y="26">What <tspan class="mono">@log</tspan> actually does</text>
+        <rect x="30" y="60" width="230" height="70" class="ba"/>
+        <text class="sm" x="145" y="86" text-anchor="middle">you write</text>
+        <text class="mono" x="145" y="110" text-anchor="middle">@log</text>
+        <text class="mono" x="145" y="126" text-anchor="middle">def add(a, b): ...</text>
+
+        <rect x="320" y="60" width="250" height="70" class="bb"/>
+        <text class="sm" x="445" y="86" text-anchor="middle">Python executes at definition time</text>
+        <text class="mono" x="445" y="110" text-anchor="middle">add = log(add)</text>
+
+        <rect x="630" y="60" width="240" height="70" class="bc"/>
+        <text class="sm" x="750" y="86" text-anchor="middle">the name now points at</text>
+        <text class="sm" x="750" y="110" text-anchor="middle">the wrapper (closure)</text>
+        <text class="sm" x="750" y="126" text-anchor="middle">which calls the original</text>
+        <path class="ar2" d="M262 95 H318"/><path class="ar2" d="M572 95 H628"/>
+
+        <rect x="30" y="160" width="400" height="120" class="bx"/>
+        <text class="t" x="230" y="184" text-anchor="middle">Multiple decorators stack bottom-up</text>
+        <text class="mono sm" x="50" y="210">@outer      # applied LAST (outermost wrapper)</text>
+        <text class="mono sm" x="50" y="232">@inner      # applied FIRST</text>
+        <text class="mono sm" x="50" y="254">def f(): ...</text>
+        <text class="sm" x="50" y="274">⇒ f = outer(inner(f)) — calls run outside-in</text>
+
+        <rect x="460" y="160" width="410" height="120" class="bd"/>
+        <text class="t" x="665" y="184" text-anchor="middle">Three decorator traps</text>
+        <text class="sm" x="480" y="208">1. Without <tspan class="mono">@wraps(func)</tspan>, <tspan class="mono">f.__name__/__doc__</tspan> become "wrapper".</text>
+        <text class="sm" x="480" y="232">2. Signature is lost unless the wrapper is <tspan class="mono">(*args, **kwargs)</tspan>.</text>
+        <text class="sm" x="480" y="256">3. A decorator with arguments needs THREE levels of def.</text>
+        <text class="sm" x="480" y="278">(or use <tspan class="mono">functools.partial</tspan> / a class with <tspan class="mono">__call__</tspan>)</text>
+      </svg>
+      <figcaption>Fig 6.2 — Decorators are closures in disguise. Everything else (Flask routes, pytest fixtures, dataclasses) is built on this.</figcaption>
+    </figure>
+    <pre><code>from functools import wraps
+import time, logging
+
+def timer(func):
+    @wraps(func)                      # preserves __name__, __doc__, signature
+    def wrapper(*args, **kwargs):
+        t0 = time.perf_counter()
+        try:
+            return func(*args, **kwargs)
+        finally:
+            dt = (time.perf_counter() - t0) * 1000
+            print(f"{func.__name__} took {dt:.2f} ms")
+    return wrapper
+
+def retry(times=3, delay=0.5, exceptions=(Exception,)):     # decorator WITH arguments
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(1, times + 1):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions:
+                    if attempt == times:
+                        raise
+                    time.sleep(delay * attempt)
+        return wrapper
+    return decorator
+
+@timer
+@retry(times=3, exceptions=(TimeoutError,))
+def fetch(url: str) -&gt; str: ...
+
+# Real-world decorator zoo — you will meet every one of these
+# @dataclass          → generates __init__ / __repr__ / __eq__
+# @property           → a method that reads like an attribute
+# @staticmethod       → no self            ( @classmethod → receives the class )
+# @cache              → memoisation        ( @contextmanager → generator-based with-block )
+# @app.get("/users")  → web framework route ( @pytest.fixture → test setup/teardown )</code></pre>
+    <h4>Recursion</h4>
+    <pre><code>def factorial(n: int) -&gt; int:
+    return 1 if n &lt;= 1 else n * factorial(n - 1)
+
+# Python has NO tail-call optimisation — depth is limited (~1000 frames).
+# Convert deep recursion to iteration, or raise the limit carefully:
+import sys
+sys.setrecursionlimit(10_000)     # risks a C-stack segfault if you overdo it
+
+# Iterative memoised alternative for trees/graphs: explicit stack
+def walk(root):
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        process(node)
+        stack.extend(node.children)
+
+# functools.lru_cache turns exponential recursion into linear (classic DP trick)
+@cache
+def fib(n): return n if n &lt; 2 else fib(n-1) + fib(n-2)</code></pre>
+  </section>
+</section>
+
+<section class="chapter" id="ch7">
+  <h2><span class="num">7</span> Iterators, generators and lazy pipelines</h2>
+  <p class="tagline">Process 100 GB of data in constant memory, and understand why your iterator “ran out”.</p>
+
+  <section class="sub">
+    <h3>7.1 Generators: functions that remember where they stopped</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 320" role="img" aria-label="Generator lifecycle state machine">
+        <text class="tt" x="20" y="26">Lifecycle of a generator function call</text>
+        <rect x="40" y="60" width="180" height="60" class="ba"/>
+        <text class="t" x="130" y="86" text-anchor="middle">CREATED</text>
+        <text class="sm" x="130" y="106" text-anchor="middle">g = gen() — no code runs yet</text>
+
+        <rect x="290" y="60" width="180" height="60" class="bc"/>
+        <text class="t" x="380" y="86" text-anchor="middle">RUNNING</text>
+        <text class="sm" x="380" y="106" text-anchor="middle">next(g) executes to first yield</text>
+
+        <rect x="540" y="60" width="200" height="60" class="bb"/>
+        <text class="t" x="640" y="86" text-anchor="middle">SUSPENDED at yield</text>
+        <text class="sm" x="640" y="106" text-anchor="middle">locals + position preserved</text>
+
+        <rect x="540" y="200" width="200" height="60" class="bd"/>
+        <text class="t" x="640" y="226" text-anchor="middle">EXHAUSTED</text>
+        <text class="sm" x="640" y="246" text-anchor="middle">raises StopIteration forever</text>
+
+        <path class="ar2" d="M222 90 H288"/>
+        <path class="ar2" d="M472 90 H538"/>
+        <path class="ar" d="M640 122 V198"/>
+        <text class="sm" x="654" y="164">loop ends / return</text>
+        <path class="ar" d="M536 82 C480 40 300 40 250 60" />
+        <text class="sm" x="380" y="38" text-anchor="middle">next(g) again → resumes right after the yield</text>
+
+        <rect x="40" y="160" width="430" height="140" class="bx"/>
+        <text class="t" x="255" y="184" text-anchor="middle">Why it matters</text>
+        <text class="sm" x="60" y="208">• Memory: one item at a time, O(1) instead of O(n).</text>
+        <text class="sm" x="60" y="230">• Works on infinite streams (sensors, logs, sockets).</text>
+        <text class="sm" x="60" y="252">• Is lazy: nothing happens until you consume it.</text>
+        <text class="sm" x="60" y="274">• Is single-use: <tspan class="mono">list(g)</tspan> then <tspan class="mono">list(g)</tspan> → second is empty.</text>
+        <text class="sm" x="60" y="294">• Sends values in with <tspan class="mono">g.send(x)</tspan> — the basis of async/await.</text>
+      </svg>
+      <figcaption>Fig 7.1 — A generator is a lazy coroutine: it holds a frame, and <code>yield</code> is a pause button.</figcaption>
+    </figure>
+    <pre><code>def countdown(n):
+    print("start")                 # runs only on first next()
+    while n &gt; 0:
+        yield n                    # hand out a value, then PAUSE here
+        n -= 1
+    # falling off the end raises StopIteration automatically
+
+g = countdown(3)
+next(g)     # 'start' printed, returns 3
+next(g)     # 2
+list(g)     # [1]  (the generator is now exhausted)
+
+# Streaming a huge file — constant memory regardless of file size
+def read_records(path):
+    with open(path, encoding="utf-8") as fh:
+        header = next(fh).rstrip("\n").split(",")
+        for line in fh:
+            yield dict(zip(header, line.rstrip("\n").split(",")))
+
+for rec in read_records("huge.csv"):
+    process(rec)                   # never loads the whole file
+
+# Infinite generator + islice = the safe pattern
+import itertools
+def naturals():
+    n = 0
+    while True:
+        yield n
+        n += 1
+first_ten = list(itertools.islice(naturals(), 10))
+
+# yield from: delegate to a sub-iterator (flattens easily)
+def chain_all(*iterables):
+    for it in iterables:
+        yield from it
+list(chain_all([1,2], "ab", range(2)))     # [1, 2, 'a', 'b', 0, 1]
+
+# Two-way generators: send / throw / close
+def accumulator():
+    total = 0
+    while True:
+        x = yield total            # yield returns what was sent in
+        if x is None:
+            break
+        total += x
+
+acc = accumulator(); next(acc)     # prime it
+acc.send(10), acc.send(5)          # 10, 15
+acc.close()                        # GeneratorExit at the yield point
+
+# @contextmanager is a generator in disguise (see ch. 10)
+from contextlib import contextmanager
+@contextmanager
+def timed(label):
+    t0 = time.perf_counter()
+    yield                                   # control passes to the with-block here
+    print(f"{label}: {time.perf_counter() - t0:.3f}s")
+
+with timed("query"):
+    run_query()</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>7.2 Lazy pipelines — the mental model</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 260" role="img" aria-label="Lazy pipeline vs eager list pipeline">
+        <text class="tt" x="20" y="26">Eager vs lazy for a 10-million-row log</text>
+        <rect x="30" y="50" width="840" height="80" class="bd"/>
+        <text class="t" x="50" y="74">EAGER · every step materialises a full list</text>
+        <rect x="50" y="86" width="150" height="34" class="bx"/><text class="sm" x="125" y="108" text-anchor="middle">read 10 M lines</text>
+        <rect x="230" y="86" width="150" height="34" class="bx"/><text class="sm" x="305" y="108" text-anchor="middle">→ list of 10 M</text>
+        <rect x="410" y="86" width="150" height="34" class="bx"/><text class="sm" x="485" y="108" text-anchor="middle">→ filter → 3 M</text>
+        <rect x="590" y="86" width="150" height="34" class="bx"/><text class="sm" x="665" y="108" text-anchor="middle">→ map → 3 M</text>
+        <text class="sm" x="770" y="108">≈ 2–3 GB RAM</text>
+
+        <rect x="30" y="150" width="840" height="94" class="bc"/>
+        <text class="t" x="50" y="174">LAZY · one item flows through the whole chain at a time</text>
+        <rect x="50" y="186" width="150" height="34" class="bx"/><text class="sm" x="125" y="208" text-anchor="middle">file handle</text>
+        <rect x="230" y="186" width="150" height="34" class="bx"/><text class="sm" x="305" y="208" text-anchor="middle">filter (gen)</text>
+        <rect x="410" y="186" width="150" height="34" class="bx"/><text class="sm" x="485" y="208" text-anchor="middle">map (gen)</text>
+        <rect x="590" y="186" width="150" height="34" class="bx"/><text class="sm" x="665" y="208" text-anchor="middle">islice / sum</text>
+        <text class="sm" x="770" y="200">≈ 50 MB</text>
+        <text class="sm" x="770" y="220">and streams forever</text>
+        <path class="ar" d="M200 203 H228"/><path class="ar" d="M380 203 H408"/><path class="ar" d="M560 203 H588"/>
+      </svg>
+      <figcaption>Fig 7.2 — Generators turn “load everything, then process” into “process as it arrives”.</figcaption>
+    </figure>
+    <pre><code># The same task, four ways (slowest → fastest/most memory-efficient)
+total = 0
+for line in open(path):
+    if "ERROR" in line:
+        total += 1                                    # explicit loop: fine, verbose
+
+total = sum(1 for line in open(path) if "ERROR" in line)     # generator: best default
+
+total = len([l for l in open(path) if "ERROR" in l])         # list: wastes memory
+
+# Chained lazy pipeline
+from itertools import islice
+pipeline = (
+    line.rstrip("\n").split("|")
+    for line in open(path)
+)
+errors = (row for row in pipeline if row[2] == "ERROR")
+for row in islice(errors, 100):
+    print(row)
+
+# Generator expressions are not just "lazy comprehensions":
+# they can feed any consumer that accepts an iterable
+any(x &gt; 100 for x in stream)          # short-circuits: stops at the first hit
+min((f(x), x) for x in stream)        # streaming minimum with key
+sum(len(w) for w in words) / len(words)</code></pre>
+    <div class="tip"><b>Choose the consumer, not the producer:</b> <code>sum</code>, <code>any</code>, <code>all</code>,
+    <code>min</code>, <code>max</code>, <code>join</code>, <code>dict()</code>, <code>set()</code>, <code>deque(maxlen=…)</code>
+    and <code>itertools</code> all consume lazily. Keeping data in generator-land as long as possible is the cheapest
+    performance optimisation there is.</div>
+  </section>
+
+  <section class="sub">
+    <h3>7.3 itertools — the standard-library power tool</h3>
+    <table class="tbl">
+      <thead><tr><th>Category</th><th>Functions</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td>Infinite</td><td><code>count</code> <code>cycle</code> <code>repeat</code></td><td><code>list(islice(cycle("AB"), 5))</code> → <code>['A','B','A','B','A']</code></td></tr>
+        <tr><td>Short input</td><td><code>chain</code> <code>chain.from_iterable</code> <code>zip_longest</code> <code>pairwise</code> <code>batched</code></td><td><code>list(pairwise([1,2,3]))</code> → <code>[(1,2),(2,3)]</code> · <code>batched(range(7), 3)</code></td></tr>
+        <tr><td>Filtering</td><td><code>islice</code> <code>takewhile</code> <code>dropwhile</code> <code>filterfalse</code> <code>compress</code></td><td><code>dropwhile(lambda x: x &lt; 5, xs)</code></td></tr>
+        <tr><td>Grouping</td><td><code>groupby</code> <code>accumulate</code></td><td><code>list(accumulate([1,2,3]))</code> → <code>[1,3,6]</code></td></tr>
+        <tr><td>Combinatorics</td><td><code>product</code> <code>permutations</code> <code>combinations</code> <code>combinations_with_replacement</code></td><td><code>list(combinations("ABC", 2))</code></td></tr>
+        <tr><td>Selection</td><td><code>tee</code> <code>product(*pools)</code></td><td><code>a, b = tee(iterable, 2)</code></td></tr>
+      </tbody>
+    </table>
+    <pre><code>from itertools import groupby, accumulate, batched, chain, product, combinations, tee
+
+# groupby — MUST be sorted by the same key first
+people.sort(key=lambda p: p["dept"])
+for dept, group in groupby(people, key=lambda p: p["dept"]):
+    print(dept, sum(p["salary"] for p in group))    # group is an iterator: consume once
+
+# Running totals / running max
+list(accumulate([1, 2, 3, 4]))               # [1, 3, 6, 10]
+list(accumulate([3, 1, 4], max))             # [3, 3, 4]
+
+# Batching — process an iterable in chunks (3.12+)
+for chunk in batched(iter(range(10)), 4):
+    print(chunk)                             # (0,1,2,3) (4,5,6,7) (8,9)
+
+# Cartesian product replaces nested loops
+for suit, rank in product("AKQJ", "♠♥♦♣"):
+    ...
+
+# Two independent passes over one iterable
+a, b = tee(iterable, 2)
+total = sum(a); first = next(b, None)
+
+# Flatten anything nested one level
+flat = list(chain.from_iterable([[1, 2], [3], (4, 5)]))    # [1,2,3,4,5]
+
+# Sliding-window average without pandas
+def moving_average(xs, window=3):
+    from collections import deque
+    from itertools import islice
+    it = iter(xs)
+    buf = deque(islice(it, window), maxlen=window)
+    yield sum(buf) / len(buf)
+    for x in it:
+        buf.append(x)
+        yield sum(buf) / len(buf)</code></pre>
+    <div class="note"><b>Remember:</b> <code>groupby</code> groups <i>consecutive</i> items — sort first. And every
+    <code>itertools</code> function returns an iterator: materialise with <code>list()</code> only when you need to index
+    or reuse it.</div>
+  </section>
+</section>

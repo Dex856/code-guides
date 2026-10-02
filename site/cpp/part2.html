@@ -1,0 +1,535 @@
+<section class="chapter" id="ch3">
+  <h2><span class="num">3</span> Strings and characters</h2>
+  <p class="tagline">C++ strings are mutable, indexable byte arrays with a rich API — much closer to Python lists than Python strings.</p>
+
+  <section class="sub">
+    <h3>3.1 The operations you will type most</h3>
+    <pre><code>string s = "hello world";
+int n = (int)s.size();                 // 11  — cast to int, size() is unsigned
+
+// Access and mutation (C++ strings ARE mutable)
+char c = s[0];                         // 'h'  — no bounds check
+s[0] = 'H';                            // "Hello world"
+char last = s.back();                  // 'd'
+s.front(); s.at(1);                    // 'e' (at() checks range, throws)
+
+// Slicing: substr(start, LENGTH)
+s.substr(0, 5)                         // "Hello"
+s.substr(6)                            // "world"   (to the end)
+s.substr(6, 3)                         // "wor"
+
+// Searching
+s.find("world")                        // 6        ; npos if absent
+s.find('o', 5)                         // start searching from index 5
+s.rfind('o')                           // 7        ; reverse search
+s.find_first_of("aeiou")               // 1
+s.find_last_not_of('d')                // 9
+if (s.find("xyz") == string::npos) /* not found */;
+
+// Modifying
+s += "!";  s.append("?");  s.push_back('.');
+s.insert(0, "&gt;&gt; ");                     // insert at position
+s.erase(0, 3);                          // erase 3 chars from index 0
+s.erase(s.begin());                     // erase first char (iterator form)
+s.pop_back();
+s.replace(0, 5, "Howdy");               // replace 5 chars at 0
+s.clear();
+
+// Comparisons and conversion
+string a = "abc", b = "abd";
+a == b; a &lt; b;                          // lexicographic, like Python
+s.compare("Hello") == 0;                // 0 = equal
+int   num = stoi("42");                 // 42      ; stoll, stod, stof
+long long big = stoll("9000000000");
+string str = to_string(3.14);           // "3.140000"
+string sv = to_string(255);             // "255"
+
+// Reverse, sort, unique characters
+reverse(s.begin(), s.end());
+sort(s.begin(), s.end());               // in-place character sort
+s.erase(unique(s.begin(), s.end()), s.end());   // dedupe SORTED string
+
+// Iterate
+for (char ch : s) { }
+for (int i = 0; i &lt; (int)s.size(); ++i) { }
+for (auto it = s.begin(); it != s.end(); ++it) { }</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Task</th><th>Idiom</th></tr></thead>
+      <tbody>
+        <tr><td>Build a string in a loop</td><td><code>string res; res += x; res.push_back(ch);</code> — amortised O(1), unlike Python-style <code>res = res + x</code></td></tr>
+        <tr><td>Split on a delimiter</td><td><code>stringstream ss(s); string tok; while (getline(ss, tok, ',')) {...}</code></td></tr>
+        <tr><td>Join a vector of strings</td><td>loop with <code>if (i) res += sep;</code> or accumulate</td></tr>
+        <tr><td>Lowercase / uppercase</td><td><code>ch = tolower(ch);</code> (returns int!) or <code>c | 32</code> / <code>c &amp; ~32</code></td></tr>
+        <tr><td>Digit ↔ value</td><td><code>ch - '0'</code>, <code>'0' + d</code>, <code>isdigit(ch)</code>, <code>isalpha(ch)</code>, <code>isalnum(ch)</code></td></tr>
+        <tr><td>Count characters</td><td><code>int cnt[26] = {};</code> then <code>cnt[c - 'a']++</code> — an array beats a map for lowercase letters</td></tr>
+        <tr><td>Compare ignoring case</td><td>lowercase both, or <code>lexicographical_compare</code> with a lambda</td></tr>
+        <tr><td>Palindrome check</td><td>two pointers <code>while (l &lt; r) if (s[l++] != s[r--]) return false;</code></td></tr>
+        <tr><td>Hash a string</td><td><code>unordered_map&lt;string, int&gt;</code> works out of the box (std::hash is specialised)</td></tr>
+        <tr><td>Rolling hash / prefix hashes</td><td>precompute <code>h[i] = h[i-1]*B + s[i]</code> with modular arithmetic (ch. 10)</td></tr>
+      </tbody>
+    </table>
+    <div class="trap"><b>Three classic string traps:</b>
+    <b>(1)</b> <code>s.substr(i, len)</code> — the second parameter is a length; <code>s.substr(i, j-i)</code> for [i, j).
+    <b>(2)</b> <code>s.find(c)</code> returns <code>string::npos</code> (a huge unsigned value), not −1 — always compare
+    against <code>npos</code>; and never write <code>if (s.find(c) &gt;= 0)</code> (always true, unsigned).
+    <b>(3)</b> <code>tolower()</code>/<code>toupper()</code> take and return <code>int</code>: assign back as
+    <code>char</code>, and pass <code>unsigned char</code> for safety with negative <code>char</code> values.</div>
+  </section>
+
+  <section class="sub">
+    <h3>3.2 string_view and char arrays — when to use them</h3>
+    <pre><code>// string_view (C++17): a non-owning pointer+length — zero-copy substrings
+string_view sv = "abcdef";
+string_view part = sv.substr(1, 3);      // "bcd" — NO allocation
+// DANGER: it does not own the data. Never return a view of a local string.
+// LeetCode: use sparingly (substr is usually fine at n ≤ 10^5).
+
+// char arrays (C strings) appear in signatures like char* argv[], and in grid problems
+char grid[100][100];
+strlen("abc");                            // 3
+strcmp("a", "b");                         // &lt;0
+memset(grid, 0, sizeof(grid));            // fast initialisation (bytes only!)
+// Prefer std::string / std::vector&lt;char&gt; in solutions; know C strings for legacy APIs.
+
+// Getting a char buffer from a string that gets modified in place
+string s = "abcde";
+s[2] = 'X';                               // fine — strings are mutable</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>3.3 Character classification and conversion cheats</h3>
+    <table class="tbl">
+      <thead><tr><th>Need</th><th>Code</th><th>Watch out</th></tr></thead>
+      <tbody>
+        <tr><td>is digit / letter</td><td><code>isdigit(c)</code>, <code>isalpha(c)</code>, <code>isalnum(c)</code>, <code>isspace(c)</code></td><td>Return <code>int</code>; cast argument to <code>unsigned char</code>.</td></tr>
+        <tr><td>digit → int</td><td><code>c - '0'</code></td><td><code>(int)c</code> gives the ASCII code (55), not 7.</td></tr>
+        <tr><td>int → digit</td><td><code>char('0' + d)</code> for 0–9</td><td>For d &gt; 9, use <code>to_string</code> or manual division.</td></tr>
+        <tr><td>case fold</td><td><code>c | 32</code>, <code>c &amp; 95</code>, or <code>tolower</code>/<code>toupper</code></td><td>Bit tricks only for ASCII letters.</td></tr>
+        <tr><td>letter index 0–25</td><td><code>c - 'a'</code> (lowercase), <code>c - 'A'</code> (uppercase)</td><td>Check the range first if input can be mixed.</td></tr>
+        <tr><td>hex</td><td><code>stoi("ff", nullptr, 16)</code>, <code>to_string(255)</code> + manual</td><td>No <code>to_hex</code>; use <code>ostringstream</code> with <code>std::hex</code> if you must.</td></tr>
+        <tr><td>string → number (whole string)</td><td><code>stoi</code>, <code>stoll</code>, <code>stod</code></td><td>Throws on bad input; leading spaces allowed; trailing garbage is silently ignored.</td></tr>
+        <tr><td>number → string fast</td><td><code>to_string(x)</code></td><td>Allocates; for hot loops append digits manually or use <code>charconv</code> (C++17).</td></tr>
+      </tbody>
+    </table>
+    <pre><code>// Parsing a sentence into words without stringstream (faster, no allocation of the stream)
+vector&lt;string&gt; words;
+string cur;
+for (char c : s + ' ') {          // sentinel space flushes the last word
+    if (c == ' ') { if (!cur.empty()) words.push_back(cur); cur.clear(); }
+    else cur.push_back(c);
+}
+
+// Splitting with stringstream (simpler, slightly slower)
+#include &lt;sstream&gt;
+stringstream ss("a,b,,c");
+string tok;
+while (getline(ss, tok, ',')) { /* tok = "a", "b", "", "c" */ }</code></pre>
+  </section>
+</section>
+
+<section class="chapter" id="ch4">
+  <h2><span class="num">4</span> vector, arrays and grids</h2>
+  <p class="tagline">The workhorse container: growth rules, reserve, 2D grids, and the iterator model you must understand.</p>
+
+  <section class="sub">
+    <h3>4.1 Creating and using a vector</h3>
+    <pre><code>#include &lt;bits/stdc++.h&gt;
+using namespace std;
+
+vector&lt;int&gt; v;                        // empty
+vector&lt;int&gt; a(5);                     // 5 zeros:      {0,0,0,0,0}
+vector&lt;int&gt; b(5, -1);                 // 5 copies of -1
+vector&lt;int&gt; c{1, 2, 3};               // initialiser list
+vector&lt;int&gt; d(c);                     // copy (O(n))
+vector&lt;int&gt; e(c.begin(), c.end());    // from iterators
+int arr[] = {1,2,3};
+vector&lt;int&gt; f(arr, arr + 3);          // from a C array
+
+// Sizing and capacity
+v.size(); v.empty(); v.capacity();
+v.resize(10);                         // grow (zero-fills) or shrink
+v.resize(10, 7);                      // fill new slots with 7
+v.reserve(1000);                      // preallocate: avoids repeated reallocation
+v.shrink_to_fit();                    // release spare capacity (rarely needed)
+
+// Access
+v[0]; v.at(0); v.front(); v.back();
+int* p = v.data();                    // raw pointer to the buffer
+
+// Add / remove
+v.push_back(9);                       // amortised O(1)
+v.pop_back();                         // O(1)
+v.insert(v.begin() + 1, 42);          // O(n) — shifts the tail
+v.insert(v.end(), 3, 5);              // insert 3 copies of 5 at the end
+v.erase(v.begin());                   // O(n)
+v.erase(v.begin() + 1, v.begin() + 3); // erase a range [1,3)
+v.assign(4, 0);                       // replace contents with four 0s
+v.clear();                            // size 0, capacity kept
+
+// Iterators (the general way to talk about positions)
+v.begin(); v.end();                   // [begin, end) — half-open
+v.rbegin(); v.rend();                 // reverse
+for (auto it = v.begin(); it != v.end(); ++it) cout &lt;&lt; *it;
+int pos = lower_bound(v.begin(), v.end(), 5) - v.begin();   // index from iterator</code></pre>
+    <figure class="dg">
+      <svg viewBox="0 0 900 260" role="img" aria-label="Vector memory: length, capacity, growth, iterator invalidation">
+        <text class="tt" x="20" y="26">A vector is a contiguous buffer with size ≤ capacity</text>
+        <rect x="40" y="50" width="640" height="46" class="bx"/>
+        <rect x="40" y="50" width="440" height="46" class="bc"/>
+        <text class="mono" x="60" y="79">10 | 20 | 30 | 40 | 50 | 60 | 70 | 80</text>
+        <text class="sm" x="500" y="79">size = 8</text>
+        <text class="sm" x="560" y="79">capacity = 12 (spare slots)</text>
+        <rect x="480" y="50" width="200" height="46" class="bb" opacity="0.35"/>
+        <text class="sm" x="40" y="120">push_back → fills spare slots, O(1). When full, the buffer is reallocated (2×) and every element is MOVED: O(n) for that call, amortised O(1).</text>
+        <text class="sm" x="40" y="142">That reallocation is why <tspan class="mono">reserve(n)</tspan> matters when you know the final size — and why pointers/iterators into the vector can be invalidated.</text>
+
+        <rect x="40" y="166" width="420" height="80" class="bd"/>
+        <text class="t" x="250" y="190" text-anchor="middle">Iterator invalidation (UB!)</text>
+        <text class="mono sm" x="60" y="212">auto it = v.begin(); v.push_back(x);  // it may dangle</text>
+        <text class="mono sm" x="60" y="232">for (auto it=v.begin(); it!=v.end(); ) it = v.erase(it); // correct erase loop</text>
+        <rect x="480" y="166" width="380" height="80" class="bp"/>
+        <text class="t" x="670" y="190" text-anchor="middle">vector&lt;bool&gt; is a bitset</text>
+        <text class="sm" x="500" y="212">It packs bits — <tspan class="mono">v[i]</tspan> is not a real reference,</text>
+        <text class="sm" x="500" y="232">so <tspan class="mono">&amp;v[i]</tspan> and some algorithms misbehave. Use <tspan class="mono">deque&lt;bool&gt;</tspan> or <tspan class="mono">bitset</tspan>.</text>
+      </svg>
+      <figcaption>Fig 4.1 — Contiguous memory is why <code>vector</code> beats <code>list</code> in practice, even for middle inserts, on modern CPUs.</figcaption>
+    </figure>
+  </section>
+
+  <section class="sub">
+    <h3>4.2 2D vectors and grids — the LeetCode staple</h3>
+    <pre><code>// ---- construction -------------------------------------------------------
+int m = 3, n = 4;
+vector&lt;vector&lt;int&gt;&gt; g(m, vector&lt;int&gt;(n, 0));      // 3×4 of zeros  ★ the standard form
+vector&lt;vector&lt;int&gt;&gt; g2(m);                          // 3 empty rows
+for (auto&amp; row : g2) row.assign(n, 0);              // then fill
+
+// from an initialiser list
+vector&lt;vector&lt;int&gt;&gt; grid = {{1,2,3},{4,5,6},{7,8,9}};
+
+// ---- traversal ----------------------------------------------------------
+int R = grid.size(), C = grid[0].size();
+for (int i = 0; i &lt; R; ++i)
+    for (int j = 0; j &lt; C; ++j)
+        /* grid[i][j] */;
+
+// ---- neighbour moves: two idioms ---------------------------------------
+const int di[4] = {-1, 1, 0, 0};       // up, down, left, right
+const int dj[4] = {0, 0, -1, 1};
+for (int d = 0; d &lt; 4; ++d) {
+    int ni = i + di[d], nj = j + dj[d];
+    if (ni &lt; 0 || ni &gt;= R || nj &lt; 0 || nj &gt;= C) continue;   // bounds check FIRST
+    /* visit grid[ni][nj] */
+}
+// 8-directional (king moves)
+const int dx8[8] = {-1,-1,-1, 0, 0, 1, 1, 1};
+const int dy8[8] = {-1, 0, 1,-1, 1,-1, 0, 1};
+
+// ---- in-place 90° rotation of an n×n matrix ----------------------------
+for (int i = 0; i &lt; n; ++i)
+    for (int j = i + 1; j &lt; n; ++j)
+        swap(g[i][j], g[j][i]);          // transpose
+for (auto&amp; row : g) reverse(row.begin(), row.end());   // then mirror → rotated clockwise
+
+// ---- spiral traversal skeleton -----------------------------------------
+int top = 0, bottom = R - 1, left = 0, right = C - 1;
+while (top &lt;= bottom &amp;&amp; left &lt;= right) {
+    for (int j = left; j &lt;= right; ++j) visit(g[top][j]);      ++top;
+    for (int i = top; i &lt;= bottom; ++i) visit(g[i][right]);    --right;
+    if (top &lt;= bottom) { for (int j = right; j &gt;= left; --j) visit(g[bottom][j]); --bottom; }
+    if (left &lt;= right) { for (int i = bottom; i &gt;= top; --i) visit(g[i][left]);  ++left;  }
+}
+
+// ---- flattening a grid into 1D (useful for DSU/visited arrays) ---------
+int id = i * C + j;          int i2 = id / C, j2 = id % C;</code></pre>
+    <div class="tip"><b>Grid checklist:</b> always compute <code>R</code>/<code>C</code> once; guard
+    <code>grid.empty()</code> before <code>grid[0]</code>; do bounds checks <i>before</i> indexing; prefer
+    <code>vector&lt;vector&lt;int&gt;&gt;</code> for clarity and a flat <code>vector&lt;int&gt;</code> of size R·C when you need
+    speed (better cache locality). For <code>visited</code>, a 2D <code>vector&lt;char&gt;</code> is often faster to
+    initialise than <code>vector&lt;bool&gt;</code>.</div>
+  </section>
+
+  <section class="sub">
+    <h3>4.3 array, static arrays, and when they win</h3>
+    <pre><code>// Fixed-size arrays: no allocation, stack storage, fastest, no size tracking
+int freq[26] = {};                       // zero-initialised ({} matters!)
+for (char c : s) freq[c - 'a']++;
+int dayCount[7] = {31, 28, 31, 30, 31, 30, 31};
+
+// std::array: a real container around a fixed array (knows its size, copyable)
+array&lt;int, 3&gt; a{1, 2, 3};
+a.size(); a.fill(0); a.front(); a.back();
+sort(a.begin(), a.end());
+
+// 2D static
+int dp[1005][1005];                      // ~4 MB — fine on the stack? risky; prefer global/static or vector
+static int dp2[1005][1005];              // global/static: zero-initialised, lives in BSS
+
+// Fixed-size bit/flag arrays
+bitset&lt;64&gt; bs;                          // fast bit ops: bs.count(), bs[i], bs &amp; bs2
+
+// Speed comparison for a 10^6-element task, typical order:
+//   int arr[1000000]   ~ fastest (contiguous, no indirection)
+//   array&lt;int,1e6&gt;     ~ same
+//   vector&lt;int&gt;        ~ same after reserve (one pointer indirection)
+//   deque / list       ~ slower (non-contiguous)
+//   unordered_map      ~ 10-50× slower per access than an array</code></pre>
+  </section>
+</section>
+
+<section class="chapter" id="ch5">
+  <h2><span class="num">5</span> The STL containers that solve problems</h2>
+  <p class="tagline">Six containers do 95% of the work: vector, string, unordered_map, set, priority_queue, deque. Know their costs cold.</p>
+
+  <section class="sub">
+    <h3>5.1 The container selection map</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 430" role="img" aria-label="STL container selection decision map">
+        <text class="tt" x="20" y="26">Pick the container in ten seconds</text>
+
+        <rect x="30" y="46" width="250" height="54" class="ba"/>
+        <text class="sm" x="155" y="66" text-anchor="middle">Need indexed, ordered data</text>
+        <text class="sm" x="155" y="86" text-anchor="middle">that grows (append/remove)?</text>
+        <path class="ar" d="M155 100 V126"/>
+        <rect x="30" y="126" width="250" height="54" class="bx"/>
+        <text class="t" x="155" y="148" text-anchor="middle">vector&lt;T&gt;</text>
+        <text class="sm" x="155" y="168" text-anchor="middle">O(1) index/append · O(n) middle insert</text>
+
+        <rect x="320" y="46" width="250" height="54" class="bb"/>
+        <text class="sm" x="445" y="66" text-anchor="middle">Look up / count by key</text>
+        <text class="sm" x="445" y="86" text-anchor="middle">(order irrelevant)?</text>
+        <path class="ar" d="M445 100 V126"/>
+        <rect x="320" y="126" width="250" height="54" class="bx"/>
+        <text class="t" x="445" y="148" text-anchor="middle">unordered_map / set</text>
+        <text class="sm" x="445" y="168" text-anchor="middle">O(1) avg · needs a hashable key</text>
+
+        <rect x="610" y="46" width="260" height="54" class="bc"/>
+        <text class="sm" x="740" y="66" text-anchor="middle">Need keys sorted, predecessor/</text>
+        <text class="sm" x="740" y="86" text-anchor="middle">successor, or range queries?</text>
+        <path class="ar" d="M740 100 V126"/>
+        <rect x="610" y="126" width="260" height="54" class="bx"/>
+        <text class="t" x="740" y="148" text-anchor="middle">map / set / multiset</text>
+        <text class="sm" x="740" y="168" text-anchor="middle">O(log n) all ops · sorted iteration</text>
+
+        <rect x="30" y="212" width="250" height="54" class="bp"/>
+        <text class="sm" x="155" y="232" text-anchor="middle">Need max/min quickly</text>
+        <text class="sm" x="155" y="252" text-anchor="middle">(top-K, Dijkstra, scheduling)?</text>
+        <path class="ar" d="M155 266 V292"/>
+        <rect x="30" y="292" width="250" height="54" class="bx"/>
+        <text class="t" x="155" y="314" text-anchor="middle">priority_queue&lt;T&gt;</text>
+        <text class="sm" x="155" y="334" text-anchor="middle">O(log n) push/pop · O(1) top</text>
+
+        <rect x="320" y="212" width="250" height="54" class="bd"/>
+        <text class="sm" x="445" y="232" text-anchor="middle">Push/pop at BOTH ends,</text>
+        <text class="sm" x="445" y="252" text-anchor="middle">BFS queue, sliding window?</text>
+        <path class="ar" d="M445 266 V292"/>
+        <rect x="320" y="292" width="250" height="54" class="bx"/>
+        <text class="t" x="445" y="314" text-anchor="middle">deque&lt;T&gt; / queue&lt;T&gt;</text>
+        <text class="sm" x="445" y="334" text-anchor="middle">O(1) both ends · monotonic windows</text>
+
+        <rect x="610" y="212" width="260" height="54" class="ba"/>
+        <text class="sm" x="740" y="232" text-anchor="middle">Last-in-first-out, or a stack</text>
+        <text class="sm" x="740" y="252" text-anchor="middle">of pending work (DFS, parsing)?</text>
+        <path class="ar" d="M740 266 V292"/>
+        <rect x="610" y="292" width="260" height="54" class="bx"/>
+        <text class="t" x="740" y="314" text-anchor="middle">stack&lt;T&gt; / vector as stack</text>
+        <text class="sm" x="740" y="334" text-anchor="middle">O(1) push/pop/top · vector is faster</text>
+
+        <rect x="30" y="366" width="840" height="48" class="bb"/>
+        <text class="sm" x="50" y="386">Almost never in interviews: <tspan class="mono">list</tspan> (linked list, terrible cache) · <tspan class="mono">forward_list</tspan> · <tspan class="mono">multimap</tspan> · <tspan class="mono">valarray</tspan>.</text>
+        <text class="sm" x="50" y="406">Use them only when the PROBLEM is about a linked list (then you get <tspan class="mono">ListNode*</tspan> from LeetCode anyway).</text>
+      </svg>
+      <figcaption>Fig 5.1 — The container decision map. When two fit, prefer <code>vector</code> and <code>unordered_*</code> — they are the fastest in practice.</figcaption>
+    </figure>
+  </section>
+
+  <section class="sub">
+    <h3>5.2 Complexity cheat sheet</h3>
+    <table class="tbl">
+      <thead><tr><th>Operation</th><th>vector</th><th>deque</th><th>unordered_map</th><th>map / set</th><th>priority_queue</th><th>stack/queue</th></tr></thead>
+      <tbody>
+        <tr><td>Index / top / front</td><td>O(1)</td><td>O(1)</td><td>–</td><td>–</td><td>O(1) top</td><td>O(1)</td></tr>
+        <tr><td>Find key</td><td>O(n)</td><td>O(n)</td><td><b>O(1)</b> avg</td><td>O(log n)</td><td>–</td><td>–</td></tr>
+        <tr><td>Insert / erase at end</td><td>O(1)*</td><td>O(1)</td><td>O(1) avg</td><td>O(log n)</td><td>O(log n) push</td><td>O(1)</td></tr>
+        <tr><td>Insert / erase at front</td><td>O(n)</td><td>O(1)</td><td>–</td><td>–</td><td>–</td><td>O(1)</td></tr>
+        <tr><td>Insert / erase middle</td><td>O(n)</td><td>O(n)</td><td>O(1) avg</td><td>O(log n)</td><td>–</td><td>–</td></tr>
+        <tr><td>Min / max</td><td>O(n)</td><td>O(n)</td><td>O(n)</td><td>O(1) via begin/rbegin</td><td><b>O(1)</b></td><td>–</td></tr>
+        <tr><td>Ordered iteration</td><td>insertion</td><td>insertion</td><td>arbitrary</td><td><b>sorted</b></td><td>heap order</td><td>LIFO/FIFO</td></tr>
+        <tr><td>Memory overhead</td><td>lowest</td><td>low</td><td>high (buckets)</td><td>high (nodes)</td><td>low</td><td>low</td></tr>
+      </tbody>
+    </table>
+    <p class="small muted">* amortised. Hash containers give <b>average</b> O(1); an adversarial hash can degrade them to
+    O(n) per op — LeetCode’s anti-hash tests target <code>unordered_set&lt;int&gt;</code> with values like 10⁷ (see ch. 12.4
+    for the custom-hash fix).</p>
+  </section>
+
+  <section class="sub">
+    <h3>5.3 unordered_map / unordered_set in practice</h3>
+    <pre><code>unordered_map&lt;string, int&gt; cnt;              // hash table, O(1) average
+unordered_map&lt;int, vector&lt;int&gt;&gt; groups;      // adjacency / grouping
+unordered_set&lt;int&gt; seen;
+
+// Insert / access
+cnt["apple"]++;                              // default-constructs 0 then increments ★
+cnt.insert({"banana", 3});                   // does NOT overwrite an existing key
+cnt.emplace("cherry", 5);                    // constructs in place (faster)
+cnt["date"] = 7;                             // insert-or-assign
+
+// Lookup — three ways, know the difference
+if (cnt.count("apple")) { }                  // 1 = present, 0 = absent
+auto it = cnt.find("apple");
+if (it != cnt.end()) cout &lt;&lt; it-&gt;second;     // ★ no double lookup
+int v = cnt.at("apple");                     // throws std::out_of_range if absent
+int safe = cnt["missing"];                   // ⚠ INSERTS a 0 and returns it
+
+// Iterate (order is arbitrary — do not rely on it)
+for (const auto&amp; [key, value] : cnt) { }
+for (auto it = cnt.begin(); it != cnt.end(); ++it) { it-&gt;first; it-&gt;second; }
+
+// Erase — the safe loop
+for (auto it = cnt.begin(); it != cnt.end(); ) {
+    if (it-&gt;second == 0) it = cnt.erase(it);   // erase returns the next iterator
+    else ++it;
+}
+cnt.erase("apple");                            // by key, returns count erased
+
+// Size, reserve, clear
+cnt.size(); cnt.empty(); cnt.clear();
+cnt.reserve(10000);                            // pre-size buckets: avoids rehashing
+cnt.max_load_factor(0.7);                      // tune if you see rehash spikes
+
+// Sets (same API minus values)
+seen.insert(5); seen.count(5); seen.erase(5);
+seen.find(5) != seen.end();</code></pre>
+    <div class="trap"><b>The <code>operator[]</code> trap:</b> <code>m[key]</code> inserts a default value if the key is
+    missing. Accidentally using it in a read path grows your map (and is a common source of wrong answers in loops).
+    Use <code>find()</code>/<code>count()</code>/<code>at()</code> to read, and reserve <code>[]</code> for writing.</div>
+  </section>
+
+  <section class="sub">
+    <h3>5.4 Ordered map / set / multiset — the secret weapon</h3>
+    <pre><code>map&lt;string, int&gt; m;        // sorted by key, O(log n)
+set&lt;int&gt; s;                // sorted unique keys
+multiset&lt;int&gt; ms;          // sorted, duplicates allowed
+
+// Ordered containers keep the keys sorted → these idioms win problems
+*s.begin();                 // minimum key            (O(1) via cached begin)
+*prev(s.end());             // maximum key             (O(log n) or O(1) for map)
+auto it = s.lower_bound(5);  // first element >= 5
+auto it2 = s.upper_bound(5); // first element >  5
+s.count(5);  ms.count(5);    // set: 0/1 · multiset: number of copies
+
+// Predecessor / successor — the reason to choose ordered containers
+auto it3 = s.lower_bound(x);
+if (it3 != s.begin()) { auto pred = prev(it3); /* largest &lt; x */ }
+if (it3 != s.end())   { /* smallest >= x */ }
+
+// Iterate in sorted order
+for (int v : s) cout &lt;&lt; v &lt;&lt; ' ';
+for (const auto&amp; [k, v] : m) cout &lt;&lt; k &lt;&lt; ":" &lt;&lt; v &lt;&lt; ' ';
+
+// Multiset erase carefully
+ms.erase(3);                       // ⚠ erases ALL copies
+ms.erase(ms.find(3));              // erases ONE copy ← the usual intent
+
+// Sliding-window median with two multisets (classic hard problem)
+multiset&lt;int&gt; low, high;           // low: lower half (max at rbegin), high: upper half
+// maintain low.size() == high.size() or low.size() == high.size()+1
+// median = *low.rbegin()  (odd)  or (*low.rbegin() + *high.begin()) / 2.0  (even)
+
+// Ordered map as an LRU/cheapest-first structure
+map&lt;int, int&gt; idxToVal;            // also: count of distinct keys in a range, etc.</code></pre>
+    <div class="tip"><b>Price/performance rule:</b> <code>unordered_set</code> is ~3–5× faster than <code>set</code> in
+    wall-clock time, but <code>set</code> unlocks <code>lower_bound</code>, sorted iteration, min/max and
+    predecessor/successor in O(log n). When the problem needs “next greater / nearest value / ordered sweep”, the ordered
+    container is not a luxury — it is the algorithm.</div>
+  </section>
+
+  <section class="sub">
+    <h3>5.5 stack, queue, deque</h3>
+    <pre><code>// ---- stack (LIFO) -------------------------------------------------------
+stack&lt;int&gt; st;                  // adapters over deque by default
+st.push(1); st.top(); st.pop(); st.size(); st.empty();
+// Faster alternative: vector as a stack (better cache locality)
+vector&lt;int&gt; st2; st2.push_back(1); st2.back(); st2.pop_back();
+
+// ---- queue (FIFO) — the BFS container -----------------------------------
+queue&lt;int&gt; q;
+q.push(1); q.front(); q.back(); q.pop(); q.size(); q.empty();
+
+// ---- deque: O(1) at both ends, random access ----------------------------
+deque&lt;int&gt; dq{1,2,3};
+dq.push_front(0); dq.push_back(4);
+dq.pop_front(); dq.pop_back();
+dq[0]; dq.front(); dq.back();
+
+// ★ Monotonic deque — sliding window maximum in O(n) (ch. 11 pattern)
+vector&lt;int&gt; maxSlidingWindow(const vector&lt;int&gt;&amp; a, int k) {
+    deque&lt;int&gt; idx;                                  // indices, values DECREASING
+    vector&lt;int&gt; res;
+    for (int i = 0; i &lt; (int)a.size(); ++i) {
+        while (!idx.empty() &amp;&amp; idx.front() &lt;= i - k) idx.pop_front();   // drop expired
+        while (!idx.empty() &amp;&amp; a[idx.back()] &lt;= a[i]) idx.pop_back();   // keep monotonic
+        idx.push_back(i);
+        if (i &gt;= k - 1) res.push_back(a[idx.front()]);                  // window max
+    }
+    return res;
+}
+
+// Monotonic stack — next greater element in O(n)
+vector&lt;int&gt; nextGreater(const vector&lt;int&gt;&amp; a) {
+    int n = a.size();
+    vector&lt;int&gt; res(n, -1);
+    stack&lt;int&gt; st;                                    // indices, decreasing values
+    for (int i = 0; i &lt; n; ++i) {
+        while (!st.empty() &amp;&amp; a[st.top()] &lt; a[i]) { res[st.top()] = a[i]; st.pop(); }
+        st.push(i);
+    }
+    return res;
+}</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>5.6 priority_queue — the heap</h3>
+    <pre><code>// ⚠ Default is a MAX-heap (Python's heapq is a min-heap — the opposite!)
+priority_queue&lt;int&gt; pq;                       // top() = largest
+priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt; minpq;   // top() = smallest
+
+pq.push(3); pq.push(1); pq.push(4);
+pq.top();      // 4
+pq.pop();      // removes the top
+pq.size(); pq.empty();
+
+// Custom comparator: "greater" means the SMALLER element has higher priority
+auto cmp = [](const pair&lt;int,int&gt;&amp; a, const pair&lt;int,int&gt;&amp; b) {
+    return a.second &gt; b.second;               // min-heap by .second
+};
+priority_queue&lt;pair&lt;int,int&gt;, vector&lt;pair&lt;int,int&gt;&gt;, decltype(cmp)&gt; pq2(cmp);
+
+// Pairs: comparison is lexicographic (first, then second) — no comparator needed
+priority_queue&lt;pair&lt;int,int&gt;&gt; p;              // max by first, then second
+
+// Dijkstra with a priority queue (lazy-deletion style)
+vector&lt;long long&gt; dist(n, LLONG_MAX);
+priority_queue&lt;pair&lt;long long,int&gt;, vector&lt;pair&lt;long long,int&gt;&gt;, greater&lt;&gt;&gt; heap;
+dist[src] = 0; heap.push({0, src});
+while (!heap.empty()) {
+    auto [d, u] = heap.top(); heap.pop();
+    if (d &gt; dist[u]) continue;                // stale entry — skip
+    for (auto [v, w] : adj[u])
+        if (d + w &lt; dist[v]) { dist[v] = d + w; heap.push({dist[v], v}); }
+}
+
+// Top-K pattern: keep a MIN-heap of size k → O(n log k) time, O(k) memory
+priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt; top;   // smallest of the current k on top
+for (int x : nums) {
+    top.push(x);
+    if ((int)top.size() &gt; k) top.pop();
+}   // top now holds the k largest values</code></pre>
+    <div class="trap"><b>The comparator trap that costs the most submissions.</b> In <code>priority_queue</code>, the
+    comparator answers “should <i>a</i> come <b>after</b> <i>b</i>?” — the element the comparator calls “less” ends up on
+    top. So <code>greater&lt;int&gt;</code> gives a min-heap and <code>less&lt;int&gt;</code> a max-heap. Also, a custom
+    comparator must be a <b>strict weak ordering</b> (irreflexive, transitive): writing <code>&gt;=</code> instead of
+    <code>&gt;</code> can make the heap corrupt the array with no error message.</div>
+  </section>
+</section>

@@ -1,0 +1,574 @@
+<section class="chapter" id="ch16">
+  <h2><span class="num">16</span> How objects live: memory, references and garbage collection</h2>
+  <p class="tagline">Refcounting, cycles, interning, <code>__slots__</code>, and where your RAM actually goes.</p>
+
+  <section class="sub">
+    <h3>16.1 Everything is a heap object (and that costs memory)</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 300" role="img" aria-label="Python object memory layout and integer interning">
+        <text class="tt" x="20" y="26">A Python int is not 4 bytes — it is a 28-byte object</text>
+        <rect x="30" y="60" width="300" height="110" class="bb"/>
+        <text class="t" x="180" y="84" text-anchor="middle">int 1000</text>
+        <text class="mono sm" x="50" y="110">refcount: 2   type: int</text>
+        <text class="mono sm" x="50" y="132">value: 1000</text>
+        <text class="mono sm" x="50" y="154">size: 28 bytes</text>
+        <text class="sm" x="50" y="172">list of 1 M ints ≈ 8 MB pointers + 28 MB objects</text>
+
+        <rect x="350" y="60" width="520" height="110" class="bx"/>
+        <text class="t" x="610" y="84" text-anchor="middle">Escapes: use the right container</text>
+        <text class="mono sm" x="370" y="110">array('i')  4 B/elem    numpy int64  8 B/elem</text>
+        <text class="mono sm" x="370" y="132">numpy float32  4 B/elem    Arrow/polars  columnar, ~0 overhead</text>
+        <text class="mono sm" x="370" y="154">bytes/bytearray  1 B/elem   memoryview  zero-copy views</text>
+        <text class="sm" x="370" y="174">sys.getsizeof(x) gives the object’s own size; containers do not include their referents.</text>
+
+        <rect x="30" y="196" width="840" height="86" class="bc"/>
+        <text class="t" x="450" y="220" text-anchor="middle">Interning &amp; caching: why <tspan class="mono">a is b</tspan> is sometimes True</text>
+        <text class="sm" x="50" y="246">• Small ints (−5…256) and many short strings are cached/shared → <tspan class="mono">257 is not 257</tspan> may be False. Never rely on <tspan class="mono">is</tspan> for values.</text>
+        <text class="sm" x="50" y="270">• <tspan class="mono">sys.intern(s)</tspan> deduplicates strings (useful for millions of repeated keys). <tspan class="mono">None/True/False</tspan> are true singletons — always compare with <tspan class="mono">is</tspan>.</text>
+      </svg>
+      <figcaption>Fig 16.1 — Object overhead is why <code>numpy</code>/<code>array</code> exist. Choose containers by data size.</figcaption>
+    </figure>
+    <pre><code>import sys, tracemalloc
+sys.getsizeof(0), sys.getsizeof(10**100)      # 28 … grows with magnitude
+sys.getsizeof("") , sys.getsizeof("abc")      # 49, 52 bytes
+sys.getsizeof([]) , sys.getsizeof([[]])       # 56, 64
+sys.getsizeof({"a": 1})                       # 184 bytes for a small dict
+sys.getsizeof(None)                           # 16
+sys.getsizeof(3.14)                           # 24
+
+# Real memory attribution for a program
+tracemalloc.start()
+snapshot = tracemalloc.take_snapshot()
+for stat in snapshot.statistics("lineno")[:5]:
+    print(stat)                               # file:line with allocated size
+
+# __slots__: drop the per-instance __dict__ → big savings for many small objects
+class PointSlots:
+    __slots__ = ("x", "y")
+    def __init__(self, x, y): self.x, self.y = x, y
+class PointDict:
+    def __init__(self, x, y): self.x, self.y = x, y
+
+sys.getsizeof(PointSlots(1, 2)) + sys.getsizeof(PointSlots.__dict__)
+sys.getsizeof(PointDict(1, 2)) + sys.getsizeof(PointDict(1, 2).__dict__)   # far bigger
+
+# Weak references: keep a cache without preventing collection
+import weakref
+class Node: ...
+n = Node()
+r = weakref.ref(n)
+r() is n                 # alive
+del n
+r()                      # None — no leak
+cache = weakref.WeakValueDictionary()   # entries vanish with their values
+# Use for: caches, observer registries, parent back-pointers, avoiding cycles</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>16.2 Reference counting + the cycle collector</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 300" role="img" aria-label="Reference counting and cyclic garbage collection">
+        <text class="tt" x="20" y="26">Two collectors, two jobs</text>
+        <rect x="30" y="50" width="400" height="130" class="ba"/>
+        <text class="t" x="230" y="74" text-anchor="middle">1 · Reference counting (immediate)</text>
+        <text class="sm" x="50" y="98">Every object stores “how many references point at me”.</text>
+        <text class="sm" x="50" y="120">Reaches 0 → freed instantly (deterministic: files close, locks release).</text>
+        <text class="sm" x="50" y="142">Cheap, but cannot free REFERENCE CYCLES:</text>
+        <text class="mono sm" x="50" y="164">a.parent = b;  b.child = a     → both stay alive forever</text>
+
+        <rect x="470" y="50" width="400" height="130" class="bc"/>
+        <text class="t" x="670" y="74" text-anchor="middle">2 · Generational cycle collector (periodic)</text>
+        <text class="sm" x="490" y="98">Tracks container objects in 3 generations; collects the young</text>
+        <text class="sm" x="490" y="120">generation often, older ones rarely (objects that survive tend to live).</text>
+        <text class="sm" x="490" y="142">Finds unreachable cycles and frees them — this is the usual cause of</text>
+        <text class="sm" x="490" y="164">the GC pause in big apps; 3.14 made collection incremental.</text>
+
+        <rect x="30" y="196" width="840" height="86" class="bx"/>
+        <text class="t" x="450" y="220" text-anchor="middle">Practical consequences</text>
+        <text class="sm" x="50" y="246">• You rarely call <tspan class="mono">gc.collect()</tspan>. If you do, investigate why memory is not dropping — usually a global dict/cache or a cycle with <tspan class="mono">__del__</tspan>.</text>
+        <text class="sm" x="50" y="270">• Use <tspan class="mono">weakref</tspan> for back-pointers and caches; prefer <tspan class="mono">networks breaking cycles</tspan> over fighting the GC. <tspan class="mono">gc.freeze()</tspan> after startup can cut pause times.</text>
+      </svg>
+      <figcaption>Fig 16.2 — Refcounting handles the common case; the generational collector exists purely for cycles.</figcaption>
+    </figure>
+    <pre><code>import sys, gc
+
+a = []
+b = [a]
+a.append(b)                 # cycle!
+sys.getrefcount(a)          # includes the temporary arg reference — subtract 1 mentally
+del a, b
+gc.collect()                # returns the number of unreachable objects collected
+gc.get_count()              # (gen0, gen1, gen2) counters
+gc.get_threshold()          # default (700, 10, 10) — tune for latency-sensitive apps
+gc.set_threshold(50_000, 50, 50)   # fewer, larger collections ── measure first!
+gc.freeze()                 # move long-lived objects out of GC's view (after startup)
+gc.disable()                # some servers do this and manage memory themselves — risky
+
+# __del__ is NOT a destructor you should rely on:
+class Noisy:
+    def __del__(self):
+        print("collected")      # timing is unspecified; may never run at interpreter exit
+# Prefer explicit cleanup: context managers, close(), or weakref.finalize
+import weakref
+finalizer = weakref.finalize(obj, cleanup_fn, arg)   # runs at collection, deterministic-ish
+finalizer.detach()                                    # cancel it
+
+# Finding leaks: objgraph / tracemalloc / gc.get_objects
+# $ pip install objgraph
+# import objgraph; objgraph.show_most_common_types(limit=10)
+# objgraph.show_backrefs(objgraph.by_type("MyClass")[:1], filename="leak.png")</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>16.3 Mutability, copying and equality — the definitive table</h3>
+    <table class="tbl">
+      <thead><tr><th>Operation</th><th>Effect</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td><code>b = a</code></td><td>Alias — same object</td><td><code>b.append(1)</code> changes <code>a</code></td></tr>
+        <tr><td><code>b = a.copy()</code></td><td>Shallow — new outer object, shared inner objects</td><td class="mono">l2 = l1.copy(); l2[0].append(9) still hits l1</td></tr>
+        <tr><td><code>b = copy.deepcopy(a)</code></td><td>Fully independent (slow for big graphs)</td><td>safest for nested configs</td></tr>
+        <tr><td><code>b = a[:]</code></td><td>Shallow copy for sequences</td><td>lists, tuples of tuples, strings</td></tr>
+        <tr><td><code>b = list(a)</code></td><td>Shallow copy / type conversion</td><td>any iterable → list</td></tr>
+        <tr><td><code>a == b</code></td><td>Value equality (<code>__eq__</code>)</td><td><code>[1,2] == [1,2]</code> → True</td></tr>
+        <tr><td><code>a is b</code></td><td>Identity — same object</td><td><code>[] is []</code> → False</td></tr>
+        <tr><td><code>hash(a) == hash(b)</code></td><td>Required if <code>a == b</code></td><td>Violate this and dicts behave bizarrely</td></tr>
+      </tbody>
+    </table>
+    <pre><code># "Immutable" gotchas
+t = (1, [2, 3])
+t[1].append(4)          # allowed! the tuple is immutable, the list inside is not
+t                       # (1, [2, 3, 4])
+
+# Frozen dataclass vs tuple vs str for hashable records
+from dataclasses import dataclass
+@dataclass(frozen=True, slots=True)
+class Key:
+    a: int
+    b: str
+hash(Key(1, "x"))       # fine — usable as a dict key
+
+# Converting between shapes
+list(d)                  # dict → keys
+dict(a=1)                # kwargs → dict
+set(xs)                  # dedupe
+tuple(xs) / list(xs)     # convert
+"".join(chars)           # chars → string
+list("abc")              # ['a','b','c']
+dict(zip(keys, vals))
+sorted(d.items(), key=lambda kv: kv[1])
+{**a, **b}               # merge
+[x for pair in pairs for x in pair]  # flatten</code></pre>
+  </section>
+</section>
+
+<section class="chapter" id="ch17">
+  <h2><span class="num">17</span> Performance and profiling</h2>
+  <p class="tagline">Measure, find the hotspot, fix the right thing. Plus the optimisation checklist that actually moves the needle.</p>
+
+  <section class="sub">
+    <h3>17.1 The optimisation loop</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 260" role="img" aria-label="Performance optimisation loop">
+        <text class="tt" x="20" y="26">Never optimise by guessing</text>
+        <rect x="40" y="60" width="160" height="60" class="ba"/><text class="t" x="120" y="86" text-anchor="middle">1 · Define the goal</text><text class="sm" x="120" y="106" text-anchor="middle">“p95 under 200 ms”</text>
+        <rect x="240" y="60" width="160" height="60" class="bb"/><text class="t" x="320" y="86" text-anchor="middle">2 · Measure</text><text class="sm" x="320" y="106" text-anchor="middle">baseline, realistic data</text>
+        <rect x="440" y="60" width="160" height="60" class="bc"/><text class="t" x="520" y="86" text-anchor="middle">3 · Find the hotspot</text><text class="sm" x="520" y="106" text-anchor="middle">profiler, not intuition</text>
+        <rect x="640" y="60" width="160" height="60" class="bp"/><text class="t" x="720" y="86" text-anchor="middle">4 · Change ONE thing</text><text class="sm" x="720" y="106" text-anchor="middle">algorithm first, then C</text>
+        <rect x="440" y="170" width="160" height="60" class="bx"/><text class="t" x="520" y="196" text-anchor="middle">6 · Keep it only if</text><text class="sm" x="520" y="216" text-anchor="middle">clarity per ms is worth it</text>
+        <rect x="240" y="170" width="160" height="60" class="bx"/><text class="t" x="320" y="196" text-anchor="middle">5 · Re-measure &amp; test</text><text class="sm" x="320" y="216" text-anchor="middle">correctness first</text>
+        <path class="ar2" d="M202 90 H238"/><path class="ar2" d="M402 90 H438"/><path class="ar2" d="M602 90 H638"/>
+        <path class="ar" d="M720 122 C720 160 640 200 604 200"/>
+        <path class="ar" d="M438 200 H404"/>
+        <path class="ar" d="M238 200 C160 200 120 150 120 124"/>
+        <text class="sm" x="40" y="150">That last arrow (back to the goal) is where 90% of optimisation effort</text>
+        <text class="sm" x="40" y="170">is spent: engineers skipping steps 2 and 3 and “optimising” cold code.</text>
+      </svg>
+      <figcaption>Fig 17.1 — A profiler tells you the truth; <code>time.time()</code> around <code>time.sleep</code> does not.</figcaption>
+    </figure>
+    <table class="tbl">
+      <thead><tr><th>Tool</th><th>Answers</th><th>How</th></tr></thead>
+      <tbody>
+        <tr><td><code>timeit</code></td><td>Which of these 5 snippets is faster?</td><td><code>python -m timeit -s "setup" "statement"</code></td></tr>
+        <tr><td><code>time.perf_counter</code></td><td>How long did this block take?</td><td>Monotonic, high-resolution; wrap in a helper.</td></tr>
+        <tr><td><code>cProfile</code> / <code>pstats</code></td><td>Which function eats the most time?</td><td><code>python -m cProfile -s cumtime app.py</code></td></tr>
+        <tr><td><code>line_profiler</code></td><td>Which LINE inside that function?</td><td><code>@profile</code> + <code>kernprof -lv</code></td></tr>
+        <tr><td><code>py-spy</code></td><td>Where is a RUNNING process stuck?</td><td><code>py-spy top --pid 1234</code> · <code>py-spy dump</code> — no code changes, no restart</td></tr>
+        <tr><td><code>scalene</code></td><td>Time AND memory per line, plus GPU</td><td><code>scalene app.py</code></td></tr>
+        <tr><td><code>memray</code></td><td>Memory allocations over time (leaks)</td><td><code>memray run app.py</code> → flamegraph report</td></tr>
+        <tr><td><code>tracemalloc</code></td><td>Stdlib memory allocation by line</td><td><code>tracemalloc.start()</code> + snapshots</td></tr>
+        <tr><td><code>asyncio</code> debug mode</td><td>Slow callbacks in async code</td><td><code>PYTHONASYNCIODEBUG=1</code> / <code>loop.slow_callback_duration</code></td></tr>
+        <tr><td>Tachyon + <code>profiling</code> pkg <span class="pill hot">3.15</span></td><td>Low-overhead statistical sampling, stdlib</td><td><code>python -m profiling …</code> (PEP 799)</td></tr>
+      </tbody>
+    </table>
+    <pre><code># Quick micro-benchmark inside Python
+import timeit
+timeit.timeit("'-'.join(str(n) for n in range(100))", number=10_000)
+# from the shell, with setup:
+# $ python -m timeit -s "data = list(range(1000))" "sum(data)"
+
+# Deterministic profiler
+# $ python -m cProfile -o prof.out app.py
+import pstats
+p = pstats.Stats("prof.out")
+p.sort_stats("cumulative").print_stats(15)
+p.sort_stats("tottime").print_stats(15)     # tottime = time in the function itself
+
+# Manual timing around a hot section
+from contextlib import contextmanager
+@contextmanager
+def timed(label):
+    t0 = time.perf_counter()
+    yield
+    print(f"{label}: {(time.perf_counter()-t0)*1000:.2f} ms")
+
+with timed("parse"):
+    records = parse(big_text)</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>17.2 The optimisation checklist (in order of payoff)</h3>
+    <ol>
+      <li><b>Fix the algorithm.</b> O(n²) → O(n log n) or O(n) beats every micro-trick. Check chapter 5’s complexity table:
+      <code>in list</code> → <code>in set</code>; <code>list.pop(0)</code> → <code>deque.popleft()</code>;
+      nested loop over two collections → one dict lookup.</li>
+      <li><b>Do less work.</b> Cache (<code>@cache</code>, HTTP caching, materialised views), short-circuit
+      (<code>any/genexp</code>), avoid re-computing what you already have.</li>
+      <li><b>Move work into C.</b> <code>sum/min/max/sorted/join/dict comprehension</code> over Python-level loops;
+      <code>re</code> over manual string scanning; then NumPy/polars/Arrow/orjson for bulk data.</li>
+      <li><b>Change the data structure.</b> list → set/dict, list of dicts → list of tuples or NumPy array, Python dict →
+      <code>frozenset</code>, <code>array</code>, or a column store.</li>
+      <li><b>Stream instead of materialise.</b> Generators, chunked reads, <code>islice</code>, database cursors —
+      lowers memory and improves cache locality.</li>
+      <li><b>Batch I/O.</b> One query with <code>WHERE id IN (…)</code> instead of 100 queries; <code>executemany</code>;
+      bulk API endpoints; <code>asyncio.gather</code>.</li>
+      <li><b>Parallelise</b> only after 1–6 (chapter 15).</li>
+      <li><b>Compile the hot 5%</b>: Cython, mypyc, Numba (<code>@njit</code>), PyO3/Rust extension, or run under a
+      faster interpreter (PyPy for pure-Python loops — no C-extension support).</li>
+    </ol>
+    <pre><code># The classics, measured
+# 1. membership    O(n) → O(1)
+if item in set(big_list): ...                    # build the set ONCE, outside the loop
+
+# 2. string building
+parts = []; ... ; "".join(parts)                 # not s += x in a loop (O(n²))
+
+# 3. local variable lookup beats global/attribute lookup
+def total(xs):
+    s = 0
+    for x in xs: s += x                          # locals are the fastest namespace
+    return s
+sum(xs)                                          # …but a builtin in C is faster still
+
+# 4. avoid repeated attribute lookups in hot loops
+append = result.append                          # bind the method once
+for x in data: append(transform(x))
+
+# 5. comprehensions are faster than explicit loops + append
+[x * 2 for x in xs]
+
+# 6. NumPy: vectorise — the single biggest win for numeric code
+# slow:  total = sum(x * 2 for x in arr)
+# fast:  total = (arr * 2).sum()
+import numpy as np
+a = np.arange(1_000_000)
+%timeit a.sum()          # in IPython/Jupyter: %timeit, %prun, %%memit (memory_profiler)
+
+# 7. avoid pandas row-wise apply — vectorise or use polars
+# slow:  df.apply(lambda r: r.a + r.b, axis=1)
+# fast:  df["a"] + df["b"]      /  pl.col("a") + pl.col("b")
+
+# 8. serialisation: json → orjson/msgspec for big payloads (2–10×)
+import orjson
+orjson.dumps(data)          # bytes; loads() is far faster than json.loads
+
+# 9. startup time: lazy imports, fewer imports at module level
+$ python -X importtime app.py 2&gt; import_log.txt
+
+# 10. the interpreter itself improved: 3.11/3.12 are 10–60% faster than 3.10 on
+#     typical code — sometimes "upgrade Python" is the whole optimisation.</code></pre>
+    <div class="tip"><b>Know what is faster, roughly</b> (CPython 3.12+, relative, illustrative): builtin C function
+    1× · comprehension 2–3× slower than the equivalent builtin · plain Python loop 5–20× slower than the builtin ·
+    NumPy on 1 M elements 50–500× faster than a Python loop · a Rust/C extension another 2–10× on top. The pattern:
+    <b>push loops down into C</b>.</div>
+  </section>
+</section>
+
+<section class="chapter" id="ch18">
+  <h2><span class="num">18</span> Testing, debugging and code quality</h2>
+  <p class="tagline">pytest, mocking, coverage, the debugger, logging, linting, typing in CI — and a security checklist.</p>
+
+  <section class="sub">
+    <h3>18.1 The test pyramid, and what to actually test</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 320" role="img" aria-label="Test pyramid">
+        <text class="tt" x="20" y="26">Test pyramid — volume and speed decrease as you go up</text>
+        <polygon points="300,50 180,140 420,140" class="bd"/>
+        <text class="t" x="300" y="105" text-anchor="middle">E2E</text>
+        <text class="sm" x="300" y="128" text-anchor="middle">a handful · slowest · highest confidence</text>
+
+        <polygon points="300,118 150,215 450,215" class="bb"/>
+        <text class="t" x="300" y="180" text-anchor="middle">Integration</text>
+        <text class="sm" x="300" y="202" text-anchor="middle">DB, HTTP, filesystem boundaries (containers, test DBs)</text>
+
+        <polygon points="300,193 100,300 500,300" class="bc"/>
+        <text class="t" x="300" y="255" text-anchor="middle">Unit</text>
+        <text class="sm" x="300" y="278" text-anchor="middle">many · milliseconds · pure functions, edge cases, error paths</text>
+
+        <rect x="540" y="60" width="330" height="230" class="bx"/>
+        <text class="t" x="705" y="84" text-anchor="middle">What to test (and what not to)</text>
+        <text class="sm" x="560" y="110">✓ Behaviour and contracts, not implementation details</text>
+        <text class="sm" x="560" y="132">✓ Edge cases: empty, one, many, None, zero, negative, huge</text>
+        <text class="sm" x="560" y="154">✓ Error paths and messages you promise callers</text>
+        <text class="sm" x="560" y="176">✓ Regression tests for every bug you fix</text>
+        <text class="sm" x="560" y="198">✓ Property-based tests for parsers/normalisers</text>
+        <text class="sm" x="560" y="224">✗ Trivial getters, framework internals, private helpers</text>
+        <text class="sm" x="560" y="246">✗ Tests that need the whole internet to run</text>
+        <text class="sm" x="560" y="264">Aim for fast, deterministic tests:</text>
+        <text class="sm" x="560" y="282">no sleeps, no real time, no ordering.</text>
+      </svg>
+      <figcaption>Fig 18.1 — Most of your tests should be fast unit tests; the slow layer should be thin and deliberate.</figcaption>
+    </figure>
+    <pre><code># tests/test_orders.py — pytest style
+import pytest
+from my_pkg.orders import apply_discount, OrderError
+
+# --- plain asserts, no boilerplate ---------------------------------------
+def test_apply_discount_basic():
+    assert apply_discount(100, "SAVE10") == 90
+
+# --- parametrize: one test, many cases ----------------------------------
+@pytest.mark.parametrize(
+    ("amount", "code", "expected"),
+    [
+        (100, "SAVE10", 90),
+        (0,   "SAVE10", 0),
+        (100, None,     100),
+        (100, "FLAT50", 50),
+    ],
+)
+def test_discounts(amount, code, expected):
+    assert apply_discount(amount, code) == expected
+
+# --- exceptions ----------------------------------------------------------
+def test_discount_rejects_negative():
+    with pytest.raises(OrderError, match="negative"):
+        apply_discount(-5, "SAVE10")
+
+# --- approx for floats ---------------------------------------------------
+def test_float_math():
+    assert 0.1 + 0.2 == pytest.approx(0.3)
+
+# --- fixtures: setup/teardown with dependency injection ------------------
+@pytest.fixture
+def db(tmp_path):
+    path = tmp_path / "test.db"                 # tmp_path is a builtin fixture
+    con = create_db(path)
+    yield con                                    # everything after yield = teardown
+    con.close()
+
+@pytest.fixture(scope="session")                 # built once for the whole run
+def api_client():
+    with TestClient(app) as c:
+        yield c
+
+def test_insert(db):
+    db.execute("insert into t values (1)")
+    assert db.execute("select count(*) from t").fetchone()[0] == 1
+
+# --- monkeypatching: replace env vars, time, network --------------------
+def test_uses_env(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "test")
+    monkeypatch.setattr("my_pkg.client.httpx.get", lambda *a, **k: FakeResponse())
+    monkeypatch.setattr("time.time", lambda: 1_700_000_000)
+
+# --- marks: slow, integration, skip, xfail -------------------------------
+@pytest.mark.slow
+@pytest.mark.skipif(sys.version_info &lt; (3, 14), reason="needs 3.14")
+def test_big_thing(): ...
+
+@pytest.mark.parametrize("n", [0, 1, 2])
+def test_known_bug(n):
+    if n == 2:
+        pytest.xfail("waiting for upstream fix")</code></pre>
+    <pre><code>$ uv run pytest -q                       # quiet
+$ uv run pytest -q -k "discount and not slow"
+$ uv run pytest --lf                     # last failed only
+$ uv run pytest -x -vv                   # stop at first failure, verbose
+$ uv run pytest --cov=my_pkg --cov-report=term-missing --cov-fail-under=85
+$ uv run pytest -n auto                  # parallel (pytest-xdist)
+$ uv run pytest --durations=10            # find the slowest tests
+$ uv run pytest --sw                    # step through failures from the last run
+
+# pyproject.toml
+[tool.pytest.ini_options]
+addopts = "-q --strict-markers --strict-config"
+testpaths = ["tests"]
+pythonpath = ["src"]                    # or install the package and drop this
+filterwarnings = ["error"]              # treat warnings as errors — catches deprecations early
+markers = ["slow: takes &gt;1s", "integration: needs external services"]</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Tool</th><th>Purpose</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td><code>pytest</code></td><td>Test runner and fixtures</td><td>One assert style, plain functions, better failure output than unittest.</td></tr>
+        <tr><td><code>coverage.py</code> / <code>pytest-cov</code></td><td>Which lines ran</td><td>Branch coverage &gt; line coverage. 100% is not the goal; untested critical paths are.</td></tr>
+        <tr><td><code>hypothesis</code></td><td>Property-based testing</td><td>Generates hundreds of inputs including evil edge cases; perfect for parsers, encoders, validators.</td></tr>
+        <tr><td><code>freezegun</code> / <code>time-machine</code></td><td>Freeze/control time</td><td>time-machine is much faster.</td></tr>
+        <tr><td><code>responses</code> / <code>respx</code> / <code>httpx.MockTransport</code></td><td>Fake HTTP</td><td>No network in tests; assert on request payloads.</td></tr>
+        <tr><td><code>testcontainers</code></td><td>Real Postgres/Redis in Docker</td><td>Integration tests against the real thing, spin up per session.</td></tr>
+        <tr><td><code>tox</code> / <code>nox</code></td><td>Matrix across Python versions</td><td>Libraries should test 3.10–3.15 in CI.</td></tr>
+        <tr><td><code>mutmut</code> / <code>cosmic-ray</code></td><td>Mutation testing</td><td>Checks whether your tests would catch a bug — a real quality signal.</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><b>Mock only at the boundary.</b> Replacing a collaborator (HTTP client, clock, DB) is fine;
+    mocking your own internal function usually means the test is asserting <i>how</i> the code works instead of
+    <i>what</i> it does. Prefer dependency injection (pass the client in) over patching globals.</div>
+  </section>
+
+  <section class="sub">
+    <h3>18.2 Debugging — the fast tools</h3>
+    <table class="tbl">
+      <thead><tr><th>Situation</th><th>Use</th><th>Command</th></tr></thead>
+      <tbody>
+        <tr><td>Exception in a script</td><td>Python’s traceback</td><td>Read <b>bottom-up</b>: the last frame is where it died; the message names the cause.</td></tr>
+        <tr><td>Want a shell at the failure</td><td>Enhanced REPL on exception <span class="pill hot">3.13+</span></td><td>Interactive debugger prompt appears automatically; type <code>p variable</code>, <code>where</code>, <code>up</code>.</td></tr>
+        <tr><td>Add a breakpoint</td><td><code>breakpoint()</code> → <code>pdb</code></td><td>Insert anywhere; <code>PYTHONBREAKPOINT=0</code> disables it in production.</td></tr>
+        <tr><td>Step through code</td><td><code>pdb</code> commands</td><td><code>n</code>ext · <code>s</code>tep into · <code>c</code>ontinue · <code>l</code>ist · <code>w</code>here · <code>p expr</code> · <code>pp obj</code> · <code>q</code>uit</td></tr>
+        <tr><td>Post-mortem after a crash</td><td><code>pdb.pm()</code></td><td>Inspect the frame stack of the last exception. Or <code>python -m pdb script.py</code>.</td></tr>
+        <tr><td>Visual debugging / notebooks</td><td><code>ipdb</code>, VS Code/PyCharm debugger</td><td>Variables pane, conditional breakpoints, watch expressions.</td></tr>
+        <tr><td>Attach to a running process</td><td><code>py-spy</code>, <code>gdb</code>, PEP 768 interface <span class="pill hot">3.14</span></td><td><code>py-spy dump --pid N</code> for stacks; <code>gdb -p N</code> for C-level.</td></tr>
+        <tr><td>“It’s slow”</td><td>Profiler</td><td>See ch. 17 — <code>cProfile</code>, <code>py-spy</code>, <code>scalene</code>.</td></tr>
+        <tr><td>“It leaks memory”</td><td><code>tracemalloc</code>, <code>memray</code>, <code>objgraph</code></td><td>Snapshot, diff, and look at the biggest grower.</td></tr>
+      </tbody>
+    </table>
+    <pre><code>def broken(data):
+    breakpoint()            # execution stops here; inspect with p/pp/n/s/c
+    return data["missing"]  # then continue and watch it raise
+
+# Tracebacks with more context
+import traceback
+try:
+    risky()
+except Exception:
+    traceback.print_exc()                      # full chain incl. "During handling…"
+    tb = traceback.format_exc(chain=True)      # as a string (handy for logging)
+    traceback.print_stack()                    # where am I, without an exception
+
+# Enrich them in dev (pip install rich / better-exceptions / traceback-with-variables)
+from rich.traceback import install
+install(show_locals=True)                      # colourful, shows local values
+
+# Assert-based sanity checks that are removed with -O
+assert len(items) &gt; 0, f"empty input: {items!r}"
+python -O app.py            # strips asserts (never put essential logic in an assert)
+
+# Fail fast on broken invariants during development
+def withdraw(acct, amount):
+    if amount &lt;= 0: raise ValueError("amount must be positive")
+    if amount &gt; acct.balance: raise InsufficientFunds(acct.id, amount, acct.balance)</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>18.3 Quality tooling in one CI pipeline</h3>
+    <pre><code># .github/workflows/ci.yml (GitHub Actions)
+name: CI
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { enable-cache: true }
+      - run: uv python install ${{ matrix.python-version }}
+      - run: uv sync --locked --all-extras --dev
+      - run: uv run ruff format --check .
+      - run: uv run ruff check --output-format=github .
+      - run: uv run mypy src
+      - run: uv run pytest -q --cov=src --cov-report=xml
+      - run: uv run bandit -q -r src        # security linting
+      - run: uv run pip-audit               # known CVEs in dependencies</code></pre>
+    <pre><code># pre-commit keeps the same checks local (fast feedback before you push)
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-merge-conflict
+      - id: detect-private-key
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.0
+    hooks: [{ id: gitleaks }]           # stops secrets before they are committed</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Stage</th><th>Tool</th><th>Catches</th></tr></thead>
+      <tbody>
+        <tr><td>Format</td><td><code>ruff format</code> (Black-compatible)</td><td>Style debates — gone.</td></tr>
+        <tr><td>Lint</td><td><code>ruff check</code> (500+ rules, replaces flake8/isort/pyupgrade/bugbear)</td><td>Unused imports, shadowed names, mutable defaults, bug-prone patterns.</td></tr>
+        <tr><td>Types</td><td><code>mypy</code>, <code>pyright</code>, <code>ty</code></td><td>None dereferences, wrong argument types, impossible branches.</td></tr>
+        <tr><td>Security</td><td><code>bandit</code>, <code>semgrep</code>, <code>pip-audit</code>, <code>Safety</code>, <code>gitleaks</code></td><td>eval/exec, weak hashes, SQL injection, vulnerable deps, committed secrets.</td></tr>
+        <tr><td>Tests</td><td><code>pytest</code> + coverage + hypothesis</td><td>Regressions and edge cases.</td></tr>
+        <tr><td>Docs</td><td><code>mkdocs-material</code>, <code>sphinx</code>, docstring linting (<code>ruff pydocstyle</code>)</td><td>Stale docs, undocumented public API.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>18.4 Docstrings — the format that tooling understands</h3>
+    <pre><code>def transfer(src: "Account", dst: "Account", amount: float) -&gt; None:
+    """Move money between two accounts atomically.
+
+    Args:
+        src: Account to debit. Must have sufficient balance.
+        dst: Account to credit.
+        amount: Positive value in the account currency.
+
+    Raises:
+        ValueError: If amount is not positive.
+        InsufficientFunds: If src.balance &lt; amount.
+        DatabaseError: If the transaction cannot be committed.
+
+    Examples:
+        &gt;&gt;&gt; transfer(alice, bob, 100.0)
+        &gt;&gt;&gt; bob.balance
+        100.0
+    """
+</code></pre>
+    <p class="small muted">Other accepted styles: Google (above — best tool support), NumPy (scientific libraries), reST
+    (Sphinx-native). Doctrine: document <i>what</i> and <i>why</i>, not the obvious <i>how</i>; the <code>Examples:</code>
+    section runs as a doctest with <code>pytest --doctest-modules</code>.</p>
+  </section>
+
+  <section class="sub">
+    <h3>18.5 Security checklist for Python code</h3>
+    <table class="tbl">
+      <thead><tr><th>Risk</th><th>Never do</th><th>Do instead</th></tr></thead>
+      <tbody>
+        <tr><td>Command injection</td><td><code>os.system(f"ls {user}")</code>, <code>shell=True</code> with input</td><td>Argument lists with <code>subprocess.run([...])</code>; <code>shlex.quote</code> if a shell is unavoidable.</td></tr>
+        <tr><td>SQL injection</td><td>f-strings / <code>%</code> into SQL</td><td>Parameter placeholders (<code>?</code>, <code>%s</code>) or an ORM.</td></tr>
+        <tr><td>Code execution</td><td><code>eval</code>, <code>exec</code>, <code>pickle.loads</code>, <code>yaml.load</code> on untrusted data</td><td><code>ast.literal_eval</code>, <code>json</code>, <code>yaml.safe_load</code>, HMAC-signed payloads.</td></tr>
+        <tr><td>Path traversal</td><td>Joining user paths blindly; <code>tar/zip.extractall</code></td><td>Resolve and verify the path stays inside a root; filter members before extracting.</td></tr>
+        <tr><td>Weak crypto</td><td><code>random</code> for tokens; MD5/SHA1 for passwords</td><td><code>secrets</code> for tokens; <code>hashlib.scrypt</code>/<code>argon2</code>/<code>bcrypt</code> for passwords.</td></tr>
+        <tr><td>Timing attacks</td><td><code>==</code> on secret digests</td><td><code>hmac.compare_digest(a, b)</code>.</td></tr>
+        <tr><td>Secrets in git</td><td>Hard-coded keys, committing <code>.env</code></td><td>Env vars / secret managers; <code>.env.example</code>; <code>gitleaks</code> pre-commit; rotate if leaked.</td></tr>
+        <tr><td>SSRF / open redirects</td><td>Fetching user-supplied URLs freely</td><td>Allow-list hosts and schemes; block private IP ranges.</td></tr>
+        <tr><td>XXE / unsafe XML</td><td><code>xml.etree</code> with entities enabled</td><td><code>defusedxml</code>.</td></tr>
+        <tr><td>Dependency risk</td><td>Unpinned, unaudited deps</td><td>Lock files, <code>pip-audit</code>/Dependabot, review new transitive deps, use <code>uv lock --upgrade</code> deliberately.</td></tr>
+        <tr><td>DoS by input</td><td>Unbounded regex/recursion/JSON depth</td><td>Input limits, timeouts, non-backtracking patterns (<code>regex</code> module), streaming parsers.</td></tr>
+      </tbody>
+    </table>
+    <div class="warn"><b>Defaults to change in production:</b> turn off debug modes (<code>DEBUG=False</code>, FastAPI
+    <code>debug=False</code>), never expose tracebacks to users, set request size/time limits, run as a non-root user in
+    a container, and pin your base images.</div>
+  </section>
+</section>

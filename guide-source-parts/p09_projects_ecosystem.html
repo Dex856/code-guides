@@ -1,0 +1,325 @@
+<section class="chapter" id="ch19">
+  <h2><span class="num">19</span> Building real projects</h2>
+  <p class="tagline">Architecture that survives growth, plus three starter projects you can ship this weekend.</p>
+
+  <section class="sub">
+    <h3>19.1 Architecture: keep the domain independent</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 340" role="img" aria-label="Layered architecture with dependency direction">
+        <text class="tt" x="20" y="26">Layered architecture — dependencies point inward, always</text>
+        <rect x="40" y="50" width="820" height="200" class="bx"/>
+        <text class="sm" x="60" y="70">Infrastructure / adapters — FastAPI routes, SQLAlchemy repos, httpx clients, CLI, S3, Redis</text>
+        <rect x="90" y="82" width="720" height="150" class="bb"/>
+        <text class="sm" x="110" y="102">Application / services — use cases, orchestration, transactions, authorisation</text>
+        <rect x="150" y="112" width="600" height="105" class="bc"/>
+        <text class="sm" x="170" y="132">Domain — entities, value objects, business rules, pure functions, no I/O</text>
+        <text class="sm" x="170" y="156">class Order: def total(self) -&gt; Money …    # testable without a database</text>
+        <text class="sm" x="170" y="180">Imports allowed: domain (nothing) · application (domain) · infrastructure (both)</text>
+        <text class="sm" x="170" y="202">Never: domain importing FastAPI, SQLAlchemy or requests. That is what keeps it testable.</text>
+
+        <rect x="40" y="264" width="400" height="66" class="ba"/>
+        <text class="t" x="240" y="286" text-anchor="middle">Where frameworks help vs hurt</text>
+        <text class="sm" x="60" y="308">Django: batteries included, admin, ORM, migrations — great for CRUD apps.</text>
+        <text class="sm" x="60" y="326">FastAPI/Flask/Litestar: pick your own pieces — great for APIs and services.</text>
+        <rect x="460" y="264" width="400" height="66" class="bp"/>
+        <text class="t" x="660" y="286" text-anchor="middle">Right size your structure</text>
+        <text class="sm" x="480" y="308">A 200-line script needs no architecture. Add layers when a second</text>
+        <text class="sm" x="480" y="326">entry point (CLI + API), a second datastore, or a second developer appears.</text>
+      </svg>
+      <figcaption>Fig 19.1 — Architecture Patterns with Python (free online, Percival &amp; Gregory) is the reference for this picture.</figcaption>
+    </figure>
+    <table class="tbl">
+      <thead><tr><th>Project size</th><th>Structure that fits</th></tr></thead>
+      <tbody>
+        <tr><td>Script (&lt; 200 lines)</td><td>One file + <code>if __name__ == "__main__"</code>. Do not over-engineer.</td></tr>
+        <tr><td>Small tool / package</td><td><code>src/pkg/</code> with a few modules, <code>tests/</code>, pyproject, py.typed.</td></tr>
+        <tr><td>CLI application</td><td>typer/argparse entry point → services module → adapters. Config via env + pydantic-settings.</td></tr>
+        <tr><td>Web API</td><td>routers/ → services/ → repositories/ + models/ (pydantic) + db/ (SQLAlchemy) + core/ (config, security).</td></tr>
+        <tr><td>Data pipeline</td><td>ingest/ → transform/ (pure functions) → load/ + orchestration (Prefect/Dagster/Airflow) + data contracts.</td></tr>
+        <tr><td>Library</td><td>Narrow public API in <code>__init__.py</code>, typed, documented, semantic versioning, CI matrix.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>19.2 Project 1 — a CLI tool that people will actually install</h3>
+    <pre><code># src/tasky/__init__.py        src/tasky/cli.py        src/tasky/store.py
+# pyproject.toml: [project.scripts] tasky = "tasky.cli:app"
+
+# --- store.py: the domain/data layer (pure, testable) --------------------
+import json, sqlite3
+from dataclasses import dataclass, asdict
+from pathlib import Path
+
+DB = Path.home() / ".tasky.db"
+
+@dataclass(slots=True)
+class Task:
+    id: int | None
+    title: str
+    done: bool = False
+    tags: list[str] = None
+
+class Store:
+    def __init__(self, path: Path = DB):
+        self.con = sqlite3.connect(path)
+        self.con.row_factory = sqlite3.Row
+        self.con.execute("""CREATE TABLE IF NOT EXISTS tasks(
+            id INTEGER PRIMARY KEY, title TEXT NOT NULL,
+            done INTEGER DEFAULT 0, tags TEXT DEFAULT '')""")
+
+    def add(self, title: str, tags: list[str] | None = None) -&gt; int:
+        cur = self.con.execute("INSERT INTO tasks(title, tags) VALUES (?, ?)",
+                               (title, ",".join(tags or [])))
+        self.con.commit()
+        return cur.lastrowid
+
+    def list(self, only_open: bool = False) -&gt; list[Task]:
+        sql = "SELECT * FROM tasks" + (" WHERE done = 0" if only_open else "") + " ORDER BY id"
+        return [Task(r["id"], r["title"], bool(r["done"]), r["tags"].split(",") if r["tags"] else [])
+                for r in self.con.execute(sql)]
+
+    def complete(self, task_id: int) -&gt; bool:
+        cur = self.con.execute("UPDATE tasks SET done = 1 WHERE id = ?", (task_id,))
+        self.con.commit()
+        return cur.rowcount &gt; 0
+
+# --- cli.py: the adapter layer (thin) -----------------------------------
+import typer
+from rich.console import Console
+from rich.table import Table
+from .store import Store
+
+app = typer.Typer(help="Tiny task manager.")
+console = Console()
+
+@app.command()
+def add(title: str, tag: list[str] = typer.Option(None, "--tag", "-t")):
+    """Add a task."""
+    new_id = Store().add(title, tag)
+    console.print(f"[green]added[/] #{new_id}: {title}")
+
+@app.command("list")
+def list_tasks(open_only: bool = typer.Option(False, "--open", "-o")):
+    """List tasks."""
+    tasks = Store().list(open_only)
+    table = Table("id", "title", "done", "tags")
+    for t in tasks:
+        table.add_row(str(t.id), t.title, "✓" if t.done else "", ",".join(t.tags or []))
+    console.print(table)
+
+@app.command()
+def done(task_id: int):
+    """Mark a task complete."""
+    if not Store().complete(task_id):
+        raise typer.Exit(code=1)          # nonzero exit code for scripts/CI
+    console.print(f"[green]completed[/] #{task_id}")
+
+if __name__ == "__main__":
+    app()
+
+# Ship it:
+# $ uv build &amp;&amp; uv publish            (or: uv tool install --from . tasky)
+# $ uvx --from tasky tasky list</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>19.3 Project 2 — a web API with FastAPI</h3>
+    <pre><code># app/main.py
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException, Depends, status
+from pydantic import BaseModel, Field
+import sqlite3, os
+
+DB_PATH = os.environ.get("APP_DB", "app.db")
+
+def get_db():
+    con = sqlite3.connect(DB_PATH, check_same_thread=False)
+    con.row_factory = sqlite3.Row
+    try:
+        yield con
+    finally:
+        con.close()
+
+class ItemIn(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    price: float = Field(gt=0)
+
+class Item(ItemIn):
+    id: int
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):        # startup/shutdown (replaces @app.on_event)
+    con = sqlite3.connect(DB_PATH)
+    con.execute("CREATE TABLE IF NOT EXISTS items(id INTEGER PRIMARY KEY, name TEXT, price REAL)")
+    con.commit(); con.close()
+    yield
+
+app = FastAPI(title="Catalog API", version="1.0.0", lifespan=lifespan)
+
+@app.get("/health")
+def health() -&gt; dict[str, str]:
+    return {"status": "ok"}
+
+@app.get("/items", response_model=list[Item])
+def list_items(limit: int = 20, offset: int = 0, db=Depends(get_db)):
+    rows = db.execute("SELECT * FROM items LIMIT ? OFFSET ?", (limit, offset)).fetchall()
+    return [dict(r) for r in rows]
+
+@app.post("/items", response_model=Item, status_code=status.HTTP_201_CREATED)
+def create_item(item: ItemIn, db=Depends(get_db)):
+    cur = db.execute("INSERT INTO items(name, price) VALUES (?, ?)", (item.name, item.price))
+    db.commit()
+    return Item(id=cur.lastrowid, **item.model_dump())
+
+@app.get("/items/{item_id}", response_model=Item)
+def get_item(item_id: int, db=Depends(get_db)):
+    row = db.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="item not found")
+    return dict(row)
+
+# run:  uv run fastapi dev app/main.py     → interactive docs at /docs (OpenAPI for free)
+# tests: from fastapi.testclient import TestClient ; client = TestClient(app)</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>19.4 Project 3 — a data pipeline that does not break</h3>
+    <pre><code># pipeline.py — ingest → validate → transform → load, with retries and observability
+from dataclasses import dataclass
+from pathlib import Path
+import csv, json, logging, sqlite3, time
+import polars as pl
+
+log = logging.getLogger("pipeline")
+
+@dataclass(slots=True)
+class Config:
+    source: Path
+    db: Path
+    batch: int = 5_000
+
+def extract(cfg: Config) -&gt; pl.DataFrame:
+    log.info("reading %s", cfg.source)
+    return pl.read_csv(cfg.source, try_parse_dates=True)      # lazy: pl.scan_csv for huge files
+
+def validate(df: pl.DataFrame) -&gt; pl.DataFrame:
+    bad = df.filter((pl.col("qty") &lt;= 0) | pl.col("sku").is_null())
+    if bad.height:
+        log.warning("dropping %d invalid rows", bad.height)
+    return df.filter((pl.col("qty") &gt; 0) &amp; pl.col("sku").is_not_null())
+
+def transform(df: pl.DataFrame) -&gt; pl.DataFrame:
+    return (df.with_columns(
+                (pl.col("qty") * pl.col("unit_price")).alias("total"),
+                pl.col("sku").str.to_uppercase(),
+            )
+              .group_by("sku")
+              .agg(pl.col("total").sum().round(2).alias("revenue"), pl.len().alias("orders")))
+
+def load(df: pl.DataFrame, cfg: Config) -&gt; int:
+    with sqlite3.connect(cfg.db) as con:
+        con.execute("CREATE TABLE IF NOT EXISTS revenue(sku TEXT PRIMARY KEY, revenue REAL, orders INT)")
+        con.executemany(
+            "INSERT INTO revenue(sku, revenue, orders) VALUES (?, ?, ?) "
+            "ON CONFLICT(sku) DO UPDATE SET revenue=excluded.revenue, orders=excluded.orders",
+            df.iter_rows())
+    log.info("loaded %d rows", df.height)
+    return df.height
+
+def run(cfg: Config) -&gt; int:
+    for attempt in range(3):
+        try:
+            df = extract(cfg)
+            result = transform(validate(df))
+            return load(result, cfg)
+        except Exception:
+            log.exception("attempt %d failed", attempt + 1)
+            if attempt == 2:
+                raise
+            time.sleep(2 ** attempt)
+    return 0
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    raise SystemExit(0 if run(Config(Path("sales.csv"), Path("warehouse.db"))) else 1)
+
+# Scheduling in production: cron → `uv run pipeline.py` ; orchestration → Prefect/Dagster/Airflow
+# Quality gates: pandera/great-expectations data contracts; write a row count to a metrics table</code></pre>
+    <div class="tip"><b>Every real project needs these five things before it counts as “done”:</b>
+    (1) a <code>pyproject.toml</code> + lock file, (2) tests that run in under 10 seconds, (3) structured logging,
+    (4) a config story (env vars + defaults, no secrets in code), (5) CI that runs format + lint + types + tests on every
+    push. Everything else is optional.</div>
+  </section>
+</section>
+
+<section class="chapter" id="ch20">
+  <h2><span class="num">20</span> The ecosystem — what to use for what</h2>
+  <p class="tagline">The library landscape in 2026, organised by problem, with the honest “pick this” answer.</p>
+
+  <section class="sub">
+    <h3>20.1 Web, APIs and services</h3>
+    <table class="tbl">
+      <thead><tr><th>Need</th><th>Pick</th><th>Also worth knowing</th></tr></thead>
+      <tbody>
+        <tr><td>Modern JSON API, async, typed</td><td><b>FastAPI</b> (Starlette + pydantic)</td><td>Litestar, BlackSheep, Quart (async Flask), Robyn (Rust runtime)</td></tr>
+        <tr><td>Full-stack app with admin, ORM, auth, templates</td><td><b>Django</b> (+ Django REST Framework or django-ninja)</td><td>Wagtail (CMS on Django), Django Ninja (FastAPI-style)</td></tr>
+        <tr><td>Small service / internal tool</td><td><b>Flask</b></td><td>Bottle, Falcon, Pyramid (older), Streamlit/Gradio if a UI is the point</td></tr>
+        <tr><td>Realtime / websockets</td><td>FastAPI/Starlette WS, <b>Django Channels</b></td><td>aiohttp, socketio, Centrifugo</td></tr>
+        <tr><td>Async HTTP client</td><td><b>httpx</b> (sync+async, HTTP/2)</td><td>aiohttp (async-only, fast), requests (sync classic), urllib3</td></tr>
+        <tr><td>Data models / validation</td><td><b>pydantic v2</b> (Rust core)</td><td>msgspec (fastest), attrs, marshmallow, dataclasses+jsonschema</td></tr>
+        <tr><td>ORM / SQL</td><td><b>SQLAlchemy 2.0</b> (+ Alembic migrations)</td><td>SQLModel, Django ORM, databases (async), Piccolo, raw sqlite3/psycopg</td></tr>
+        <tr><td>Background jobs</td><td><b>Celery</b> or <b>RQ</b>/<b>arq</b>/<b>Dramatiq</b></td><td>Taskiq, Huey, Cloud-native queues (SQS, Pub/Sub), cron for simple cases</td></tr>
+        <tr><td>Auth</td><td>authlib, python-jose, <b>fastapi-users</b>, Django’s auth</td><td>OAuth/OIDC: Authlib; SSO: python3-saml; never roll your own crypto</td></tr>
+        <tr><td>Serving in production</td><td><b>uvicorn</b> (ASGI) + gunicorn, Hypercorn</td><td>Deploy behind nginx/Caddy/Traefik; containers; platform PaaS (Fly, Render, Railway)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>20.2 Data, analytics and machine learning</h3>
+    <table class="tbl">
+      <thead><tr><th>Need</th><th>Pick</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Arrays / linear algebra</td><td><b>NumPy</b></td><td>The substrate of everything numeric. Learn broadcasting + views vs copies.</td></tr>
+        <tr><td>DataFrames (small/medium)</td><td><b>pandas 2.x</b> (PyArrow-backed) or <b>polars</b></td><td>Polars is Rust, multi-threaded, lazy, much faster &amp; lower memory for most ETL. Pandas has the ecosystem.</td></tr>
+        <tr><td>SQL in-process on files</td><td><b>DuckDB</b></td><td>Query CSV/Parquet/DataFrames with SQL; the fastest path to an answer.</td></tr>
+        <tr><td>Plots</td><td><b>matplotlib</b> (control), <b>plotly</b> (interactive), <b>seaborn</b> (stats)</td><td>Altair (declarative), bokeh, holoviews; for dashboards: Streamlit, Dash, Panel, marimo.</td></tr>
+        <tr><td>Classic ML</td><td><b>scikit-learn</b></td><td>Preprocessing, model selection, pipelines. XGBoost/LightGBM/CatBoost for tabular wins.</td></tr>
+        <tr><td>Deep learning</td><td><b>PyTorch</b> (research default), <b>Keras 3 / JAX</b></td><td>TensorFlow-Legacy, Lightning (training loop), timm (vision), HF Transformers.</td></tr>
+        <tr><td>LLM / AI apps</td><td><b>OpenAI/Anthropic SDKs</b>, <b>LangGraph</b>, <b>LlamaIndex</b>, <b>Pydantic AI</b>, <b>DSPy</b></td><td>Vector stores: FAISS, Qdrant, pgvector, Chroma, LanceDB. Serving: vLLM, Ollama, TGI. Eval: promptfoo, Ragas, DeepEval.</td></tr>
+        <tr><td>NLP</td><td><b>spaCy</b>, Hugging Face,<b> NLTK</b> (teaching), fastText</td><td>Tokenisation: tiktoken; classical text: regex + string methods often suffice.</td></tr>
+        <tr><td>Computer vision</td><td><b>OpenCV</b>, <b>torchvision</b>, <b>Pillow</b> (IO), kornia</td><td>Image pipelines: albumentations; inference: ONNX Runtime, TensorRT.</td></tr>
+        <tr><td>Big data / distributed</td><td><b>PySpark</b>, <b>Dask</b>, <b>Ray</b></td><td>Ray for ML orchestration; Spark for warehouses; DuckDB/polars first if it fits on one box.</td></tr>
+        <tr><td>Orchestration</td><td><b>Prefect</b>, <b>Dagster</b>, Airflow</td><td>Prefect/Dagster are pleasant; Airflow is the enterprise standard. For cron-level needs, just use cron.</td></tr>
+        <tr><td>Notebooks &amp; reports</td><td>JupyterLab, <b>marimo</b>, Quarto, nbconvert</td><td>marimo notebooks are pure Python files that diff well.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>20.3 Automation, scraping, CLI and everything else</h3>
+    <table class="tbl">
+      <thead><tr><th>Need</th><th>Pick</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>CLI with great UX</td><td><b>typer</b> (built on click) or <b>click</b></td><td><code>argparse</code> is fine for stdlib-only. Textual for full TUI apps; rich for output.</td></tr>
+        <tr><td>Terminal output</td><td><b>rich</b> (tables, progress, syntax), tqdm</td><td><code>rich.progress</code> replaces tqdm nicely; <code>loguru</code> for logging with less config.</td></tr>
+        <tr><td>Web scraping (HTML)</td><td><b>httpx</b>/<b>requests</b> + <b>selectolax</b>/<b>BeautifulSoup</b></td><td>lxml for speed; parsel for CSS/XPath; trafilatura for article text.</td></tr>
+        <tr><td>Dynamic pages</td><td><b>Playwright</b> (modern), Selenium</td><td>Prefer official APIs over scraping. Respect robots.txt/ToS and rate limits.</td></tr>
+        <tr><td>Browser automation / testing</td><td><b>Playwright</b></td><td><code>pytest-playwright</code> for e2e; Splinter older.</td></tr>
+        <tr><td>Excel / Office</td><td><b>openpyxl</b> (xlsx), <b>pandas</b>, <b>python-docx</b>, <b>python-pptx</b></td><td>xlsxwriter for writing large spreadsheets; LibreOffice headless for conversion.</td></tr>
+        <tr><td>PDFs</td><td><b>pypdf</b> (merge/split), <b>pdfplumber</b> (text/tables), <b>reportlab</b>/<b>weasyprint</b> (create)</td><td>OCR: pytesseract, pypdfium2 for rendering.</td></tr>
+        <tr><td>Email/messaging</td><td><code>smtplib</code>+<code>email</code> (stdlib), <b>resend</b>/<b>sendgrid</b>; Slack/Discord SDKs</td><td>Never send mail synchronously in a request handler — queue it.</td></tr>
+        <tr><td>Scheduling</td><td>APScheduler, schedule, Prefect, cron</td><td>In-process schedulers die with the process; prefer system/cloud schedulers for production.</td></tr>
+        <tr><td>GUI desktop</td><td><b>PySide6/PyQt6</b> (native), <b>Tkinter</b> (stdlib), <b>Flet</b>, NiceGUI</td><td>Kivy for touch; Toga/BeeWare for pure Python across platforms.</td></tr>
+        <tr><td>Games</td><td><b>pygame-ce</b>, Arcade, Panda3D</td><td>Godot with Python scripting if you want a real engine.</td></tr>
+        <tr><td>Science / engineering</td><td>SciPy, SymPy, Astropy, Biopython, RDKit, GeoPandas, xarray, Pint</td><td>Notebook-first with reproducible environments (conda/pixi for native deps).</td></tr>
+        <tr><td>Dev/DX tooling</td><td><b>uv</b>, <b>ruff</b>, <b>pytest</b>, <b>mypy</b>/pyright, pre-commit, py-spy, memray, mkdocs</td><td>The “boring” stack that makes everything else fast.</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><b>How to evaluate any library</b> (5 minutes): last release date · open issues vs closed · test
+    suite and CI badges · do they ship type hints (<code>py.typed</code>)? · dependencies (does it drag in 40 packages?) ·
+    does it have a maintained alternative that is pure-Python or Rust/C-backed? · licence. Popularity is a lagging
+    indicator — maintenance is the leading one.</div>
+  </section>
+</section>

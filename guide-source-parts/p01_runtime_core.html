@@ -1,0 +1,498 @@
+<section class="chapter" id="ch2">
+  <h2><span class="num">2</span> How Python runs your code</h2>
+  <p class="tagline">Source → AST → bytecode → frames → results. Understanding this pipeline removes the mystery from
+  imports, tracebacks, performance and the GIL.</p>
+
+  <section class="sub">
+    <h3>2.1 The pipeline: from .py file to result</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 300" role="img" aria-label="CPython execution pipeline">
+        <text class="tt" x="20" y="26">What CPython does between <tspan class="mono">python app.py</tspan> and your output</text>
+        <rect x="20" y="52" width="150" height="70" class="ba"/>
+        <text class="t" x="95" y="78" text-anchor="middle">1 · Source</text>
+        <text class="mono" x="95" y="98" text-anchor="middle">app.py</text>
+        <text class="sm" x="95" y="114" text-anchor="middle">UTF-8 text</text>
+
+        <rect x="200" y="52" width="150" height="70" class="ba"/>
+        <text class="t" x="275" y="78" text-anchor="middle">2 · Tokenizer + Parser</text>
+        <text class="sm" x="275" y="98" text-anchor="middle">PEG grammar</text>
+        <text class="sm" x="275" y="114" text-anchor="middle">→ AST (tree)</text>
+
+        <rect x="380" y="52" width="150" height="70" class="ba"/>
+        <text class="t" x="455" y="78" text-anchor="middle">3 · Compiler</text>
+        <text class="sm" x="455" y="98" text-anchor="middle">AST → bytecode</text>
+        <text class="sm" x="455" y="114" text-anchor="middle">code objects</text>
+
+        <rect x="560" y="52" width="150" height="70" class="bc"/>
+        <text class="t" x="635" y="78" text-anchor="middle">4 · Interpreter (PVM)</text>
+        <text class="sm" x="635" y="98" text-anchor="middle">stack machine +</text>
+        <text class="sm" x="635" y="114" text-anchor="middle">frame objects</text>
+
+        <rect x="740" y="52" width="140" height="70" class="bb"/>
+        <text class="t" x="810" y="78" text-anchor="middle">5 · Effects</text>
+        <text class="sm" x="810" y="98" text-anchor="middle">stdout, files,</text>
+        <text class="sm" x="810" y="114" text-anchor="middle">network, exit code</text>
+
+        <path class="ar2" d="M170 87 H198"/><path class="ar2" d="M350 87 H378"/><path class="ar2" d="M530 87 H558"/><path class="ar2" d="M710 87 H738"/>
+
+        <rect x="200" y="160" width="330" height="66" class="bx"/>
+        <text class="t" x="365" y="182" text-anchor="middle">__pycache__/app.cpython-314.pyc</text>
+        <text class="sm" x="365" y="202" text-anchor="middle">bytecode is cached &amp; reused if source mtime+hash match</text>
+        <text class="sm" x="365" y="218" text-anchor="middle">(why the 2nd run of a big program starts faster)</text>
+        <path class="lnd" d="M455 122 V158"/>
+
+        <rect x="560" y="160" width="320" height="66" class="bp"/>
+        <text class="t" x="720" y="182" text-anchor="middle">3.13+ : JIT &amp; specialization</text>
+        <text class="sm" x="720" y="202" text-anchor="middle">hot bytecode is specialized (3.11+) and, on JIT builds,</text>
+        <text class="sm" x="720" y="218" text-anchor="middle">compiled to machine code at runtime</text>
+        <path class="lnd" d="M635 122 V158"/>
+
+        <rect x="20" y="160" width="160" height="66" class="bd"/>
+        <text class="t" x="100" y="182" text-anchor="middle">SyntaxError</text>
+        <text class="sm" x="100" y="202" text-anchor="middle">raised here, before</text>
+        <text class="sm" x="100" y="218" text-anchor="middle">any line runs</text>
+        <path class="lnd" d="M120 122 V158"/>
+
+        <rect x="20" y="246" width="860" height="40" class="bb"/>
+        <text class="sm" x="40" y="271">Peek under the hood: <tspan class="mono">import dis; dis.dis(my_func)</tspan> shows bytecode · <tspan class="mono">ast.dump(ast.parse(src))</tspan> shows the tree · <tspan class="mono">sys.settrace / sys.monitoring</tspan> observe execution</text>
+      </svg>
+      <figcaption>Fig 2.1 — Compile once, interpret many. Errors before step 4 are syntax errors; errors during step 4 are exceptions with tracebacks.</figcaption>
+    </figure>
+    <pre><code>import dis, ast
+
+def add(a, b):
+    return a + b
+
+dis.dis(add)                     # human-readable bytecode listing
+print(ast.dump(ast.parse("x = 1 + 2"), indent=2))   # the AST
+print(add.__code__.co_varnames, add.__code__.co_consts)</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>2.2 Frames, the call stack, and tracebacks</h3>
+    <p>Each function call creates a <b>frame</b> holding local variables, the instruction pointer and a reference to the
+    enclosing (global/builtin) namespaces. Tracebacks are literally a dump of the frame stack — reading them bottom-up
+    (oldest call last) tells you the whole story.</p>
+    <figure class="dg">
+      <svg viewBox="0 0 900 290" role="img" aria-label="Call stack frames">
+        <text class="tt" x="20" y="26">The call stack for main() → process() → parse()</text>
+        <rect x="30" y="46" width="420" height="52" class="bx"/>
+        <text class="t" x="50" y="68">&lt;module&gt; frame</text><text class="mono sm" x="50" y="86">locals: data, result · line 12</text>
+        <rect x="30" y="104" width="420" height="52" class="ba"/>
+        <text class="t" x="50" y="126">process() frame</text><text class="mono sm" x="50" y="144">locals: row, total · line 7</text>
+        <rect x="30" y="162" width="420" height="52" class="bc"/>
+        <text class="t" x="50" y="184">parse() frame  ← current</text><text class="mono sm" x="50" y="202">locals: text, n · line 3</text>
+        <text class="sm" x="30" y="238">Stack grows downward · a frame is created per call and destroyed on return</text>
+        <text class="sm" x="30" y="256">Deep recursion ⇒ many frames ⇒ RecursionError (default limit 1000: <tspan class="mono">sys.setrecursionlimit</tspan>)</text>
+        <text class="sm" x="30" y="274">Each frame costs memory (~few hundred bytes) — that is why generators/trampolines beat deep recursion</text>
+
+        <rect x="480" y="46" width="390" height="200" class="bx"/>
+        <text class="t" x="675" y="70" text-anchor="middle">Traceback = the same stack, printed</text>
+        <text class="mono sm" x="500" y="96">Traceback (most recent call last):</text>
+        <text class="mono sm" x="500" y="116">  File "app.py", line 12, in &lt;module&gt;</text>
+        <text class="mono sm" x="516" y="134">    result = process(data)</text>
+        <text class="mono sm" x="500" y="154">  File "app.py", line 7, in process</text>
+        <text class="mono sm" x="516" y="172">    total += parse(row)</text>
+        <text class="mono sm" x="500" y="192">  File "app.py", line 3, in parse</text>
+        <text class="mono sm" x="516" y="210">    return int(text)</text>
+        <text class="mono sm" x="500" y="232" style="fill:#c9524a">ValueError: invalid literal for int()</text>
+      </svg>
+      <figcaption>Fig 2.2 — Frames are the unit of execution state. <code>inspect.currentframe()</code>, <code>traceback</code> and debuggers all work at this level.</figcaption>
+    </figure>
+    <pre><code>import inspect, traceback
+
+def whoami():
+    f = inspect.currentframe()
+    print(f.f_code.co_name, f.f_lineno, f.f_locals)
+    print("callers:", [fr.f_code.co_name for fr in inspect.stack()[1:3]])
+
+# Frames are also how exception chaining and __traceback__ work:
+try:
+    1/0
+except ZeroDivisionError as e:
+    print(e.__traceback__.tb_lineno)      # line number where it blew up
+    traceback.print_exc(limit=2)          # print only the 2 innermost frames</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>2.3 The five ways to run Python</h3>
+    <table class="tbl">
+      <thead><tr><th>Mode</th><th>Command</th><th>Use it for</th></tr></thead>
+      <tbody>
+        <tr><td>REPL</td><td><code>python</code> / <code>python3</code></td><td>Instant experimentation, checking an API, <code>help(x)</code>. 3.13+ REPL has highlighting and multi-line editing.</td></tr>
+        <tr><td>Script</td><td><code>python app.py arg1 arg2</code></td><td>Anything reusable. <code>sys.argv</code> holds args; prefer <code>argparse</code>/<code>typer</code>.</td></tr>
+        <tr><td>Module</td><td><code>python -m http.server 8000</code></td><td>Runs a package/module as <code>__main__</code> — always works regardless of PATH.</td></tr>
+        <tr><td>One-liner</td><td><code>python -c "import sys;print(sys.version)"</code></td><td>Shell scripts, quick checks, Makefile steps.</td></tr>
+        <tr><td>Notebook / embedded</td><td><code>jupyter lab</code>, <code>uv run marimo edit app.py</code></td><td>Exploration, teaching, reports. Note: notebooks hide state and do not diff well.</td></tr>
+      </tbody>
+    </table>
+    <h4>The standard script skeleton</h4>
+    <pre><code>#!/usr/bin/env python3
+"""Fetch totals. Usage: python report.py data.csv --top 5"""
+from __future__ import annotations          # optional; 3.14+ defers annotations anyway
+
+import argparse, csv, sys
+from pathlib import Path
+
+
+def parse_args(argv: list[str] | None = None) -&gt; argparse.Namespace:
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("csv_path", type=Path)
+    p.add_argument("--top", type=int, default=10)
+    return p.parse_args(argv)
+
+
+def main() -&gt; int:                             # return an exit code: 0 = success
+    args = parse_args()
+    if not args.csv_path.exists():
+        print(f"no such file: {args.csv_path}", file=sys.stderr)
+        return 2
+    with args.csv_path.open(newline="", encoding="utf-8") as fh:
+        rows = list(csv.DictReader(fh))
+    print(f"{len(rows)} rows read")
+    return 0
+
+
+if __name__ == "__main__":                    # only runs when executed, not when imported
+    raise SystemExit(main())</code></pre>
+    <div class="note"><b>Why <code>if __name__ == "__main__":</code>?</b> When a file is executed directly its
+    <code>__name__</code> is <code>"__main__"</code>; when imported it is the module name. This guard is what makes a file
+    both a script and an importable library — and it prevents import-time side effects (which also matter for
+    multiprocessing on Windows/macOS spawn).</div>
+  </section>
+
+  <section class="sub">
+    <h3>2.4 Exit codes, stdin and stderr</h3>
+    <pre><code>import sys
+
+sys.exit(0)                 # success
+sys.exit("message")         # prints to stderr and exits with status 1
+raise SystemExit(2)         # explicit code (same thing, clearer in main())
+
+line = sys.stdin.readline()          # read a line from a pipe
+for line in sys.stdin:               # stream all input lazily
+    ...
+print("error!", file=sys.stderr)     # diagnostics must go to stderr, data to stdout
+print("data", flush=True)            # unbuffered: needed for progress output in pipes</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Exit code</th><th>Meaning (convention)</th></tr></thead>
+      <tbody>
+        <tr><td><code>0</code></td><td>Success.</td></tr>
+        <tr><td><code>1</code></td><td>Generic failure / uncaught exception.</td></tr>
+        <tr><td><code>2</code></td><td>Usage error (argparse default) or “file not found” in our skeleton.</td></tr>
+        <tr><td><code>130</code></td><td>Interrupted by <span class="kbd">Ctrl+C</span> (128 + SIGINT) — CI systems expect this.</td></tr>
+      </tbody>
+    </table>
+  </section>
+</section>
+
+<section class="chapter" id="ch3">
+  <h2><span class="num">3</span> Core language: values, names, operators</h2>
+  <p class="tagline">The 20% of the language you use 80% of the time: names and objects, numbers, strings, operators and truthiness.</p>
+
+  <section class="sub">
+    <h3>3.1 Names are labels, not boxes</h3>
+    <p>This one mental model change prevents most beginner confusion: <code>x = 5</code> does <b>not</b> copy 5 into x.
+    It binds the <i>name</i> <code>x</code> to an <i>object</i> 5. Assignment rebinds; it never mutates.</p>
+    <figure class="dg">
+      <svg viewBox="0 0 900 280" role="img" aria-label="Names reference objects">
+        <text class="tt" x="20" y="26">Names → objects (and why aliasing surprises you)</text>
+        <text class="t" x="70" y="70">x</text><rect x="30" y="78" width="80" height="30" class="bx"/><text class="mono" x="70" y="98" text-anchor="middle">name x</text>
+        <text class="t" x="200" y="70">y</text><rect x="160" y="78" width="80" height="30" class="bx"/><text class="mono" x="200" y="98" text-anchor="middle">name y</text>
+        <text class="t" x="330" y="70">z</text><rect x="290" y="78" width="80" height="30" class="bx"/><text class="mono" x="330" y="98" text-anchor="middle">name z</text>
+
+        <rect x="120" y="170" width="110" height="46" class="bb"/><text class="mono" x="175" y="199" text-anchor="middle">5</text>
+        <rect x="300" y="170" width="150" height="46" class="bc"/><text class="mono" x="375" y="199" text-anchor="middle">[1, 2, 3]</text>
+        <path class="ar2" d="M70 108 C70 150 140 160 160 170"/>
+        <path class="ar2" d="M200 108 V168"/>
+        <path class="ar2" d="M330 108 C330 150 360 160 372 170"/>
+
+        <text class="sm" x="30" y="252">x = y = 5            → both names point at the same int object (immutable: safe)</text>
+        <text class="sm" x="30" y="270">z = y                → alias! <tspan class="mono">z.append(9)</tspan> also changes y's object → use <tspan class="mono">y.copy()</tspan> or <tspan class="mono">list(y)</tspan></text>
+
+        <rect x="560" y="52" width="320" height="190" class="bx"/>
+        <text class="t" x="720" y="76" text-anchor="middle">Rules that follow from this model</text>
+        <text class="sm" x="580" y="102">• Function args are passed by object reference.</text>
+        <text class="sm" x="580" y="126">• Reassigning inside a function never changes</text>
+        <text class="sm" x="596" y="144">the caller's name; mutating does.</text>
+        <text class="sm" x="580" y="170">• <tspan class="mono">a += [1]</tspan> on a list mutates; <tspan class="mono">a = a + [1]</tspan> rebinds.</text>
+        <text class="sm" x="580" y="196">• <tspan class="mono">del x</tspan> removes the name, not the object.</text>
+        <text class="sm" x="580" y="222">• An object with no names is eventually GC'd.</text>
+      </svg>
+      <figcaption>Fig 3.1 — “Everything is an object; names are references.” <code>id(x)</code> shows the object identity.</figcaption>
+    </figure>
+    <pre><code>a = [1, 2, 3]
+b = a                     # alias — SAME object
+c = a.copy()              # shallow copy — new outer object
+a.append(4)
+print(a, b, c)            # [1,2,3,4] [1,2,3,4] [1,2,3]
+print(a is b, a is c, a == c)   # True False False
+
+import copy
+matrix = [[1, 2], [3, 4]]
+shallow = matrix.copy()          # inner lists are still shared!
+deep = copy.deepcopy(matrix)     # fully independent
+shallow[0][0] = 99
+print(matrix, deep)              # [[99,2],[3,4]] [[1,2],[3,4]]</code></pre>
+    <div class="tip"><b>Naming rules:</b> identifiers may contain letters, digits and <code>_</code>, cannot start with a
+    digit, are case-sensitive, and use Unicode (<code>π = 3.14</code> is legal, sometimes regrettable). By convention:
+    <code>snake_case</code> functions/variables · <code>PascalCase</code> classes · <code>UPPER_CASE</code> constants ·
+    <code>_private</code> by convention · <code>__mangled</code> inside classes · <code>__dunder__</code> reserved by the data model.</div>
+  </section>
+
+  <section class="sub">
+    <h3>3.2 The type system at a glance</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 400" role="img" aria-label="Python type hierarchy: mutable vs immutable">
+        <text class="tt" x="20" y="26">Built-in types: the mutable / immutable split is the important one</text>
+        <rect x="360" y="42" width="180" height="40" class="ba"/><text class="t" x="450" y="68" text-anchor="middle">object (everything)</text>
+
+        <rect x="60" y="120" width="360" height="36" class="bc"/><text class="t" x="240" y="144" text-anchor="middle">IMMUTABLE — safe as dict keys &amp; default args</text>
+        <rect x="480" y="120" width="360" height="36" class="bb"/><text class="t" x="660" y="144" text-anchor="middle">MUTABLE — can change in place (no hashing)</text>
+
+        <rect x="60" y="170" width="170" height="66" class="bx"/>
+        <text class="sm" x="145" y="192" text-anchor="middle">Numbers</text>
+        <text class="mono" x="145" y="210" text-anchor="middle">int float complex</text>
+        <text class="mono" x="145" y="228" text-anchor="middle">bool Decimal Fraction</text>
+        <rect x="245" y="170" width="175" height="66" class="bx"/>
+        <text class="sm" x="332" y="192" text-anchor="middle">Text / bytes</text>
+        <text class="mono" x="332" y="210" text-anchor="middle">str bytes</text>
+        <rect x="60" y="248" width="170" height="66" class="bx"/>
+        <text class="sm" x="145" y="270" text-anchor="middle">Sequences</text>
+        <text class="mono" x="145" y="288" text-anchor="middle">tuple range</text>
+        <rect x="245" y="248" width="175" height="66" class="bx"/>
+        <text class="sm" x="332" y="270" text-anchor="middle">Set-like (hashable items)</text>
+        <text class="mono" x="332" y="288" text-anchor="middle">frozenset</text>
+
+        <rect x="480" y="170" width="170" height="66" class="bx"/>
+        <text class="sm" x="565" y="192" text-anchor="middle">Containers</text>
+        <text class="mono" x="565" y="210" text-anchor="middle">list dict</text>
+        <text class="mono" x="565" y="228" text-anchor="middle">set bytearray</text>
+        <rect x="665" y="170" width="175" height="66" class="bx"/>
+        <text class="sm" x="752" y="192" text-anchor="middle">Collections extras</text>
+        <text class="mono" x="752" y="210" text-anchor="middle">deque Counter</text>
+        <text class="mono" x="752" y="228" text-anchor="middle">OrderedDict defaultdict</text>
+        <rect x="480" y="248" width="360" height="66" class="bx"/>
+        <text class="sm" x="660" y="270" text-anchor="middle">Others</text>
+        <text class="mono" x="660" y="288" text-anchor="middle">functions · classes · modules · type · NoneType · file objects</text>
+        <text class="mono" x="660" y="306" text-anchor="middle">array · memoryview · NamedTuple · dataclass instances</text>
+
+        <rect x="60" y="336" width="780" height="48" class="bd"/>
+        <text class="sm" x="80" y="356">Gotcha: <tspan class="mono">tuple</tspan> is immutable but can contain a list → not truly hashable → <tspan class="mono">TypeError: unhashable type: 'list'</tspan> when used as a dict key.</text>
+        <text class="sm" x="80" y="374">Gotcha: <tspan class="mono">bool</tspan> is a subclass of <tspan class="mono">int</tspan> — <tspan class="mono">True + True == 2</tspan>, and <tspan class="mono">{True: 'a', 1: 'b'}</tspan> collapses to one key.</text>
+      </svg>
+      <figcaption>Fig 3.2 — Immutability buys you hashability, thread-safety by default, and immunity to aliasing bugs.</figcaption>
+    </figure>
+    <pre><code>type(5), type(5.0), type("5"), type([5]), type(None)     # all "types"
+isinstance(5, int), isinstance(True, int)                # True, True  (!)
+issubclass(bool, int)                                    # True
+
+hash("abc")            # strings/ints/tuples hashable
+hash([1])              # TypeError: unhashable type: 'list'
+sys.getsizeof("hello") # 54 bytes — object overhead is real: 100M small ints ≈ 2.8 GB</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Builtin</th><th>Example</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>int</code></td><td><code>n = 10_000_000</code></td><td>Arbitrary precision, no overflow. Underscores allowed as digit separators. <code>int("ff", 16)</code>, <code>int("1010", 2)</code>.</td></tr>
+        <tr><td><code>float</code></td><td><code>x = 1.5e-3</code></td><td>IEEE-754 double, ~15–17 significant digits. Never use <code>==</code>: use <code>math.isclose(a, b)</code>.</td></tr>
+        <tr><td><code>complex</code></td><td><code>z = 2+3j</code></td><td><code>z.real</code>, <code>z.imag</code>, <code>cmath</code> module for math functions.</td></tr>
+        <tr><td><code>bool</code></td><td><code>flag = True</code></td><td>Only two singletons, <code>True</code>/<code>False</code>; subclasses <code>int</code>. Use <code>is</code> for comparison.</td></tr>
+        <tr><td><code>str</code></td><td><code>s = "héllo"</code></td><td>Immutable sequence of Unicode code points. UTF-8 on disk, flexible in-memory (1/2/4 bytes per char, PEP 393).</td></tr>
+        <tr><td><code>bytes</code></td><td><code>b = b"\x00\xff"</code></td><td>Immutable byte sequence. <code>str.encode()</code> / <code>bytes.decode()</code> is the boundary between text and I/O.</td></tr>
+        <tr><td><code>None</code></td><td><code>x = None</code></td><td>The single NoneType instance — a real object, always falsy, compare with <code>is None</code>.</td></tr>
+        <tr><td><code>Decimal</code></td><td><code>Decimal("0.1")</code></td><td>Exact decimal arithmetic — mandatory for money. <code>Fraction(1,3)</code> for exact rationals.</td></tr>
+      </tbody>
+    </table>
+    <pre><code>from decimal import Decimal, getcontext
+from fractions import Fraction
+
+0.1 + 0.2 == 0.3                       # False  (0.30000000000000004)
+math.isclose(0.1 + 0.2, 0.3)           # True
+Decimal("0.1") + Decimal("0.2") == Decimal("0.3")   # True — exact (for money)
+getcontext().prec = 28                 # precision for Decimal ops
+Fraction(1, 3) + Fraction(1, 6)        # Fraction(1, 2)
+round(2.675, 2)                        # 2.67 — binary float surprise
+round(2.5), round(3.5), round(4.5)     # 2 4 4 — banker's rounding (round-half-to-even)</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>3.3 Numbers, operators and precedence</h3>
+    <table class="tbl">
+      <thead><tr><th>Operator</th><th>Meaning</th><th>Example → result</th></tr></thead>
+      <tbody>
+        <tr><td><code>+ - * /</code></td><td>Arithmetic; <code>/</code> always returns float</td><td><code>7 / 2</code> → <code>3.5</code></td></tr>
+        <tr><td><code>//</code></td><td>Floor division (toward −∞)</td><td><code>-7 // 2</code> → <code>-4</code></td></tr>
+        <tr><td><code>%</code></td><td>Modulo (always same sign as divisor)</td><td><code>-7 % 3</code> → <code>2</code> · <code>divmod(7,3)</code> → <code>(2, 1)</code></td></tr>
+        <tr><td><code>**</code></td><td>Power (right-associative)</td><td><code>2 ** 10</code> → <code>1024</code> · <code>2 ** -1</code> → <code>0.5</code></td></tr>
+        <tr><td><code>@</code></td><td>Matrix multiply (NumPy/arrays)</td><td><code>A @ B</code></td></tr>
+        <tr><td><code>== != &lt; &gt; &lt;= &gt;=</code></td><td>Comparisons, chainable</td><td><code>0 &lt;= x &lt; 10</code> means <code>0 &lt;= x and x &lt; 10</code></td></tr>
+        <tr><td><code>and or not</code></td><td>Boolean logic — <b>returns operands, not bools</b></td><td><code>"" or "default"</code> → <code>'default'</code> · <code>x and x.y</code> → safe access</td></tr>
+        <tr><td><code>is</code> / <code>is not</code></td><td>Object identity (same object in memory)</td><td><code>x is None</code> · <code>a is b</code></td></tr>
+        <tr><td><code>in</code> / <code>not in</code></td><td>Membership test (uses <code>__contains__</code>)</td><td><code>"py" in "python"</code> → <code>True</code></td></tr>
+        <tr><td><code>~ ^ &amp; |</code></td><td>Bitwise NOT/XOR/AND/OR · also <code>&lt;&lt; &gt;&gt;</code> shifts</td><td><code>0b1010 &amp; 0b0110</code> → <code>2</code> · <code>5 | 2</code> → <code>7</code></td></tr>
+        <tr><td><code>:=</code></td><td>Walrus — assign inside an expression</td><td><code>while (chunk := f.read(8192)):</code></td></tr>
+      </tbody>
+    </table>
+    <p><b>Precedence</b> (highest → lowest, abbreviated): <code>() [] {} attr call</code> → <code>**</code> →
+    <code>+x -x ~x</code> → <code>* / // % @</code> → <code>+ -</code> → <code>&lt;&lt; &gt;&gt;</code> →
+    <code>&amp;</code> → <code>^</code> → <code>|</code> → <code>comparisons, in, is</code> → <code>not</code> →
+    <code>and</code> → <code>or</code> → <code>if-else ternary</code> → <code>lambda</code> → <code>:=</code>.
+    <span class="muted">When in doubt, parenthesise — it is free and reviewers will thank you.</span></p>
+    <h4>Truthiness — what counts as False</h4>
+    <table class="tbl">
+      <thead><tr><th>Falsy (→ <code>False</code>)</th><th>Truthy (→ <code>True</code>)</th><th>Rule</th></tr></thead>
+      <tbody>
+        <tr><td><code>None</code>, <code>False</code>, <code>0</code>, <code>0.0</code>, <code>0j</code>, <code>Decimal(0)</code></td><td>any non-zero number</td><td><code>__bool__</code> returns False, or <code>__len__</code> returns 0</td></tr>
+        <tr><td><code>""</code>, <code>[]</code>, <code>()</code>, <code>{}</code>, <code>set()</code>, <code>range(0)</code>, <code>b""</code></td><td>any non-empty container</td><td>empty collections are falsy</td></tr>
+        <tr><td>custom object with <code>__len__ → 0</code> or <code>__bool__ → False</code></td><td>everything else</td><td>objects are truthy by default</td></tr>
+      </tbody>
+    </table>
+    <div class="warn"><b>Empty ≠ missing.</b> <code>if value:</code> treats <code>0</code> and <code>""</code> like
+    <code>None</code>. When 0 or “” are legitimate values, test identity instead: <code>if value is not None:</code>.
+    But note <code>if x == 0</code> is <i>not</i> the same as <code>if not x</code> when x can be <code>False</code> or
+    a container.</div>
+    <h4>Augmented assignment and integer tricks</h4>
+    <pre><code>n = 5
+n += 1; n -= 2; n *= 3; n //= 2; n **= 2; n %= 7     # in-place operators
+a = b = []        # both names, ONE list
+a += [1]          # list.__iadd__ mutates in place → b is now [1] too  (trap!)
+a = a + [1]       # rebinds → b unchanged                              (safe)
+
+x, y = y, x                       # swap without temp
+a, *mid, z = [1,2,3,4,5]          # a=1, mid=[2,3,4], z=5
+first, second = pair              # unpacking (also works for dict keys, strings)
+n.bit_length(), (255).to_bytes(2, "big"), int.from_bytes(b"\x01\x02", "big")
+divmod(17, 5)                     # (3, 2)
+abs(-3.5), min(1,2), max([1,2]), sum([1,2,3]), pow(2,10), round(2.567, 2)</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>3.4 Strings in depth</h3>
+    <p>Strings are immutable sequences of Unicode code points. <b>Every</b> string method returns a new string — nothing
+    ever modifies in place, which is why building text in a loop is a performance trap (O(n²)); collect into a list and
+    <code>"".join(...)</code>.</p>
+    <h4>Creating and formatting</h4>
+    <pre><code>name, score = "Ada", 0.931
+
+# f-strings — the default choice (fastest &amp; most readable)
+f"{name} scored {score:.1%}"            # Ada scored 93.1%
+f"{3.14159:.2f} | {42:&gt;8} | {42:08d}"    # 3.14 |       42 | 00000042
+f"{255:#x} {255:b} {255:o}"             # 0xff 11111111 0o377
+f"{1234567:,}"                          # 1,234,567
+f"{name!r} {name!s} {name!a}"           # !r = repr(), !s = str(), !a = ascii()
+f"{score=}"                             # score=0.931  (self-documenting, 3.8+)
+f"{'nested f-string works 3.12+'}"      # reuse quotes &amp; newlines (3.12+)
+
+# t-strings (3.14+) — like f-strings but produce a Template object for safe processing
+from string.templatelib import Template
+t = t"Hello {name}, you scored {score:.1%}"      # nothing is interpolated yet
+"".join(p if isinstance(p, str) else str(p.value) for p in t)   # manual processing
+
+# legacy styles you will still read in old code
+"%s scored %.1f%%" % (name, score * 100)
+"{} scored {:.1%}".format(name, score)
+
+# multi-line: triple quotes preserve newlines; textwrap.dedent cleans indentation
+import textwrap
+SQL = textwrap.dedent("""
+    SELECT *
+    FROM users
+    WHERE active = true
+""").strip()</code></pre>
+    <h4>String format spec mini-reference</h4>
+    <table class="tbl">
+      <thead><tr><th>Spec</th><th>Meaning</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td><code>[[fill]align][sign][#][0][width][,][.precision][type]</code></td><td>full grammar</td><td><code>f"{x:*^10.2f}"</code> → <code>**3.14****</code></td></tr>
+        <tr><td><code>&lt; &gt; ^ =</code></td><td>align left / right / centre / pad after sign</td><td><code>f"{-3:=6d}"</code> → <code>   -3</code></td></tr>
+        <tr><td><code>d x X o b</code></td><td>integer bases (dec/hex/HEX/oct/bin)</td><td><code>f"{10:04b}"</code> → <code>1010</code></td></tr>
+        <tr><td><code>f e g %</code></td><td>float / exponent / general / percent</td><td><code>f"{0.5:.0%}"</code> → <code>50%</code></td></tr>
+        <tr><td><code>, _</code></td><td>thousands separator</td><td><code>f"{10**9:_}"</code> → <code>1_000_000_000</code></td></tr>
+        <tr><td><code>c</code>, <code>s</code>, <code>!r</code></td><td>char / string / repr</td><td><code>f"{65:c}"</code> → <code>A</code></td></tr>
+      </tbody>
+    </table>
+    <h4>The methods you will actually use</h4>
+    <table class="tbl">
+      <thead><tr><th>Task</th><th>Code</th></tr></thead>
+      <tbody>
+        <tr><td>Search</td><td><code>s.find("x")</code> (−1 if absent) · <code>s.index("x")</code> (raises) · <code>"x" in s</code> · <code>s.startswith(("a","b"))</code> · <code>s.count("x")</code></td></tr>
+        <tr><td>Case</td><td><code>s.lower()</code> <code>s.upper()</code> <code>s.title()</code> <code>s.capitalize()</code> <code>s.casefold()</code> (aggressive, for comparisons)</td></tr>
+        <tr><td>Trim</td><td><code>s.strip()</code> <code>s.lstrip("0")</code> <code>s.rstrip("\n")</code> <code>s.removeprefix("v")</code> <code>s.removesuffix(".py")</code></td></tr>
+        <tr><td>Split / join</td><td><code>s.split()</code> (whitespace) · <code>s.split(",")</code> · <code>s.splitlines()</code> · <code>",".join(items)</code> · <code>s.partition(":")</code></td></tr>
+        <tr><td>Replace</td><td><code>s.replace("old", "new")</code> · <code>s.translate(table)</code> · <code>str.maketrans("aeiou", "AEIOU")</code></td></tr>
+        <tr><td>Test</td><td><code>s.isdigit()</code> <code>s.isalpha()</code> <code>s.isalnum()</code> <code>s.isspace()</code> <code>s.isidentifier()</code></td></tr>
+        <tr><td>Pad / align</td><td><code>s.ljust(10, ".")</code> <code>s.center(20, "=")</code> <code>s.zfill(6)</code></td></tr>
+        <tr><td>Index / slice</td><td><code>s[0]</code> <code>s[-1]</code> <code>s[2:5]</code> <code>s[::-1]</code> (reverse) <code>s[::2]</code> <code>s[:3]</code></td></tr>
+        <tr><td>Regex</td><td><code>re.findall(r"\d+", s)</code> · <code>re.sub(r"\s+", " ", s)</code> · see ch. 11</td></tr>
+      </tbody>
+    </table>
+    <pre><code>s = "  Hello, World!  "
+s.strip().lower()                      # 'hello, world!'
+"a,b,,c".split(",")                    # ['a','b','','c']
+",".join(["a","b"])                    # 'a,b'
+"".join(ch for ch in "hello" if ch not in "aeiou")   # 'hll'
+"123".zfill(6), "ab".ljust(5, "*")     # '000123' 'ab***'
+"user:pass".partition(":")             # ('user', ':', 'pass')
+"Hello".startswith(("Hi", "He"))       # True — tuple of prefixes
+ord("A"), chr(65)                      # 65 'A'
+"café".encode("utf-8")                 # b'caf\xc3\xa9'
+"a\tb".expandtabs(4)
+
+# Reverse a string / check palindrome
+"abc"[::-1] == "cba"
+def is_palindrome(t): return (c := [ch for ch in t.lower() if ch.isalnum()]) == c[::-1]</code></pre>
+    <div class="warn"><b>Text vs bytes:</b> a <code>str</code> is text, a <code>bytes</code> is binary data. Python never
+    guesses: opening files in binary mode gives bytes; in text mode it decodes using an encoding (be explicit, always
+    <code>encoding="utf-8"</code>). Mixing them raises <code>TypeError: can only concatenate str (not "bytes") to str</code>.</div>
+  </section>
+
+  <section class="sub">
+    <h3>3.5 Slicing — the universal sequence tool</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 250" role="img" aria-label="Slicing diagram">
+        <text class="tt" x="20" y="26">seq[start:stop:step] — stop is exclusive, negatives count from the end</text>
+        <g class="mono">
+          <text x="120" y="60" text-anchor="middle" class="sm">idx 0</text><text x="180" y="60" text-anchor="middle" class="sm">1</text><text x="240" y="60" text-anchor="middle" class="sm">2</text><text x="300" y="60" text-anchor="middle" class="sm">3</text><text x="360" y="60" text-anchor="middle" class="sm">4</text><text x="420" y="60" text-anchor="middle" class="sm">5</text>
+          <text x="120" y="150" text-anchor="middle" class="sm">-6</text><text x="180" y="150" text-anchor="middle" class="sm">-5</text><text x="240" y="150" text-anchor="middle" class="sm">-4</text><text x="300" y="150" text-anchor="middle" class="sm">-3</text><text x="360" y="150" text-anchor="middle" class="sm">-2</text><text x="420" y="150" text-anchor="middle" class="sm">-1</text>
+        </g>
+        <g>
+          <rect x="95" y="70" width="50" height="46" class="bx" rx="4"/><text x="120" y="99" text-anchor="middle" class="mono">P</text>
+          <rect x="155" y="70" width="50" height="46" class="bx" rx="4"/><text x="180" y="99" text-anchor="middle" class="mono">Y</text>
+          <rect x="215" y="70" width="50" height="46" class="bx" rx="4"/><text x="240" y="99" text-anchor="middle" class="mono">T</text>
+          <rect x="275" y="70" width="50" height="46" class="bx" rx="4"/><text x="300" y="99" text-anchor="middle" class="mono">H</text>
+          <rect x="335" y="70" width="50" height="46" class="bx" rx="4"/><text x="360" y="99" text-anchor="middle" class="mono">O</text>
+          <rect x="395" y="70" width="50" height="46" class="bx" rx="4"/><text x="420" y="99" text-anchor="middle" class="mono">N</text>
+        </g>
+        <g>
+          <text class="sm" x="90" y="135" text-anchor="middle">↑start</text>
+          <text class="sm" x="450" y="60" text-anchor="middle">stop↑</text>
+        </g>
+        <rect x="95" y="132" width="120" height="8" fill="#7fd1c4"/><text class="sm" x="155" y="170" text-anchor="middle">s[0:2] = "PY"</text>
+        <text class="sm" x="520" y="90">s[1:] = "YTHON"</text>
+        <text class="sm" x="520" y="112">s[:-1] = "PYTHO"</text>
+        <text class="sm" x="520" y="134">s[-2:] = "ON"</text>
+        <text class="sm" x="520" y="156">s[::2] = "PTO"</text>
+        <text class="sm" x="520" y="178">s[::-1] = "NOHTYP"</text>
+        <text class="sm" x="520" y="200">s[10:20] = ""  (no IndexError, ever)</text>
+        <rect x="95" y="205" width="380" height="34" class="bb"/>
+        <text class="sm" x="285" y="227" text-anchor="middle">Slicing any sequence returns a NEW object — O(k) in the slice length</text>
+      </svg>
+      <figcaption>Fig 3.3 — <code>range</code>, <code>str</code>, <code>list</code>, <code>tuple</code>, <code>bytes</code>
+      and NumPy arrays all use the same slicing protocol (<code>__getitem__</code> with a <code>slice</code> object).</figcaption>
+    </figure>
+    <pre><code>nums = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+nums[2:5]        # [2, 3, 4]
+nums[:3]         # head
+nums[-3:]        # tail
+nums[::2]        # evens
+nums[1::2]       # odds
+nums[::-1]       # reversed copy  (vs reversed(nums): iterator, no copy)
+nums[8:2:-1]     # [8,7,6,5,4,3]
+nums[2:2] = ["a"]   # slice assignment inserts/removes — mutates in place
+del nums[0:2]       # delete a range
+
+# Copying: s[:] is the idiomatic shallow copy for sequences
+copy_of = nums[:]
+flat = [x for row in [[1,2],[3]] for x in row]     # flatten nested lists</code></pre>
+  </section>
+</section>

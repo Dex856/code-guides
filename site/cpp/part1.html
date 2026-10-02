@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C++ for LeetCode — Complete Guide (2026)</title>
+<meta name="description" content="A complete C++ guide specialised for LeetCode: STL containers and algorithms, patterns, pitfalls, paste-ready templates and complexity — with diagrams. Built for C++17/20/23.">
+<style>
+:root{
+  --bg:#ffffff; --fg:#141b26; --muted:#57637a; --line:#e2e8f2; --card:#f5f8fd; --card2:#eef3fa;
+  --accent:#5b4b8a; --accent-soft:#efeafb; --accent2:#0f766e; --warn:#b3342a; --warn-soft:#fdecea;
+  --ok:#166534; --ok-soft:#e8f6ee; --zebra:#fafbfe;
+  --code:#0d1425; --codefg:#e2ebf8; --code-hi:#0a1020;
+  --dg-bx:#eff4fb; --dg-line:#9db4d4; --dg-a:#e9eefb; --dg-b:#fff4d6; --dg-c:#e6f6ee; --dg-d:#fdecea; --dg-p:#f1ecfb;
+  --shadow:0 1px 2px rgba(16,24,40,.06),0 8px 24px rgba(16,24,40,.06);
+}
+html[data-theme=dark]{
+  --bg:#0c1117; --fg:#e6edf7; --muted:#95a3b8; --line:#212b3a; --card:#141c27; --card2:#1a2331;
+  --accent:#b6a6f0; --accent-soft:#1c1730; --accent2:#5eead4; --warn:#f08a80; --warn-soft:#2a1a19;
+  --ok:#6dd39b; --ok-soft:#12261c; --zebra:#111823;
+  --code:#080d16; --codefg:#e2ebf8; --code-hi:#0a1020;
+  --dg-bx:#16202e; --dg-line:#3d5a75; --dg-a:#1a2233; --dg-b:#2b2410; --dg-c:#12281d; --dg-d:#2b1716; --dg-p:#221a30;
+  --shadow:0 1px 2px rgba(0,0,0,.5),0 8px 24px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:76px}
+body{margin:0;background:var(--bg);color:var(--fg);font:15.5px/1.66 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+code,pre,kbd,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+#progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,#5b4b8a,#0f766e);width:0;z-index:60}
+.topbar{position:sticky;top:0;z-index:50;display:flex;gap:12px;align-items:center;padding:9px 16px;background:var(--bg);background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;background:linear-gradient(145deg,#5b4b8a,#0f766e);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:800}
+.brand small{font-weight:500;color:var(--muted);font-size:11.5px}
+.searchwrap{position:relative;flex:1;max-width:560px;margin-left:auto}
+#q{width:100%;padding:9px 34px 9px 34px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--fg);font-size:14px;outline:none}
+#q:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.searchwrap .ico{position:absolute;left:11px;top:9px;opacity:.55}
+.searchwrap .hint{position:absolute;right:9px;top:7px;font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:1px 6px;background:var(--bg)}
+#results{position:absolute;top:46px;left:0;right:0;background:var(--bg);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);max-height:60vh;overflow:auto;display:none;padding:6px}
+#results.on{display:block}
+#results a{display:block;padding:7px 10px;border-radius:8px;color:var(--fg)}
+#results a:hover,#results a.sel{background:var(--card2);text-decoration:none}
+#results .rp{color:var(--muted);font-size:12px}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:9px;padding:7px 10px;font-size:13px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:28px;max-width:1420px;margin:0 auto;padding:0 18px 80px}
+#toc{position:sticky;top:60px;align-self:start;max-height:calc(100vh - 82px);overflow:auto;padding:14px 6px 40px 0;font-size:13.5px;border-right:1px solid var(--line)}
+#toc .navhead{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:8px 8px 6px}
+.navch>a{display:block;padding:5px 9px;border-radius:8px;color:var(--fg);font-weight:600}
+.navch>a:hover{background:var(--card);text-decoration:none}
+.navch.active>a{background:var(--accent-soft);color:var(--accent)}
+.navch ul{list-style:none;margin:0 0 6px;padding:0 0 0 12px}
+.navch ul a{display:block;padding:2px 8px;border-radius:6px;color:var(--muted);font-size:12.4px;border-left:2px solid var(--line)}
+.navch ul a:hover,.navch ul a.on{color:var(--accent);border-left-color:var(--accent);text-decoration:none;background:var(--card)}
+main{min-width:0;padding-top:8px}
+@media(max-width:1030px){.layout{grid-template-columns:1fr}#toc{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line)}}
+@media(max-width:720px){.brand small{display:none}.searchwrap .hint{display:none}#q{padding-right:12px}}
+.hero{margin:20px 0 6px;border:1px solid var(--line);border-radius:18px;padding:26px 24px;background:radial-gradient(1000px 340px at 4% -30%,rgba(91,75,138,.16),transparent 62%),radial-gradient(900px 320px at 100% 0%,rgba(15,118,110,.14),transparent 60%),var(--card)}
+.hero h1{margin:0 0 6px;font-size:clamp(25px,4.2vw,38px);line-height:1.14;letter-spacing:-.4px}
+.hero p.lede{color:var(--muted);font-size:15.6px;margin:.4rem 0 1rem;max-width:76ch}
+.stats{display:flex;flex-wrap:wrap;gap:10px}
+.stat{border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:8px 13px;font-size:12.5px;color:var(--muted)}
+.stat b{display:block;font-size:19px;color:var(--fg);line-height:1.2}
+.badges{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}
+.pill{font-size:11.5px;border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:3px 10px;color:var(--muted)}
+.pill.hot{border-color:var(--accent);color:var(--accent)}
+.chapter{margin:42px 0 0;scroll-margin-top:78px}
+.chapter>h2{display:flex;align-items:center;gap:12px;font-size:clamp(19px,2.9vw,26px);margin:0 0 4px;letter-spacing:-.3px}
+.chapter>h2 .num{flex:0 0 auto;display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:linear-gradient(145deg,#5b4b8a,#3d3260);color:#fff;font-size:14px;font-weight:700}
+.chapter>.tagline{color:var(--muted);margin:0 0 6px;font-size:14.4px}
+.sub{margin:24px 0 0;scroll-margin-top:78px}
+.sub h3{font-size:17.4px;margin:0 0 8px;padding-bottom:5px;border-bottom:1px solid var(--line)}
+h4{font-size:15px;margin:15px 0 6px}
+p{margin:.55rem 0}
+ul,ol{margin:.5rem 0 .5rem 1.1rem;padding:0}
+li{margin:.22rem 0}
+pre{position:relative;background:var(--code);color:var(--codefg);border-radius:12px;padding:15px 16px;overflow:auto;font-size:13.3px;line-height:1.58;border:1px solid #1b2436;margin:.7rem 0}
+pre code{white-space:pre}
+.copy{position:absolute;top:8px;right:8px;font-size:11px;background:#1b2635;color:#9fb2c9;border:1px solid #2b3a4d;border-radius:7px;padding:3px 8px;cursor:pointer;opacity:0;transition:.15s}
+pre:hover .copy{opacity:1}
+.copy:hover{color:#fff;border-color:#4d6b8f}
+:not(pre)>code{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:1px 5px;font-size:.88em;color:var(--accent)}
+.tok-k{color:#ff7ab2;font-weight:600}.tok-s{color:#9ae08a}.tok-c{color:#7b8ba3;font-style:italic}
+.tok-n{color:#f2cc60}.tok-f{color:#79c0ff}.tok-d{color:#ffa657}.tok-b{color:#ffa657;font-style:italic}.tok-t{color:#7fd1c4}
+.card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:14px 16px;margin:.8rem 0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:13px;margin:.8rem 0}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:.8rem 0}
+.note,.warn,.tip,.trap{border-radius:12px;padding:11px 14px;margin:.8rem 0;border:1px solid;font-size:14.3px}
+.note{background:var(--accent-soft);border-color:var(--accent)}
+.warn{background:var(--warn-soft);border-color:var(--warn)}
+.tip{background:var(--ok-soft);border-color:var(--ok)}
+.trap{background:var(--card2);border-color:var(--line)}
+.tbl{width:100%;border-collapse:collapse;font-size:13.6px;margin:.75rem 0;display:block;overflow-x:auto}
+.tbl th,.tbl td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+.tbl th{background:var(--card);font-weight:650;white-space:nowrap}
+.tbl tbody tr:nth-child(even) td{background:var(--zebra)}
+figure{margin:1.1rem 0}
+figure svg{display:block;width:100%;height:auto;max-width:920px;margin:0 auto;border:1px solid var(--line);border-radius:14px;background:var(--card)}
+figcaption{text-align:center;color:var(--muted);font-size:12.5px;margin-top:7px}
+.dg text{font:13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;fill:var(--fg)}
+.dg .t{font-weight:700;font-size:13px}
+.dg .tt{font-weight:700;font-size:15px}
+.dg .sm{font-size:11px;fill:var(--muted)}
+.dg .mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.6px}
+.dg .w{fill:#fff}
+html[data-theme=dark] .dg .w{fill:#0c1117}
+.bx{fill:var(--dg-bx);stroke:var(--dg-line);stroke-width:1.4;rx:9}
+.ba{fill:var(--dg-a);stroke:#5b4b8a;stroke-width:1.5;rx:9}
+.bb{fill:var(--dg-b);stroke:#c99700;stroke-width:1.5;rx:9}
+.bc{fill:var(--dg-c);stroke:#2e9e63;stroke-width:1.5;rx:9}
+.bd{fill:var(--dg-d);stroke:#c9524a;stroke-width:1.5;rx:9}
+.bp{fill:var(--dg-p);stroke:#8e6fc0;stroke-width:1.5;rx:9}
+.ar{stroke:#7b8798;stroke-width:1.6;fill:none;marker-end:url(#ah)}
+.ar2{stroke:#5b4b8a;stroke-width:1.8;fill:none;marker-end:url(#ah2)}
+.lnd{stroke:#9aa7b8;stroke-width:1.3;fill:none;stroke-dasharray:5 4}
+.kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:0 5px;font-size:12px;background:var(--card)}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.reslist{list-style:none;margin-left:0}
+.reslist li{border-bottom:1px dashed var(--line);padding:6px 0}
+#top{position:fixed;right:18px;bottom:18px;z-index:50;display:none}
+#top.on{display:block}
+footer{border-top:1px solid var(--line);margin-top:56px;padding:22px 18px 60px;color:var(--muted);font-size:13.4px;text-align:center}
+mark{background:var(--accent2);color:#08110f;border-radius:3px;padding:0 2px}
+.flash{animation:fl 1.8s ease}
+@keyframes fl{0%{background:var(--accent-soft)}100%{background:transparent}}
+@media print{
+  .topbar,#toc,#top,.copy,#progress{display:none!important}
+  .layout{display:block;max-width:none}
+  .chapter{page-break-before:always}
+  body{font-size:11.5pt}
+  pre{background:#f5f7fa;color:#111;border-color:#ccc}
+  .tok-k,.tok-s,.tok-c,.tok-n,.tok-f,.tok-d,.tok-b,.tok-t{color:#111!important;font-style:normal}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#7b8798"/></marker>
+  <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#5b4b8a"/></marker>
+</defs></svg>
+
+<header class="topbar">
+  <div class="brand"><span class="logo">C++</span>
+    <div>C++ for LeetCode<br><small id="versions">C++17 / 20 / 23 · offline reference</small></div>
+  </div>
+  <div class="searchwrap">
+    <span class="ico">🔍</span>
+    <input id="q" type="search" placeholder="Search — try “unordered_map”, “priority_queue”, “overflow”, “DSU”…" autocomplete="off" spellcheck="false">
+    <span class="hint">/</span>
+    <div id="results"></div>
+  </div>
+  <button class="btn" id="theme" title="Toggle dark / light">🌙</button>
+  <button class="btn" id="print" title="Print or save as PDF">🖨</button>
+</header>
+
+<div class="layout">
+  <nav id="toc" aria-label="Contents"></nav>
+  <main id="content">
+
+<section class="chapter" id="start">
+  <h2><span class="num">0</span> How to use this guide</h2>
+  <p class="tagline">C++ reduced to exactly what wins coding-round problems: the STL you actually type, the idioms that
+  make solutions short, and the traps that cost submissions.</p>
+
+  <div class="hero">
+    <h1>C++ for LeetCode</h1>
+    <p class="lede">Most C++ you will never need for interviews. This guide covers the ~20% that solves ~100% of problems:
+    <b>vector, string, unordered_map, set, priority_queue, sort/lower_bound</b>, the classic patterns mapped onto them,
+    and paste-ready templates for graphs, DSU, binary search on answer and DP — plus the pitfalls (overflow, iterator
+    invalidation, comparator bugs, cache-hostile code) that separate “works on my machine” from “accepted”.</p>
+    <div class="stats" id="stats">
+      <div class="stat"><b>—</b>chapters</div><div class="stat"><b>—</b>topics</div>
+      <div class="stat"><b>—</b>snippets</div><div class="stat"><b>—</b>diagrams</div>
+    </div>
+    <div class="badges">
+      <span class="pill hot">LeetCode-default standard: C++17 (C++20/23 available)</span>
+      <span class="pill">STL-first</span><span class="pill">Compiles with g++ / clang++</span>
+      <span class="pill">Interview-ready templates</span>
+    </div>
+  </div>
+
+  <section class="sub">
+    <h3>0.1 Three ways to read this</h3>
+    <div class="grid3">
+      <div class="card"><h4>🌱 New to C++</h4>Read <b>2 → 6</b> in order and type every snippet. C++ rewards precision: the type system and STL come before cleverness.</div>
+      <div class="card"><h4>🎯 Interview in a week</h4><b>Ch. 5</b> (containers), <b>ch. 7</b> (comparators), <b>ch. 11</b> (pattern→STL map), <b>ch. 12</b> (pitfalls), <b>ch. 14</b> (templates). That set solves most problems.</div>
+      <div class="card"><h4>🐍 Coming from Python</h4><b>Ch. 2.4</b> (types/overflow), <b>ch. 5</b> (which container replaces list/dict/set), <b>ch. 12</b> — then you are done.</div>
+    </div>
+    <div class="tip"><b>Companion material:</b> pair this with the <a href="cpp-leetcode.html">C++ LeetCode question bank</a>
+    (6 easy / 12 medium / 12 hard per topic, all solutions compiled and tested) and the
+    <a href="java-guide.html">Java guide</a> / <a href="python-guide.html">Python guide</a>.</div>
+  </section>
+
+  <section class="sub">
+    <h3>0.2 Conventions</h3>
+    <table class="tbl">
+      <thead><tr><th>Notation</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>int</code>, <code>ll</code></td><td>In this guide <code>ll</code> means <code>long long</code> — the type you should reach for the moment sums can exceed 2·10⁹.</td></tr>
+        <tr><td><span class="pill hot">C++17</span> <span class="pill hot">C++20</span></td><td>Minimum standard needed. LeetCode’s default is C++17; C++20 is selected via a dropdown.</td></tr>
+        <tr><td><b>⏱ O(...)</b></td><td>Time complexity, average case, per operation unless stated.</td></tr>
+        <tr><td><b>UB</b></td><td>Undefined behaviour — “works” today, fails on the judge tomorrow.</td></tr>
+      </tbody>
+    </table>
+  </section>
+</section>
+
+<section class="chapter" id="ch1">
+  <h2><span class="num">1</span> Setup, compilation and the LeetCode workflow</h2>
+  <p class="tagline">From a blank file to a running solution: the compiler flags that catch bugs early, and a local test loop.</p>
+
+  <section class="sub">
+    <h3>1.1 Compile and run in one command</h3>
+    <pre><code># Single file, LeetCode-style solution + your own main()
+g++ -std=c++20 -O2 -Wall -Wextra -o sol sol.cpp && ./sol
+
+# The flags that matter
+#   -std=c++17|c++20|c++23   choose the standard (LeetCode uses C++17 by default)
+#   -O2                      optimise (judge uses -O2); use -O0 for readable debug info
+#   -g                       debug symbols (gdb)
+#   -Wall -Wextra            warnings = free bug detection
+#   -fsanitize=address,undefined   catch out-of-bounds, overflow, UB in tests! (dev only)
+#   -D_GLIBCXX_DEBUG         checked STL iterators (catches invalid iterator use)
+
+g++ -std=c++20 -O1 -g -fsanitize=address,undefined sol.cpp -o sol_dbg && ./sol_dbg
+
+# Windows: MSVC via Developer Prompt
+#   cl /std:c++20 /EHsc /O2 sol.cpp
+# macOS: clang++ -std=c++20 -O2 sol.cpp -o sol
+# Fast input for competitive-style problems
+#   ios::sync_with_stdio(false); cin.tie(nullptr);</code></pre>
+    <div class="tip"><b>Use sanitizers locally, never on the judge.</b> A 3-second run under
+    <code>-fsanitize=address,undefined</code> finds the out-of-bounds write that would otherwise show up as a mysterious
+    Wrong Answer at test 200. This is the single highest-value habit in this chapter.</div>
+  </section>
+
+  <section class="sub">
+    <h3>1.2 The LeetCode skeleton you actually write</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 300" role="img" aria-label="LeetCode C++ solution skeleton">
+        <text class="tt" x="20" y="26">What the judge gives you, and what you must add</text>
+        <rect x="30" y="50" width="420" height="228" class="db bx"/>
+        <text class="t" x="240" y="74" text-anchor="middle">Your submitted file</text>
+        <text class="mono sm" x="50" y="100">#include &lt;bits/stdc++.h&gt;   // or the specific headers</text>
+        <text class="mono sm" x="50" y="122">using namespace std;</text>
+        <text class="mono sm" x="50" y="150">class Solution {</text>
+        <text class="mono sm" x="70" y="172">public:</text>
+        <text class="mono sm" x="90" y="194">vector&lt;int&gt; solve(vector&lt;int&gt;&amp; nums, int k) {</text>
+        <text class="mono sm" x="110" y="216">// your algorithm here</text>
+        <text class="mono sm" x="110" y="238">}</text>
+        <text class="mono sm" x="70" y="260">};</text>
+
+        <rect x="470" y="50" width="400" height="100" class="bc"/>
+        <text class="t" x="670" y="74" text-anchor="middle">Judge wraps this</text>
+        <text class="sm" x="490" y="98">It generates main(), parses the input JSON,</text>
+        <text class="sm" x="490" y="118">constructs ListNode/TreeNode when needed,</text>
+        <text class="sm" x="490" y="138">calls your method, compares the output.</text>
+
+        <rect x="470" y="164" width="400" height="114" class="bb"/>
+        <text class="t" x="670" y="188" text-anchor="middle">Locally, you write the harness</text>
+        <text class="mono sm" x="490" y="212">int main() {</text>
+        <text class="mono sm" x="490" y="232">  vector&lt;int&gt; a{2,7,11,15};</text>
+        <text class="mono sm" x="490" y="252">  auto r = Solution().solve(a, 9);</text>
+        <text class="mono sm" x="490" y="272">  for (int x : r) cout &lt;&lt; x &lt;&lt; ' ';</text>
+        <text class="mono sm" x="600" y="272">}</text>
+      </svg>
+      <figcaption>Fig 1.1 — Paste the class in, add a main() for local testing, delete it before submitting (or keep it — LeetCode ignores it).</figcaption>
+    </figure>
+    <pre><code>#include &lt;bits/stdc++.h&gt;      // GCC/Clang convenience header used by most competitive C++
+using namespace std;
+
+class Solution {
+public:
+    long long total(const vector&lt;int&gt;&amp; nums) const {   // const&amp; = read-only, no copy
+        long long s = 0;                                  // accumulate in 64-bit
+        for (int x : nums) s += x;
+        return s;
+    }
+};
+
+#ifdef LOCAL_TEST                       // only compiled when you ask for it
+int main() {
+    vector&lt;int&gt; v{1, 2, 3};
+    cout &lt;&lt; Solution().total(v) &lt;&lt; '\n';   // 6
+    assert(Solution().total({}) == 0);
+    cout &lt;&lt; "OK\n";
+}
+#endif
+// compile with:  g++ -std=c++20 -O2 -DLOCAL_TEST sol.cpp -o sol</code></pre>
+    <div class="note"><b>Why <code>&lt;bits/stdc++.h&gt;</code>?</b> It is a GCC header that pulls in the whole standard
+    library — perfect for contests, useless in production (it is non-portable and slows compile times). Know how to write
+    explicit includes too: <code>&lt;vector&gt; &lt;string&gt; &lt;unordered_map&gt; &lt;algorithm&gt; &lt;queue&gt;
+    &lt;numeric&gt; &lt;climits&gt;</code>.</div>
+  </section>
+
+  <section class="sub">
+    <h3>1.3 Standard-library quick reference (the headers worth knowing)</h3>
+    <table class="tbl">
+      <thead><tr><th>Header</th><th>Provides</th><th>You will use</th></tr></thead>
+      <tbody>
+        <tr><td><code>&lt;vector&gt;</code> <code>&lt;array&gt;</code></td><td>dynamic / fixed arrays</td><td><code>vector&lt;int&gt;</code>, <code>vector&lt;vector&lt;int&gt;&gt;</code></td></tr>
+        <tr><td><code>&lt;string&gt;</code></td><td>text</td><td><code>string s</code>, <code>substr</code>, <code>find</code>, <code>stoi</code></td></tr>
+        <tr><td><code>&lt;algorithm&gt;</code></td><td>sorting, searching</td><td><code>sort</code>, <code>lower_bound</code>, <code>unique</code>, <code>max_element</code>, <code>next_permutation</code></td></tr>
+        <tr><td><code>&lt;unordered_map&gt;</code> <code>&lt;unordered_set&gt;</code> <code>&lt;map&gt;</code> <code>&lt;set&gt;</code></td><td>hash/ordered tables</td><td>counting, dedupe, ordered traversal</td></tr>
+        <tr><td><code>&lt;queue&gt;</code> <code>&lt;stack&gt;</code> <code>&lt;deque&gt;</code></td><td>adapters</td><td>BFS, DFS-stack, monotonic deque</td></tr>
+        <tr><td><code>&lt;queue&gt;</code> → <code>priority_queue</code></td><td>binary heap</td><td>top-K, Dijkstra, merge-k-lists</td></tr>
+        <tr><td><code>&lt;numeric&gt;</code></td><td>numeric algorithms</td><td><code>accumulate</code>, <code>gcd</code>, <code>lcm</code>, <code>iota</code>, <code>partial_sum</code></td></tr>
+        <tr><td><code>&lt;climits&gt;</code> <code>&lt;limits&gt;</code></td><td>numeric limits</td><td><code>INT_MAX</code>, <code>numeric_limits&lt;long long&gt;::max()</code></td></tr>
+        <tr><td><code>&lt;bitset&gt;</code></td><td>fixed bit vectors</td><td>bitmask DP, reachability, <code>count()</code></td></tr>
+        <tr><td><code>&lt;tuple&gt;</code> <code>&lt;utility&gt;</code></td><td>pairs &amp; tuples</td><td><code>pair&lt;int,int&gt;</code>, structured bindings</td></tr>
+        <tr><td><code>&lt;functional&gt;</code></td><td>callables</td><td><code>function&lt;...&gt;</code>, <code>greater&lt;int&gt;</code>, <code>less&lt;&gt;</code></td></tr>
+        <tr><td><code>&lt;random&gt;</code></td><td>RNG for stress tests</td><td><code>mt19937</code>, <code>uniform_int_distribution</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>1.4 Local test loop that catches real bugs</h3>
+    <pre><code>// Three levels of testing, in increasing power:
+// 1) assert on the examples          2) random stress vs brute force         3) sanitizers
+
+#include &lt;bits/stdc++.h&gt;
+using namespace std;
+
+// ---- level 2: stress test -------------------------------------------------
+int solveFast(const vector&lt;int&gt;&amp; a);           // your optimised solution
+int solveBrute(const vector&lt;int&gt;&amp; a);          // obviously-correct slow version
+
+int main() {
+    mt19937 rng(12345);                        // fixed seed = reproducible
+    uniform_int_distribution&lt;int&gt; nDist(1, 8), vDist(-5, 5);
+    for (int iter = 0; iter &lt; 20000; ++iter) {
+        int n = nDist(rng);
+        vector&lt;int&gt; a(n);
+        for (int&amp; x : a) x = vDist(rng);
+        int f = solveFast(a), b = solveBrute(a);
+        if (f != b) {
+            cout &lt;&lt; "MISMATCH on: ";
+            for (int x : a) cout &lt;&lt; x &lt;&lt; ' ';
+            cout &lt;&lt; "\nfast=" &lt;&lt; f &lt;&lt; " brute=" &lt;&lt; b &lt;&lt; '\n';
+            return 1;
+        }
+    }
+    cout &lt;&lt; "all random tests passed\n";       // then compile with sanitizers
+}</code></pre>
+    <div class="tip"><b>The stress-test habit:</b> write the brute force first, then optimise. Twenty thousand random cases
+    under sanitizers finds essentially every indexing and overflow bug in minutes — it is faster than staring at code, and
+    it is how experienced contestants avoid re-submitting 6 times.</div>
+  </section>
+</section>
+
+<section class="chapter" id="ch2">
+  <h2><span class="num">2</span> Types, references and the overflow trap</h2>
+  <p class="tagline">C++ is statically typed; most wrong answers come from the type you chose, not the algorithm you wrote.</p>
+
+  <section class="sub">
+    <h3>2.1 The types you need (and nothing else)</h3>
+    <table class="tbl">
+      <thead><tr><th>Type</th><th>Bytes (typical)</th><th>Range</th><th>Use for</th></tr></thead>
+      <tbody>
+        <tr><td><code>int</code></td><td>4</td><td>±2.147·10⁹</td><td>default integer; indices, counts up to 2·10⁹</td></tr>
+        <tr><td><code>long long</code></td><td>8</td><td>±9.22·10¹⁸</td><td><b>any sum/product that can overflow int</b>; distances; modular math</td></tr>
+        <tr><td><code>unsigned</code></td><td>4</td><td>0 … 4.29·10⁹</td><td>bit tricks only — <b>never</b> for subtraction-heavy logic</td></tr>
+        <tr><td><code>double</code></td><td>8</td><td>~15–17 significant digits</td><td>geometry, averages, <code>sqrt</code>; compare with epsilon</td></tr>
+        <tr><td><code>long double</code></td><td>12–16</td><td>~18 digits</td><td>rarely needed; avoid relying on it</td></tr>
+        <tr><td><code>char</code></td><td>1</td><td>−128…127 / 0…255</td><td>single characters; arithmetic on ASCII</td></tr>
+        <tr><td><code>bool</code></td><td>1</td><td>true / false</td><td>flags; <code>vector&lt;bool&gt;</code> is special (ch. 12)</td></tr>
+        <tr><td><code>size_t</code></td><td>8 (64-bit)</td><td>0 … 2⁶⁴−1</td><td>what <code>.size()</code> returns — <b>unsigned!</b></td></tr>
+      </tbody>
+    </table>
+    <pre><code>#include &lt;bits/stdc++.h&gt;
+using namespace std;
+using ll = long long;                 // the alias you will type a thousand times
+const int INF = 1e9;                  // "infinity" for int-based graphs
+const ll  LINF = 4e18;                // "infinity" for long long
+
+const int MOD = 1'000'000'007;        // digit separators are legal C++14+
+
+int main() {
+    int a = 1e9, b = 1e9;
+    // int c = a + b;                  // UB (signed overflow) → garbage or wrap
+    long long c = 1LL * a + b;         // 2e9, correct
+
+    // The three ways overflow sneaks in:
+    // 1) multiplication before promotion
+    int x = 100000, y = 100000;
+    // int bad = x * y;                // overflow happens in int, BEFORE assignment
+    long long good = 1LL * x * y;      // promote one operand to 64-bit first
+
+    // 2) accumulate defaults to the container's type
+    vector&lt;int&gt; v(1e5, 1e6);
+    // long long wrong = accumulate(v.begin(), v.end(), 0);      // sums in int!
+    long long right = accumulate(v.begin(), v.end(), 0LL);       // 0LL forces 64-bit
+
+    // 3) mod arithmetic with negative results
+    // (a - b) % MOD can be negative → ((a - b) % MOD + MOD) % MOD
+    return 0;
+}</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>2.2 Values, references and pointers — the memory picture</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 320" role="img" aria-label="Value, reference and pointer semantics plus copy cost">
+        <text class="tt" x="20" y="26">Pass by value vs reference: what actually happens to memory</text>
+        <rect x="30" y="50" width="200" height="44" class="ba"/><text class="t" x="130" y="78" text-anchor="middle">caller's vector v</text>
+        <rect x="30" y="104" width="200" height="30" class="bx"/><text class="mono sm" x="130" y="124" text-anchor="middle">{1,2,3} heap buffer</text>
+
+        <rect x="300" y="50" width="250" height="84" class="bb"/>
+        <text class="t" x="425" y="74" text-anchor="middle">void f(vector&lt;int&gt; v)</text>
+        <text class="sm" x="320" y="96">COPIES every element — O(n) time + memory</text>
+        <text class="sm" x="320" y="116">use only for small types (int, pair, string_view)</text>
+        <path class="ar" d="M232 100 H298"/>
+
+        <rect x="590" y="50" width="280" height="84" class="bc"/>
+        <text class="t" x="730" y="74" text-anchor="middle">void f(const vector&lt;int&gt;&amp; v)</text>
+        <text class="sm" x="610" y="96">No copy. Read-only view of the caller's buffer.</text>
+        <text class="sm" x="610" y="116">★ the default for every input parameter</text>
+        <path class="ar" d="M232 78 C400 20 560 40 588 70"/>
+
+        <rect x="300" y="160" width="250" height="84" class="bp"/>
+        <text class="t" x="425" y="184" text-anchor="middle">void f(vector&lt;int&gt;&amp; v)</text>
+        <text class="sm" x="320" y="206">Alias: writes are visible to the caller</text>
+        <text class="sm" x="320" y="226">use for out-parameters and in-place mutation</text>
+        <rect x="590" y="160" width="280" height="84" class="bd"/>
+        <text class="t" x="730" y="184" text-anchor="middle">Danger: returning a reference</text>
+        <text class="mono sm" x="610" y="206">int&amp; f(){ int x=5; return x; }  // UB</text>
+        <text class="sm" x="610" y="228">x dies at the closing brace → dangling</text>
+
+        <rect x="30" y="258" width="840" height="48" class="bx"/>
+        <text class="sm" x="50" y="278">Rule of thumb: <tspan class="mono">const T&amp;</tspan> for reading, <tspan class="mono">T&amp;</tspan> to mutate, <tspan class="mono">T</tspan> for cheap copies (int, double, char, pair&lt;int,int&gt;, string_view).</text>
+        <text class="sm" x="50" y="298">Pointers (<tspan class="mono">int*</tspan>) you need only for linked lists / trees / graphs (nodes you allocate), and even there <tspan class="mono">nullptr</tspan> checks matter.</text>
+      </svg>
+      <figcaption>Fig 2.1 — In C++ the default parameter type is a decision, not a detail. <code>const&amp;</code> saves both time and memory in every recursive call.</figcaption>
+    </figure>
+    <pre><code>void byValue(vector&lt;int&gt; v)        { v.push_back(4); }   // caller unchanged; copied
+void byRef(vector&lt;int&gt;&amp; v)         { v.push_back(4); }   // caller CHANGED
+void byConstRef(const vector&lt;int&gt;&amp; v) { /* read only */ }  // caller unchanged, no copy
+
+vector&lt;int&gt; a{1,2,3};
+byValue(a);   // a = {1,2,3}
+byRef(a);     // a = {1,2,3,4}
+
+// auto, structured bindings, and const correctness
+auto n = a.size();                      // size_t (unsigned!)
+auto [lo, hi] = pair{1, 2};             // structured binding (C++17)
+for (const auto&amp; [k, val] : mapOfStuff) { /* no copy, no mutation */ }
+for (auto&amp; x : a) x *= 2;               // mutate in place without indices
+
+// constexpr / const
+const double PI = 3.141592653589793;
+constexpr int SZ = 1000;                // compile-time constant: usable for array sizes
+
+// Type conversion rules that bite
+int   i = 7;     double d = i / 2;      // 3.0  ← integer division first!
+double e = i / 2.0;                     // 3.5
+char  c = '7';   int  digit = c - '0';  // 7    ← the standard char→digit trick
+int   z = c;                            // 55   ← ASCII code, not the digit</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>2.3 Operators, integer division, and comparison gotchas</h3>
+    <pre><code>7 / 2        //  3   (integer division truncates toward zero)
+-7 / 2       // -3   ← C++ truncates; Python floors to -4. Different answers!
+-7 % 2       // -1   ← C++ remainder keeps the sign of the dividend
+7 % 2        //  1
+// Floor division & positive modulo, the safe versions:
+int floordiv(int a, int b) { return (a - (a % b + b) % b) / b; }
+int mod(int a, int m)      { return ((a % m) + m) % m; }
+
+// Comparison and boolean ops
+a == b   a != b   a &lt; b   a &lt;= b
+a &amp;&amp; b   a || b   !a            // short-circuit: b is not evaluated if a decides it
+x ? y : z                       // ternary
+// Bitwise (ch. 10): a &amp; b   a | b   a ^ b   ~a   a &lt;&lt; k   a &gt;&gt; k
+
+// The classic pitfall: mixing signed and unsigned
+vector&lt;int&gt; v{1,2,3};
+// for (int i = 0; i &lt; v.size(); ++i)      // warning: signed/unsigned comparison
+for (size_t i = 0; i &lt; v.size(); ++i)      // clean
+for (int i = 0; i &lt; (int)v.size(); ++i)    // or cast (fine for n &lt; 2^31)
+for (size_t i = 0; i + 1 &lt; v.size(); ++i)  // the idiom that avoids v[i+1] overrun
+
+// Comparing doubles: never ==
+bool close(double a, double b, double eps = 1e-9) { return fabs(a - b) &lt; eps; }</code></pre>
+    <div class="trap"><b>Subscript with a negative index is UB, not an exception.</b> C++ has no bounds checking on
+    <code>v[i]</code>. <code>v.at(i)</code> throws and is the debugging variant — use it while developing, and use
+    <code>-D_GLIBCXX_DEBUG</code> or ASan to catch the rest.</div>
+  </section>
+
+  <section class="sub">
+    <h3>2.4 Coming from Python: the translation table</h3>
+    <table class="tbl">
+      <thead><tr><th>Python</th><th>C++</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>[]</code> / <code>list</code></td><td><code>vector&lt;int&gt;</code></td><td>Fixed type; no mixed types.</td></tr>
+        <tr><td><code>{}</code> / <code>dict</code></td><td><code>unordered_map&lt;K,V&gt;</code></td><td>Ordered version: <code>map&lt;K,V&gt;</code> (red-black tree, O(log n)).</td></tr>
+        <tr><td><code>set()</code></td><td><code>unordered_set&lt;T&gt;</code> / <code>set&lt;T&gt;</code></td><td>Hash vs tree.</td></tr>
+        <tr><td><code>tuple</code></td><td><code>pair&lt;A,B&gt;</code> / <code>tuple&lt;...&gt;</code></td><td><code>make_pair</code>, <code>get&lt;1&gt;(t)</code>, structured bindings.</td></tr>
+        <tr><td><code>heapq</code></td><td><code>priority_queue&lt;T&gt;</code></td><td>Max-heap by default — the opposite of Python!</td></tr>
+        <tr><td><code>deque</code></td><td><code>deque&lt;T&gt;</code></td><td>Same idea, O(1) both ends.</td></tr>
+        <tr><td><code>int</code> (unbounded)</td><td><code>long long</code> (bounded)</td><td><b>Overflow is your problem now.</b> Use <code>__int128</code> rarely.</td></tr>
+        <tr><td><code>s[::-1]</code></td><td><code>string(s.rbegin(), s.rend())</code></td><td>Or <code>reverse(s.begin(), s.end())</code>.</td></tr>
+        <tr><td><code>s[i:j]</code></td><td><code>s.substr(i, j - i)</code></td><td>Second argument is a <b>length</b>, not an end index.</td></tr>
+        <tr><td><code>for i, x in enumerate(a)</code></td><td><code>for (int i = 0; i &lt; n; ++i)</code></td><td>Or iterate <code>for (int x : a)</code>.</td></tr>
+        <tr><td><code>a.sort(key=...)</code></td><td><code>sort(a.begin(), a.end(), cmp)</code></td><td>Comparator returns <code>bool</code> “a before b”.</td></tr>
+        <tr><td><code>len(s)</code></td><td><code>(int)s.size()</code></td><td>Cast to int to avoid unsigned comparisons.</td></tr>
+        <tr><td><code>float('inf')</code></td><td><code>INT_MAX</code> / <code>1e18</code></td><td>Watch for <code>INF + 1</code> overflow in relaxations.</td></tr>
+        <tr><td><code>sum(a)</code></td><td><code>accumulate(a.begin(), a.end(), 0LL)</code></td><td>Type of the initial value decides the arithmetic!</td></tr>
+        <tr><td><code>min(a, b)</code> / <code>a in b</code></td><td><code>min(a,b)</code> / <code>b.count(x)</code></td><td><code>count</code> on map/set returns 0/1; on multiset returns how many.</td></tr>
+        <tr><td><code>max(a, key=f)</code></td><td><code>*max_element(a.begin(), a.end(), cmp)</code></td><td>Dereference! <code>max_element</code> returns an iterator.</td></tr>
+      </tbody>
+    </table>
+  </section>
+</section>

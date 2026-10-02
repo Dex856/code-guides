@@ -1,0 +1,862 @@
+
+<section class="chapter" id="ch13">
+  <h2><span class="num">13</span> Paste-ready templates</h2>
+  <p class="tagline">Ten shapes cover almost every interview question. Learn the shapes, adapt three lines, and stop
+  writing boilerplate under pressure.</p>
+
+  <div class="hero">
+    <h1>The template library</h1>
+    <p class="lede">Each template below is complete, Java-11 compatible, and written the way it should appear in a
+    <code>Solution</code> class. Copy the shape, rename the variables, keep the invariants. The comments mark the lines you
+    are <i>allowed</i> to change and the lines that must not change.</p>
+  </div>
+
+  <section class="sub">
+    <h3>13.1 The container: fast input, output and the skeleton</h3>
+    <pre><code class="nohl">import java.io.*;
+import java.util.*;
+
+public class Main {                       // standalone contest/CLI version; on LeetCode you write class Solution
+    public static void main(String[] args) throws IOException {
+        // Fast input: BufferedReader over System.in beats Scanner by ~5-10×
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+        StringTokenizer st = new StringTokenizer(br.readLine());
+        int n = Integer.parseInt(st.nextToken());
+        int[] a = new int[n];
+        st = new StringTokenizer(br.readLine());
+        for (int i = 0; i &lt; n; i++) a[i] = Integer.parseInt(st.nextToken());
+
+        long ans = solve(a);
+
+        StringBuilder out = new StringBuilder();       // one buffered writer for all output
+        out.append(ans).append('\n');
+        System.out.print(out);
+    }
+
+    static long solve(int[] a) {                        // ← the part you would put in Solution
+        long sum = 0;
+        for (int v : a) sum += v;
+        return sum;
+    }
+}</code></pre>
+    <div class="note"><b>On LeetCode you never need I/O code.</b> Keep this skeleton in a separate
+    <code>Main.java</code> for practising and for the multi-file problems; the judge only wants the
+    <code>Solution</code> class from ch. 1.2.</div>
+  </section>
+
+  <section class="sub">
+    <h3>13.2 Graph: build, BFS, DFS, components, topo sort, Dijkstra</h3>
+    <pre><code>// ---- build an adjacency list: n nodes, m edges ---------------------------
+int n = 6;
+List&lt;List&lt;Integer&gt;&gt; adj = new ArrayList&lt;&gt;();
+for (int i = 0; i &lt; n; i++) adj.add(new ArrayList&lt;&gt;());
+int[][] edges = {{0,1},{1,2},{2,3},{3,4},{4,5},{5,0}};
+for (int[] e : edges) { adj.get(e[0]).add(e[1]); adj.get(e[1]).add(e[0]); }   // drop the reverse for directed
+
+// ---- BFS from a source: O(V + E) — the “shortest path, unweighted” tool ----
+int[] dist = new int[n];
+Arrays.fill(dist, -1);
+Deque&lt;Integer&gt; q = new ArrayDeque&lt;&gt;();
+dist[src] = 0; q.offer(src);
+while (!q.isEmpty()) {
+    int u = q.poll();
+    for (int v : adj.get(u))
+        if (dist[v] == -1) {                    // mark when ENQUEUED, never when dequeued
+            dist[v] = dist[u] + 1;
+            q.offer(v);
+        }
+}
+
+// ---- DFS (recursive) + connected components ------------------------------
+boolean[] seen = new boolean[n];
+void dfs(int u) {
+    seen[u] = true;
+    for (int v : adj.get(u)) if (!seen[v]) dfs(v);
+}
+int components = 0;
+for (int i = 0; i &lt; n; i++) if (!seen[i]) { components++; dfs(i); }
+
+// ---- Cycle detection (directed graph, three colours) ---------------------
+// 0 = unvisited, 1 = on the current path, 2 = finished
+int[] colour = new int[n];
+boolean hasCycle(int u) {
+    colour[u] = 1;
+    for (int v : adj.get(u)) {
+        if (colour[v] == 1) return true;        // back edge → cycle
+        if (colour[v] == 0 &amp;&amp; hasCycle(v)) return true;
+    }
+    colour[u] = 2;
+    return false;
+}
+
+// ---- Topological sort: Kahn's algorithm (BFS over in-degrees) -------------
+int[] indeg = new int[n];
+for (int u = 0; u &lt; n; u++) for (int v : adj.get(u)) indeg[v]++;
+Deque&lt;Integer&gt; dq = new ArrayDeque&lt;&gt;();
+for (int u = 0; u &lt; n; u++) if (indeg[u] == 0) dq.offer(u);
+int[] order = new int[n]; int k = 0;
+while (!dq.isEmpty()) {
+    int u = dq.poll();
+    order[k++] = u;
+    for (int v : adj.get(u)) if (--indeg[v] == 0) dq.offer(v);
+}
+boolean isDAG = (k == n);                       // fewer than n processed → there is a cycle
+
+// ---- Dijkstra: non-negative weights, O((V + E) log V) --------------------
+long[] best = new long[n];
+Arrays.fill(best, Long.MAX_VALUE);
+PriorityQueue&lt;long[]&gt; pq = new PriorityQueue&lt;&gt;((x, y) -&gt; Long.compare(x[0], y[0]));   // {dist, node}
+best[src] = 0; pq.offer(new long[]{0, src});
+while (!pq.isEmpty()) {
+    long[] cur = pq.poll();
+    long d = cur[0]; int u = (int) cur[1];
+    if (d &gt; best[u]) continue;                  // stale entry — skip it (essential!)
+    for (int[] e : adjW.get(u)) {               // adjW holds {to, weight}
+        int v = e[0]; long nd = d + e[1];
+        if (nd &lt; best[v]) { best[v] = nd; pq.offer(new long[]{nd, v}); }
+    }
+}</code></pre>
+    <div class="warn"><b>Mark visited at enqueue time (BFS) — not at dequeue.</b> Marking late lets the same node enter the
+    queue many times; on a dense grid that alone turns an O(V+E) BFS into a timeout.</div>
+  </section>
+
+  <section class="sub">
+    <h3>13.3 Grid BFS and multi-source BFS</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 300" role="img" aria-label="BFS expanding in layers over a grid and multi-source BFS from several starts">
+        <text class="tt" x="230" y="28" text-anchor="middle">BFS layers = shortest distances</text>
+        <rect class="ba" x="60" y="46" width="34" height="34" rx="5"/><text class="mono sm" x="72" y="68">0</text>
+        <rect class="bx" x="96" y="46" width="34" height="34" rx="5"/><text class="mono sm" x="108" y="68">1</text>
+        <rect class="bx" x="132" y="46" width="34" height="34" rx="5"/><text class="mono sm" x="144" y="68">2</text>
+        <rect class="bx" x="168" y="46" width="34" height="34" rx="5"/><text class="mono sm" x="180" y="68">3</text>
+        <rect class="bx" x="60" y="82" width="34" height="34" rx="5"/><text class="mono sm" x="72" y="104">1</text>
+        <rect class="bx" x="96" y="82" width="34" height="34" rx="5"/><text class="mono sm" x="108" y="104">2</text>
+        <rect class="bx" x="132" y="82" width="34" height="34" rx="5"/><text class="mono sm" x="144" y="104">3</text>
+        <rect class="bx" x="168" y="82" width="34" height="34" rx="5"/><text class="mono sm" x="180" y="104">4</text>
+        <rect class="bx" x="60" y="118" width="34" height="34" rx="5"/><text class="mono sm" x="72" y="140">2</text>
+        <rect class="bx" x="96" y="118" width="34" height="34" rx="5"/><text class="mono sm" x="108" y="140">3</text>
+        <rect class="bx" x="132" y="118" width="34" height="34" rx="5"/><text class="mono sm" x="144" y="140">4</text>
+        <rect class="bx" x="168" y="118" width="34" height="34" rx="5"/><text class="mono sm" x="180" y="140">5</text>
+        <text class="sm" x="240" y="70">dequeue in FIFO order → layer by layer</text>
+        <text class="sm" x="240" y="92">distance = depth · visit each cell once</text>
+        <text class="sm" x="240" y="114">cost O(rows × cols) time, same space</text>
+        <line class="lnd" x1="30" y1="170" x2="470" y2="170"/>
+        <text class="tt" x="230" y="196" text-anchor="middle">Multi-source BFS: seed ALL starts at distance 0</text>
+        <rect class="bb" x="60" y="210" width="34" height="34" rx="5"/><text class="mono sm" x="72" y="232">0</text>
+        <rect class="bx" x="96" y="210" width="34" height="34" rx="5"/><text class="mono sm" x="108" y="232">1</text>
+        <rect class="bb" x="132" y="210" width="34" height="34" rx="5"/><text class="mono sm" x="144" y="232">0</text>
+        <rect class="bx" x="168" y="210" width="34" height="34" rx="5"/><text class="mono sm" x="180" y="232">1</text>
+        <rect class="bx" x="60" y="246" width="34" height="34" rx="5"/><text class="mono sm" x="72" y="268">1</text>
+        <rect class="bx" x="96" y="246" width="34" height="34" rx="5"/><text class="mono sm" x="108" y="268">2</text>
+        <rect class="bx" x="132" y="246" width="34" height="34" rx="5"/><text class="mono sm" x="144" y="268">1</text>
+        <rect class="bx" x="168" y="246" width="34" height="34" rx="5"/><text class="mono sm" x="180" y="268">2</text>
+        <text class="sm" x="240" y="234">“nearest target” problems: push every 0, then BFS once</text>
+        <text class="sm" x="240" y="256">rotten oranges, 0/1 matrix, walls and gates</text>
+        <rect class="bc" x="520" y="46" width="350" height="212" rx="9"/>
+        <text class="t" x="536" y="72">Grid BFS skeleton</text>
+        <text class="mono sm" x="536" y="96">int[] dr = {-1,1,0,0}, dc = {0,0,-1,1};</text>
+        <text class="mono sm" x="536" y="116">Queue&lt;int[]&gt; q = new ArrayDeque&lt;&gt;();</text>
+        <text class="mono sm" x="536" y="136">q.offer(new int[]{sr, sc});</text>
+        <text class="mono sm" x="536" y="156">dist[sr][sc] = 0;  seen[sr][sc] = true;</text>
+        <text class="mono sm" x="536" y="176">while (!q.isEmpty()) {</text>
+        <text class="mono sm" x="536" y="196">  int[] cur = q.poll();</text>
+        <text class="mono sm" x="536" y="216">  for (4 dirs) if (in bounds &amp;&amp; passable</text>
+        <text class="mono sm" x="536" y="236">      &amp;&amp; !seen[nr][nc]) { mark; push; }</text>
+      </svg>
+      <figcaption>Fig 13.1 — BFS answers “minimum steps” because the queue processes cells in non-decreasing distance
+      order. Multi-source BFS is the same code with several seeds.</figcaption>
+    </figure>
+    <pre><code>// Grid BFS with an explicit distance grid — the workhorse for maze/step problems
+int bfs(char[][] g, int sr, int sc, int tr, int tc) {
+    int m = g.length, n = g[0].length;
+    int[][] dist = new int[m][n];
+    for (int[] row : dist) Arrays.fill(row, -1);
+    int[] dr = {-1, 1, 0, 0}, dc = {0, 0, -1, 1};
+    Deque&lt;int[]&gt; q = new ArrayDeque&lt;&gt;();
+    dist[sr][sc] = 0;
+    q.offer(new int[]{sr, sc});
+    while (!q.isEmpty()) {
+        int[] cur = q.poll();
+        int r = cur[0], c = cur[1];
+        if (r == tr &amp;&amp; c == tc) return dist[r][c];
+        for (int d = 0; d &lt; 4; d++) {
+            int nr = r + dr[d], nc = c + dc[d];
+            if (nr &lt; 0 || nr &gt;= m || nc &lt; 0 || nc &gt;= n) continue;
+            if (g[nr][nc] == '#' || dist[nr][nc] != -1) continue;
+            dist[nr][nc] = dist[r][c] + 1;           // 8-directional? just add the 4 diagonals
+            q.offer(new int[]{nr, nc});
+        }
+    }
+    return -1;                                      // unreachable
+}   // O(m·n) time · O(m·n) space</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>13.4 Binary search on the answer — three frames</h3>
+    <pre><code>// Frame A · smallest value in [lo, hi] that satisfies ok(mid)
+long lo = 1, hi = (long) 1e18;                       // hi MUST be feasible (or just above the true answer)
+while (lo &lt; hi) {
+    long mid = lo + (hi - lo) / 2;
+    if (ok(mid)) hi = mid; else lo = mid + 1;
+}
+return lo;                                           // answer
+
+// Frame B · largest value in [lo, hi] that satisfies ok(mid)
+long lo = 1, hi = (long) 1e18;                       // lo MUST be feasible
+while (lo &lt; hi) {
+    long mid = lo + (hi - lo + 1) / 2;               // 🚩 the +1 is what makes this terminate
+    if (ok(mid)) lo = mid; else hi = mid - 1;
+}
+return lo;
+
+// Frame C · real-valued answer (rate, root, probability)
+double lo = 0, hi = 1e9;
+for (int it = 0; it &lt; 100; it++) {                   // fixed iteration count beats a while(eps)
+    double mid = (lo + hi) / 2;
+    if (ok(mid)) hi = mid; else lo = mid;
+}
+return hi;                                           // within 1e-12 of the true answer
+
+// Worked example: “ship packages in D days” (the canonical Frame A problem)
+boolean canShip(int[] w, int days, long cap) {
+    long used = 0; int need = 1;
+    for (int x : w) {
+        if (x &gt; cap) return false;                   // a single package never fits
+        if (used + x &gt; cap) { need++; used = 0; }
+        used += x;
+    }
+    return need &lt;= days;
+}
+int shipWithinDays(int[] weights, int days) {
+    long lo = 0, hi = 0;
+    for (int w : weights) { lo = Math.max(lo, w); hi += w; }   // search space from the constraints
+    while (lo &lt; hi) {
+        long mid = lo + (hi - lo) / 2;
+        if (canShip(weights, days, mid)) hi = mid; else lo = mid + 1;
+    }
+    return (int) lo;
+}   // O(n log(sum w)) time · O(1) space</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Phrase in the problem</th><th>Frame</th><th>Predicate shape</th></tr></thead>
+      <tbody>
+        <tr><td>“minimum capacity/speed/time such that … possible”</td><td>A (smallest true)</td><td><code>feasible(mid)</code> is monotone increasing</td></tr>
+        <tr><td>“maximum value such that still valid”</td><td>B (largest true)</td><td><code>feasible(mid)</code> is monotone decreasing</td></tr>
+        <tr><td>“answer is a decimal within 1e-5”</td><td>C (fixed iterations)</td><td>compare doubles, return after 80–100 iterations</td></tr>
+        <tr><td>“k-th smallest with a counting function”</td><td>A with an O(n) counter</td><td><code>count ≤ k</code> style monotone predicate</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>13.5 Dynamic programming — four shapes</h3>
+    <pre><code>// Shape 1 · 1-D DP over positions (climbing stairs, house robber, decode ways)
+long[] dp = new long[n + 1];
+dp[0] = 1;                                        // empty/zero case: verify against the statement
+for (int i = 1; i &lt;= n; i++) {
+    dp[i] = dp[i - 1];                            // “skip” transition
+    if (condition(i)) dp[i] += dp[i - 2];         // “take” transition
+}
+
+// Shape 2 · LIS in O(n log n) (patience sorting, tails array)
+int lis(int[] a) {
+    int[] tails = new int[a.length];
+    int len = 0;
+    for (int x : a) {
+        int lo = 0, hi = len;                     // first index with tails[i] &gt;= x
+        while (lo &lt; hi) { int mid = lo + (hi - lo) / 2; if (tails[mid] &lt; x) lo = mid + 1; else hi = mid; }
+        tails[lo] = x;
+        if (lo == len) len++;
+    }
+    return len;
+}   // O(n log n) time · O(n) space
+
+// Shape 3 · 2-D DP (edit distance) with rolling rows
+int editDistance(String a, String b) {
+    int n = a.length(), m = b.length();
+    int[] prev = new int[m + 1], cur = new int[m + 1];
+    for (int j = 0; j &lt;= m; j++) prev[j] = j;      // base case: empty prefix of a
+    for (int i = 1; i &lt;= n; i++) {
+        cur[0] = i;
+        for (int j = 1; j &lt;= m; j++)
+            cur[j] = a.charAt(i - 1) == b.charAt(j - 1)
+                   ? prev[j - 1]
+                   : 1 + Math.min(prev[j - 1], Math.min(prev[j], cur[j - 1]));
+        int[] t = prev; prev = cur; cur = t;       // swap rows instead of allocating
+    }
+    return prev[m];
+}   // O(n·m) time · O(m) space
+
+// Shape 4 · knapsack family: the ONLY difference is the loop direction
+// 0/1 (each item once)            : for (c = cap; c &gt;= w[i]; c--) dp[c] = max(dp[c], dp[c - w[i]] + v[i]);
+// unbounded (items reusable)      : for (c = w[i]; c &lt;= cap; c++) dp[c] = max(dp[c], dp[c - w[i]] + v[i]);
+// subset sum (boolean)            : dp[c] |= dp[c - w[i]]  (downward for 0/1, upward for unlimited)
+// counting ways to sum to target  : dp[c] += dp[c - w[i]]</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Shape</th><th>State</th><th>Typical problems</th></tr></thead>
+      <tbody>
+        <tr><td>1-D over index</td><td><code>dp[i]</code> = best using the first i items</td><td>stairs, robber, decode ways, jump game</td></tr>
+        <tr><td>1-D over capacity</td><td><code>dp[c]</code> = best with capacity c</td><td>knapsack, coin change, partition equal subset sum</td></tr>
+        <tr><td>2-D over two strings</td><td><code>dp[i][j]</code> = best for prefixes a[…i], b[…j]</td><td>LCS, edit distance, wildcard/regex matching, distinct subsequences</td></tr>
+        <tr><td>2-D over a grid</td><td><code>dp[i][j]</code> = best reaching cell (i, j)</td><td>unique paths, minimum path sum, maximal square</td></tr>
+        <tr><td>Interval</td><td><code>dp[i][j]</code> = best for the subarray [i, j]</td><td>burst balloons, matrix chain, palindrome partitioning, stone games</td></tr>
+        <tr><td>Bitmask</td><td><code>dp[mask]</code> = best using exactly the items in mask</td><td>travelling salesman (n ≤ 20), assignment, partition into k groups</td></tr>
+        <tr><td>Memoised recursion</td><td>recursive DFS + a cache keyed by the arguments</td><td>when the order of filling is awkward — write recursion first, then memoise</td></tr>
+      </tbody>
+    </table>
+    <pre><code>// Interval DP skeleton (always iterate LENGTH first, then the start)
+for (int len = 2; len &lt;= n; len++) {
+    for (int i = 0; i + len - 1 &lt; n; i++) {
+        int j = i + len - 1;
+        for (int k = i; k &lt; j; k++)                 // try every split point
+            dp[i][j] = Math.max(dp[i][j], dp[i][k] + dp[k + 1][j] + cost(i, k, j));
+    }
+}
+
+// Memoised recursion with a HashMap cache (int[] keys need care — pack them)
+Map&lt;Long, Integer&gt; memo = new HashMap&lt;&gt;();
+int f(int i, int state) {
+    long key = (long) i * 1000003L + state;          // ⚠ must be injective
+    if (memo.containsKey(key)) return memo.get(key);
+    int best = 0;                                    // ← replace with the base case + transitions
+    memo.put(key, best);
+    return best;
+}</code></pre>
+    <div class="tip"><b>Write the recursion first, then memoise, then (only if needed) convert to iteration.</b> Recursion
+    makes the state and transition visible; the iterative version is an optimisation for memory/speed, not a different
+    algorithm. This is also exactly how you should explain DP in an interview.</div>
+  </section>
+
+  <section class="sub">
+    <h3>13.6 Sliding window, prefix sums, monotonic structures</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 250" role="img" aria-label="Sliding window state as right expands and left shrinks to restore the invariant">
+        <text class="tt" x="450" y="28" text-anchor="middle">The window: expand right always, shrink left until valid</text>
+        <rect class="bx" x="60" y="52" width="44" height="36" rx="6"/><text class="mono sm" x="78" y="75">a</text>
+        <rect class="ba" x="106" y="52" width="44" height="36" rx="6"/><text class="mono sm" x="124" y="75">b</text>
+        <rect class="ba" x="152" y="52" width="44" height="36" rx="6"/><text class="mono sm" x="170" y="75">c</text>
+        <rect class="ba" x="198" y="52" width="44" height="36" rx="6"/><text class="mono sm" x="216" y="75">a</text>
+        <rect class="bx" x="244" y="52" width="44" height="36" rx="6"/><text class="mono sm" x="262" y="75">b</text>
+        <rect class="bx" x="290" y="52" width="44" height="36" rx="6"/><text class="mono sm" x="308" y="75">c</text>
+        <text class="sm" x="350" y="66">← left</text>
+        <text class="sm" x="350" y="86">right →</text>
+        <text class="ar" x1="106" y1="102" x2="242" y2="102" d="M106 102 L240 102" marker-end="url(#ahx)"/>
+        <text class="sm" x="420" y="66">invariant: window always satisfies the condition</text>
+        <text class="sm" x="420" y="86">update the answer after each valid expansion</text>
+        <line class="lnd" x1="30" y1="128" x2="870" y2="128"/>
+        <text class="t" x="30" y="152">The counter/frequency structure is the state</text>
+        <text class="sm" x="30" y="174">· “longest substring with at most k distinct” → Map&lt;Character,Integer&gt; counts + distinct counter</text>
+        <text class="sm" x="30" y="194">· “minimum window containing t” → counts of needed chars + a “how many satisfied” counter</text>
+        <text class="sm" x="30" y="214">· “max sum subarray of size k” → running sum; slide = add right, subtract left</text>
+        <text class="sm" x="30" y="234">Fixed-size windows use one pass; variable-size windows use while (invalid) shrink.</text>
+      </svg>
+      <figcaption>Fig 13.2 — Every sliding-window solution has this shape: a state you can update in O(1) per step, a
+      <code>right</code> that only moves forward, and a <code>left</code> that only moves forward. Total O(n).</figcaption>
+    </figure>
+    <pre><code>// Longest substring with at most k distinct characters — the general template
+int longestKDistinct(String s, int k) {
+    Map&lt;Character,Integer&gt; cnt = new HashMap&lt;&gt;();
+    int left = 0, best = 0;
+    for (int right = 0; right &lt; s.length(); right++) {
+        char c = s.charAt(right);
+        cnt.merge(c, 1, Integer::sum);
+        while (cnt.size() &gt; k) {                        // restore the invariant
+            char d = s.charAt(left++);
+            if (cnt.merge(d, -1, Integer::sum) == 0) cnt.remove(d);
+        }
+        best = Math.max(best, right - left + 1);        // window is valid here
+    }
+    return best;
+}   // O(n) time · O(k) space
+
+// Minimum window substring: “how many characters are still missing” as the state
+int minWindowLen(String s, String t) {
+    int[] need = new int[128];
+    for (char c : t.toCharArray()) need[c]++;
+    int missing = t.length(), left = 0, best = Integer.MAX_VALUE;
+    for (int right = 0; right &lt; s.length(); right++) {
+        if (need[s.charAt(right)]-- &gt; 0) missing--;      // useful character consumed
+        while (missing == 0) {
+            best = Math.min(best, right - left + 1);
+            if (need[s.charAt(left++)]++ == 0) missing++; // giving back a needed char
+        }
+    }
+    return best == Integer.MAX_VALUE ? 0 : best;
+}   // O(n + m) time · O(1) space (alphabet-sized)
+
+// Monotonic stack: next greater element to the right of every index
+int[] nextGreater(int[] a) {
+    int n = a.length; int[] res = new int[n];
+    Arrays.fill(res, -1);
+    Deque&lt;Integer&gt; st = new ArrayDeque&lt;&gt;();          // indices, values decreasing from bottom
+    for (int i = 0; i &lt; n; i++) {
+        while (!st.isEmpty() &amp;&amp; a[st.peek()] &lt; a[i]) res[st.pop()] = a[i];
+        st.push(i);
+    }
+    return res;
+}   // O(n) time — each index pushed and popped at most once</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Window type</th><th>State</th><th>Update</th></tr></thead>
+      <tbody>
+        <tr><td>Fixed size k</td><td>sum / count of the last k</td><td>add right, subtract left, no <code>while</code></td></tr>
+        <tr><td>Variable, maximise length</td><td>validity condition</td><td><code>while (!valid) shrink</code>, then record <code>right-left+1</code></td></tr>
+        <tr><td>Variable, minimise length</td><td>validity condition</td><td>shrink while valid, recording the minimum inside the loop</td></tr>
+        <tr><td>At most k distinct / replacements</td><td><code>Map</code> counts or “max frequency in window”</td><td>shrink when the budget is exceeded</td></tr>
+        <tr><td>Monotonic window maximum</td><td><code>ArrayDeque</code> of indices</td><td>pop dominated from the back, drop expired from the front</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>13.7 Two pointers and the fast/slow pair</h3>
+    <pre><code>// Opposite ends: sorted array, pair/triple sums, palindrome, container-with-most-water
+int l = 0, r = a.length - 1;
+while (l &lt; r) {
+    int sum = a[l] + a[r];
+    if (sum == target) return new int[]{l, r};
+    if (sum &lt; target) l++; else r--;                 // the sorted order justifies each move
+}
+
+// Same direction: remove in place, partition, dedupe, compress
+int w = 0;
+for (int rd = 0; rd &lt; a.length; rd++) if (keep(a[rd])) a[w++] = a[rd];
+return w;                                            // a[0..w-1] is the result
+
+// Three pointers (Dutch national flag / sort colours)
+int lo = 0, mid = 0, hi = a.length - 1;
+while (mid &lt;= hi) {
+    if (a[mid] == 0)      { swap(a, lo++, mid++); }
+    else if (a[mid] == 1) { mid++; }
+    else                  { swap(a, mid, hi--); }     // do NOT advance mid here
+}
+
+// Fast/slow on a linked list: middle, cycle detection, k-th from the end
+ListNode slow = head, fast = head;
+while (fast != null &amp;&amp; fast.next != null) {          // Floyd's tortoise and hare
+    slow = slow.next; fast = fast.next.next;
+    if (slow == fast) { /* cycle detected */ }
+}
+// when the loop ends, slow is the middle (second middle for even lengths)</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Signal</th><th>Pointer layout</th></tr></thead>
+      <tbody>
+        <tr><td>Array is sorted and you want a pair</td><td>opposite ends, move the side that improves the sum</td></tr>
+        <tr><td>In-place filtering/dedup/compression</td><td>slow write index + fast read index</td></tr>
+        <tr><td>Three-way classification</td><td>lo/mid/hi partition in one pass</td></tr>
+        <tr><td>Linked list middle / cycle / k-th from end</td><td>fast moves 2, slow moves 1 (offset fast by k for k-th)</td></tr>
+        <tr><td>Two sorted arrays merged or intersected</td><td>one pointer per array, advance the smaller</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>13.8 Backtracking — the four canonical shapes</h3>
+    <pre><code>// 1 · Subsets (include / exclude at each index) — O(2^n)
+void subsets(int[] a, int i, List&lt;Integer&gt; cur, List&lt;List&lt;Integer&gt;&gt; out) {
+    if (i == a.length) { out.add(new ArrayList&lt;&gt;(cur)); return; }   // ⚠ copy, don't add the reference
+    subsets(a, i + 1, cur, out);                                     // exclude
+    cur.add(a[i]); subsets(a, i + 1, cur, out); cur.remove(cur.size() - 1);   // include, then UNDO
+}
+
+// 2 · Permutations (choose any unused element at each level) — O(n! · n)
+void perms(int[] a, boolean[] used, List&lt;Integer&gt; cur, List&lt;List&lt;Integer&gt;&gt; out) {
+    if (cur.size() == a.length) { out.add(new ArrayList&lt;&gt;(cur)); return; }
+    for (int i = 0; i &lt; a.length; i++) {
+        if (used[i]) continue;
+        // duplicates: skip a repeated value at the same level (with the input SORTED)
+        if (i &gt; 0 &amp;&amp; a[i] == a[i - 1] &amp;&amp; !used[i - 1]) continue;
+        used[i] = true; cur.add(a[i]);
+        perms(a, used, cur, out);
+        cur.remove(cur.size() - 1); used[i] = false;                 // undo in reverse order
+    }
+}
+
+// 3 · Combinations of size k (start index prevents permutations of the same set) — O(C(n,k)·k)
+void combos(int n, int k, int start, List&lt;Integer&gt; cur, List&lt;List&lt;Integer&gt;&gt; out) {
+    if (cur.size() == k) { out.add(new ArrayList&lt;&gt;(cur)); return; }
+    for (int v = start; v &lt;= n; v++) {
+        cur.add(v); combos(n, k, v + 1, cur, out); cur.remove(cur.size() - 1);
+    }
+}
+
+// 4 · Grid / board search with pruning (word search, N-Queens, sudoku)
+boolean dfs(char[][] b, int r, int c, String w, int k) {
+    if (k == w.length()) return true;
+    if (r &lt; 0 || r &gt;= b.length || c &lt; 0 || c &gt;= b[0].length || b[r][c] != w.charAt(k)) return false;
+    char saved = b[r][c];
+    b[r][c] = '#';                                   // mark visited IN the board (no extra memory)
+    boolean found = dfs(b, r+1, c, w, k+1) || dfs(b, r-1, c, w, k+1)
+                 || dfs(b, r, c+1, w, k+1) || dfs(b, r, c-1, w, k+1);
+    b[r][c] = saved;                                 // always restore before returning
+    return found;
+}</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Shape</th><th>Branching</th><th>Duplicates handled by</th><th>Pruning to add</th></tr></thead>
+      <tbody>
+        <tr><td>Subsets</td><td>2 per level</td><td>it naturally produces each subset once</td><td>sum/target bounds, size limit</td></tr>
+        <tr><td>Permutations</td><td>n per level</td><td>sort + “skip equal to previous if unused”</td><td>fixed prefix matching, feasibility check</td></tr>
+        <tr><td>Combinations</td><td>remaining values</td><td>increasing <code>start</code> index</td><td>remaining-elements &lt; needed</td></tr>
+        <tr><td>Board search</td><td>neighbours</td><td>visited marking</td><td>trie prefix check, row/col/diagonal bitmasks (N-Queens)</td></tr>
+      </tbody>
+    </table>
+    <div class="trap"><b>The three backtracking bugs:</b> (1) adding <code>cur</code> instead of a copy — the result list
+    fills with the same object; (2) forgetting to undo the last choice; (3) pruning with <code>return</code> instead of
+    <code>continue</code> inside a loop, which silently drops valid branches.</div>
+  </section>
+
+  <section class="sub">
+    <h3>13.9 Heaps: top-K, k-way merge, streaming median</h3>
+    <pre><code>// Top-K in one pass: keep a min-heap of size k, evict the smallest
+int[] topK(int[] a, int k) {
+    PriorityQueue&lt;Integer&gt; h = new PriorityQueue&lt;&gt;();     // min-heap
+    for (int v : a) { h.offer(v); if (h.size() &gt; k) h.poll(); }
+    int[] out = new int[h.size()];
+    for (int i = out.length - 1; i &gt;= 0; i--) out[i] = h.poll();   // largest first if you prefer
+    return out;
+}   // O(n log k) time · O(k) space
+
+// K closest points to the origin: a max-heap of size k on squared distance
+PriorityQueue&lt;int[]&gt; far = new PriorityQueue&lt;&gt;((p, q) -&gt;
+        Integer.compare(q[0]*q[0] + q[1]*q[1], p[0]*p[0] + p[1]*p[1]));
+for (int[] pt : points) { far.offer(pt); if (far.size() &gt; k) far.poll(); }
+
+// K-way merge of sorted lists (also the “merge k sorted lists” linked-list pattern)
+PriorityQueue&lt;int[]&gt; pq = new PriorityQueue&lt;&gt;((x, y) -&gt; Integer.compare(x[0], y[0]));  // {value, listIndex}
+for (int i = 0; i &lt; lists.length; i++) if (!lists[i].isEmpty()) pq.offer(new int[]{lists[i].get(0), i, 0});
+while (!pq.isEmpty()) {
+    int[] cur = pq.poll();
+    out.add(cur[0]);
+    int li = cur[1], idx = cur[2] + 1;
+    if (idx &lt; lists[li].size()) pq.offer(new int[]{lists[li].get(idx), li, idx});
+}   // O(N log k) where N is the total number of elements
+
+// Streaming median: max-heap of the smaller half + min-heap of the larger half
+PriorityQueue&lt;Integer&gt; low = new PriorityQueue&lt;&gt;(Comparator.reverseOrder());   // max-heap
+PriorityQueue&lt;Integer&gt; high = new PriorityQueue&lt;&gt;();                          // min-heap
+void add(int x) {
+    low.offer(x);
+    high.offer(low.poll());                      // every low element passes through high
+    if (high.size() &gt; low.size()) low.offer(high.poll());   // keep |low| == |high| or |low| = |high|+1
+}
+double median() {
+    return low.size() &gt; high.size() ? low.peek() : (low.peek() + high.peek()) / 2.0;
+}   // add O(log n) · median O(1)</code></pre>
+    <div class="note"><b>Two-heap invariant, memorised:</b> every insertion goes into <code>low</code> first, then the
+    largest of <code>low</code> moves to <code>high</code>, then if <code>high</code> grew bigger than <code>low</code> its
+    smallest moves back. After that, <code>low</code> holds the smaller half (as a max-heap), so <code>low.peek()</code> is
+    the median for odd sizes.</div>
+  </section>
+
+  <section class="sub">
+    <h3>13.10 Odds and ends worth having in muscle memory</h3>
+    <pre><code>// Intervals: sort by start, sweep with a merge/count
+int[][] merge(int[][] iv) {
+    Arrays.sort(iv, (a, b) -&gt; Integer.compare(a[0], b[0]));
+    List&lt;int[]&gt; out = new ArrayList&lt;&gt;();
+    for (int[] cur : iv) {
+        if (out.isEmpty() || out.get(out.size() - 1)[1] &lt; cur[0]) out.add(cur);
+        else out.get(out.size() - 1)[1] = Math.max(out.get(out.size() - 1)[1], cur[1]);
+    }
+    return out.toArray(new int[0][]);
+}   // O(n log n)
+
+// Meeting rooms II (minimum platforms) — heap of end times
+int minRooms(int[][] iv) {
+    Arrays.sort(iv, (a, b) -&gt; Integer.compare(a[0], b[0]));
+    PriorityQueue&lt;Integer&gt; ends = new PriorityQueue&lt;&gt;();
+    for (int[] cur : iv) {
+        if (!ends.isEmpty() &amp;&amp; ends.peek() &lt;= cur[0]) ends.poll();   // free the earliest room
+        ends.offer(cur[1]);
+    }
+    return ends.size();
+}   // O(n log n)
+
+// Next permutation (Java has no library function — the in-place algorithm)
+void nextPermutation(int[] a) {
+    int i = a.length - 2;
+    while (i &gt;= 0 &amp;&amp; a[i] &gt;= a[i + 1]) i--;                  // find the pivot
+    if (i &gt;= 0) {
+        int j = a.length - 1;
+        while (a[j] &lt;= a[i]) j--;                            // rightmost successor
+        int t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    for (int l = i + 1, r = a.length - 1; l &lt; r; l++, r--) {  // reverse the suffix
+        int t = a[l]; a[l] = a[r]; a[r] = t;
+    }
+}
+
+// LRU cache — LinkedHashMap in access order does the bookkeeping
+class LRU&lt;K, V&gt; extends LinkedHashMap&lt;K, V&gt; {
+    private final int cap;
+    LRU(int cap) { super(cap, 0.75f, true); this.cap = cap; }   // true = access order
+    @Override protected boolean removeEldestEntry(Map.Entry&lt;K, V&gt; e) { return size() &gt; cap; }
+}
+
+// Cycle detection on a grid (union-find over cells) — the other O(1)-space trick
+// id = r * cols + c ; union each cell with its right and down neighbours;
+// union returning false means the edge closed a cycle.</code></pre>
+    <div class="tip"><b>Interview move:</b> for interval and scheduling problems, say the plan in one breath —
+    “sort by start, sweep with a heap / running end” — before writing code. It shows pattern recognition, which is what the
+    interviewer is scoring.</div>
+  </section>
+</section>
+
+<section class="chapter" id="ch14">
+  <h2><span class="num">14</span> Complexity from the constraints</h2>
+  <p class="tagline">The constraints are a hint, not decoration: n ≤ 20 means bitmask, n ≤ 10<sup>5</sup> means
+  O(n log n), n ≤ 1000 means O(n²) is intended.</p>
+
+  <div class="hero">
+    <h1>Planning before typing</h1>
+    <p class="lede">Two minutes of arithmetic at the start of a problem saves twenty minutes of debugging a solution that
+    was never going to pass. This chapter is the table that maps constraints to the algorithms that fit — and the
+    interview structure that makes your reasoning visible.</p>
+  </div>
+
+  <section class="sub">
+    <h3>14.1 The constraint table</h3>
+    <table class="tbl">
+      <thead><tr><th>n (or the value range)</th><th>Intended complexity</th><th>Techniques that fit</th></tr></thead>
+      <tbody>
+        <tr><td>n ≤ 10</td><td>O(n!) or O(2<sup>n</sup> · n)</td><td>permutations, brute-force with pruning</td></tr>
+        <tr><td>n ≤ 20–25</td><td>O(2<sup>n</sup>) · O(n · 2<sup>n</sup>)</td><td>bitmask DP, subset enumeration</td></tr>
+        <tr><td>n ≤ 100</td><td>O(n³)</td><td>Floyd–Warshall, interval DP, triple loops</td></tr>
+        <tr><td>n ≤ 500–2 000</td><td>O(n²)</td><td>2-D DP, all-pairs comparisons, nested scans</td></tr>
+        <tr><td>n ≤ 10<sup>4</sup></td><td>O(n²) is marginal, O(n · √n) fine</td><td>memoised DP, per-query √n tricks</td></tr>
+        <tr><td>n ≤ 10<sup>5</sup></td><td>O(n log n) expected</td><td>sorting, heaps, binary search, HashMaps, one BFS/DFS</td></tr>
+        <tr><td>n ≤ 10<sup>6</sup></td><td>O(n) with a small constant</td><td>two pointers, prefix sums, counting arrays, linear sieve</td></tr>
+        <tr><td>value up to 10<sup>9</sup> or 10<sup>18</sup></td><td>O(log V)</td><td>binary search on the answer, fast exponentiation, digit DP</td></tr>
+        <tr><td>many queries on a static array</td><td>preprocess once + O(1)/O(log n) per query</td><td>prefix sums, sparse table, Fenwick/segment tree</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><b>The 2-second rule, Java edition.</b> The judge allows roughly 1–3 s per test file and Java runs
+    about 2–5× slower than C++ for the same loop. Budget ~10<sup>8</sup> simple operations OR ~10<sup>7</sup> boxed/
+    container operations. So n = 10<sup>5</sup> with O(n log n) is comfortable; n = 10<sup>5</sup> with O(n²) is 10<sup>10</sup>
+    — never.</div>
+    <figure class="dg">
+      <svg viewBox="0 0 900 300" role="img" aria-label="Operations count versus input size for common complexity classes">
+        <text class="tt" x="450" y="28" text-anchor="middle">How many operations is that, really?</text>
+        <rect class="bx" x="30" y="50" width="840" height="34" rx="8"/>
+        <text class="sm" x="44" y="72">n = 10 · n = 100 · n = 1 000 · n = 10⁵ · n = 10⁶</text>
+        <text class="t" x="30" y="112">O(log n)</text>
+        <text class="sm" x="140" y="112">3 · 7 · 10 · 17 · 20            ✅ always available</text>
+        <text class="t" x="30" y="140">O(n)</text>
+        <text class="sm" x="140" y="140">10 · 100 · 10³ · 10⁵ · 10⁶        ✅ fine up to 10⁷ in Java</text>
+        <text class="t" x="30" y="168">O(n log n)</text>
+        <text class="sm" x="140" y="168">33 · 664 · 10⁴ · 1.7·10⁶ · 2·10⁷  ✅ the sweet spot for n = 10⁵</text>
+        <text class="t" x="30" y="196">O(n²)</text>
+        <text class="sm" x="140" y="196">100 · 10⁴ · 10⁶ · 10¹⁰ · 10¹²       ⚠ only n ≤ few thousand</text>
+        <text class="t" x="30" y="224">O(2ⁿ)</text>
+        <text class="sm" x="140" y="224">10³ · 10³⁰ · … · … · …            ⚠ only n ≤ 20–25</text>
+        <line class="lnd" x1="30" y1="248" x2="870" y2="248"/>
+        <text class="sm" x="30" y="272">Read the constraint first, choose the row, then pick a technique from that row. This is what interviewers call “seeing the intended solution”.</text>
+      </svg>
+      <figcaption>Fig 14.1 — The same table as a mental picture: one glance at n tells you which rows are legal.</figcaption>
+    </figure>
+  </section>
+
+  <section class="sub">
+    <h3>14.2 Space budgets</h3>
+    <table class="tbl">
+      <thead><tr><th>Budget</th><th>What it allows (Java)</th><th>Typical situation</th></tr></thead>
+      <tbody>
+        <tr><td>O(1)</td><td>index variables, a few counters</td><td>two pointers, in-place marking, cyclic sort</td></tr>
+        <tr><td>O(log n)</td><td>recursion stack of a balanced recursion</td><td>divide and conquer, binary search</td></tr>
+        <tr><td>O(n)</td><td>one <code>int[]</code>/<code>HashMap</code> of size n (≈4 MB or ≈50 MB respectively)</td><td>visited arrays, prefix sums, DP rows, frequency maps</td></tr>
+        <tr><td>O(n log n)</td><td>a few arrays per recursion level</td><td>merge sort, segment tree</td></tr>
+        <tr><td>O(n²)</td><td>n = 1000 → 10<sup>6</sup> entries (4–8 MB as primitives)</td><td>2-D DP, adjacency matrix</td></tr>
+      </tbody>
+    </table>
+    <div class="warn"><b>Space on the judge is real memory, and Java's overhead is 3–20× the theoretical size.</b> An
+    O(n²) table of <code>Long</code> objects at n = 2000 is ~10<sup>8</sup> bytes of references plus a quarter-billion bytes
+    of objects — that is an <code>OutOfMemoryError</code>, whereas <code>long[2000][2000]</code> (32 MB) is fine. Prefer
+    primitives for tables, maps only for sparse data, and roll DP rows whenever the transition allows it.</div>
+  </section>
+
+  <section class="sub">
+    <h3>14.3 The four-sentence interview structure</h3>
+    <div class="grid2">
+      <div class="card"><h4>1 · Restate &amp; clarify</h4>“Given an array of n integers, return the length of the longest
+      subarray whose sum is at most k. Inputs can be negative? Empty array allowed? Return 0 then?”<br>
+      <span class="muted small">Signals: you read the problem, you think about edge cases, you do not assume.</span></div>
+      <div class="card"><h4>2 · Approach with complexity</h4>“Brute force is O(n²). Since the values are positive, a
+      sliding window gives O(n) time and O(1) space. Should I implement that?”<br>
+      <span class="muted small">Signals: you can compare options and you know the trade-off. Always offer the simple
+      version first if it passes the constraints.</span></div>
+      <div class="card"><h4>3 · Code in small steps, naming things</h4>Write the signature, then the invariant, then the
+      loop. Keep variable names meaningful (<code>left</code>, <code>windowSum</code>, <code>best</code>). Narrate the
+      invariant, not the syntax.<br>
+      <span class="muted small">Signals: your code reads like the explanation you just gave.</span></div>
+      <div class="card"><h4>4 · Verify with a trace and state the complexity</h4>Walk the sample through the code out
+      loud. Then: “Time O(n), space O(1); the window never re-reads an element.”<br>
+      <span class="muted small">Signals: you test yourself before the interviewer does, and you can reason about cost.</span></div>
+    </div>
+    <table class="tbl">
+      <thead><tr><th>Moment</th><th>What to say (nothing more)</th></tr></thead>
+      <tbody>
+        <tr><td>You are stuck after 2 minutes of thinking</td><td>“Let me start with the brute force and see where the repeated work is.” Then optimise from there.</td></tr>
+        <tr><td>You notice a bug while coding</td><td>“That index should be <code>i-1</code>; let me fix it.” Correcting yourself calmly scores higher than a silent pause.</td></tr>
+        <tr><td>The interviewer hints</td><td>Take the hint and run with it: “Right — since it is sorted, binary search applies.” Do not fight it.</td></tr>
+        <tr><td>Time is running out</td><td>Finish the main path, then say what you would add: “I would add the empty-input guard and the tie-breaking here.”</td></tr>
+        <tr><td>You are asked “can you do better?”</td><td>Name the bottleneck (“the sort is O(n log n)”) and the possible improvement (“counting sort if the range is small”).</td></tr>
+      </tbody>
+    </table>
+    <div class="tip"><b>What interviewers write down:</b> communication, structured problem solving, correctness of the
+    final code, complexity analysis, and how you handle hints. Notice that “typed fast” is not on the list.</div>
+  </section>
+</section>
+
+<section class="chapter" id="ch15">
+  <h2><span class="num">15</span> Interview Q&amp;A + what to do next</h2>
+  <p class="tagline">The questions you will actually be asked about Java itself — with the short answers that demonstrate
+  depth without lecturing.</p>
+
+  <div class="hero">
+    <h1>Java interview Q&amp;A</h1>
+    <p class="lede">Algorithm rounds are 80% algorithms and 20% language: collections, complexity, memory, and a few
+    semantics questions. These are the ones that come up repeatedly, each answered in the length an interviewer wants —
+    two or three sentences plus an example.</p>
+  </div>
+
+  <section class="sub">
+    <h3>15.1 Language &amp; semantics</h3>
+    <div class="grid2">
+      <div class="card"><h4>Why is <code>String</code> immutable?</h4>Safety (safe to share across threads, safe as a
+      <code>HashMap</code> key), caching (literals are interned, <code>hashCode</code> is computed once), and security
+      (file paths, class names). The cost: every “modification” allocates — hence <code>StringBuilder</code> for loops.</div>
+      <div class="card"><h4><code>==</code> vs <code>equals</code>?</h4><code>==</code> compares primitives by value and
+      references by identity. <code>equals</code> is the value contract; the standard library implements it — your own
+      classes only get it if you write it (or if you use a <code>record</code>).</div>
+      <div class="card"><h4>Why is <code>String</code> a good <code>HashMap</code> key and <code>int[]</code> a bad one?</h4>
+      Strings override <code>hashCode</code>/<code>equals</code> by content and are immutable. Arrays use identity
+      semantics and are mutable — wrap them in a <code>List.of(...)</code>, a packed <code>long</code>, or a
+      <code>record</code>.</div>
+      <div class="card"><h4>Autoboxing cost, in one sentence?</h4>Every <code>int</code> that enters a collection becomes a
+      ~16-byte object reached through a reference, so prefer <code>int[]</code> in hot loops — and remember the
+      −128…127 cache is why <code>==</code> “works” in small tests.</div>
+      <div class="card"><h4><code>final</code>, <code>static</code>, <code>static final</code>?</h4><code>final</code>: the
+      reference/variable cannot be reassigned. <code>static</code>: belongs to the class. <code>static final</code>:
+      a constant. Beware <code>static</code> mutable state in a <code>Solution</code> — it persists between test cases.</div>
+      <div class="card"><h4>Checked vs unchecked exceptions?</h4>Checked must be declared or caught
+      (<code>IOException</code>); unchecked (<code>RuntimeException</code> family: NPE, AIOOBE, IAE) do not. In interview
+      code, prefer unchecked — you should not be writing <code>throws</code> everywhere.</div>
+      <div class="card"><h4>When does <code>StringBuilder</code> matter?</h4>Whenever you concatenate in a loop:
+      <code>s += c</code> is O(n²), <code>sb.append(c)</code> is amortised O(1) and one <code>toString</code> at the end.</div>
+      <div class="card"><h4>What is <code>var</code> and is it “dynamic typing”?</h4>Local variable type inference (Java 10+):
+      the type is still static and fixed at compile time, just not spelled out. Use it when the initialiser makes the type
+      obvious.</div>
+    </div>
+  </section>
+
+  <section class="sub">
+    <h3>15.2 Collections &amp; complexity</h3>
+    <div class="grid2">
+      <div class="card"><h4>ArrayList vs LinkedList?</h4><code>ArrayList</code> wins almost always: O(1) random access,
+      contiguous memory, no node overhead. <code>LinkedList</code> only helps with O(1) insertion at a known node —
+      and <code>ArrayDeque</code> is the better queue in every case.</div>
+      <div class="card"><h4>HashMap vs Hashtable vs ConcurrentHashMap?</h4><code>HashMap</code> is the single-threaded
+      default (allows one null key); <code>Hashtable</code> is legacy and synchronised; <code>ConcurrentHashMap</code> is
+      the safe concurrent one (no nulls) and uses lock striping.</div>
+      <div class="card"><h4>How does <code>HashMap</code> work inside?</h4>Array of buckets indexed by
+      <code>hash(key) &amp; (capacity-1)</code>; collisions become a linked list, which converts to a red-black tree
+      (treeifies) once a bucket holds 8 entries — that is why worst-case lookup is O(log n), not O(n), for hostile inputs.</div>
+      <div class="card"><h4>When does a HashMap resize?</h4>At load factor 0.75 of the capacity (default 16); each resize
+      doubles the table and rehashes. To avoid it: <code>new HashMap&lt;&gt;(expected * 4 / 3 + 1)</code>.</div>
+      <div class="card"><h4><code>HashSet</code> vs <code>TreeSet</code>?</h4>HashSet: O(1) average, unordered.
+      TreeSet: O(log n), sorted, with <code>floor</code>/<code>ceiling</code>/<code>higher</code>/<code>lower</code>.
+      Choose by whether you need order or range queries — not by habit.</div>
+      <div class="card"><h4>Why is <code>PriorityQueue</code> not sorted when iterated?</h4>It is a binary heap in an array:
+      the heap property only guarantees the root is the extreme. Sorted output requires repeated <code>poll</code>.</div>
+      <div class="card"><h4>Stack or ArrayDeque for DFS?</h4><code>ArrayDeque</code>: <code>Stack</code> extends
+      <code>Vector</code> and is synchronised (slower), and <code>ArrayDeque</code> has better locality than
+      <code>LinkedList</code>.</div>
+      <div class="card"><h4>How do you find the k largest elements?</h4>A min-heap of size k: O(n log k) time, O(k) memory.
+      Sorting is O(n log n) — mention both and pick by constraints.</div>
+      <div class="card"><h4>How does <code>TreeMap</code> answer “nearest value” questions?</h4><code>floorKey</code> and
+      <code>ceilingKey</code> give the nearest keys ≤ / ≥ a target in O(log n) — the standard tool for calendar/schedule or
+      “closest temperature” problems.</div>
+      <div class="card"><h4>What is the complexity of a HashMap lookups with poor <code>hashCode</code>?</h4>Everything lands
+      in one bucket: O(n) (Java 8+ treeifies to O(log n)). The practical fix is a better key or a cheap encoding.</div>
+    </div>
+  </section>
+
+  <section class="sub">
+    <h3>15.3 Performance, pitfalls and judgement</h3>
+    <div class="grid2">
+      <div class="card"><h4>Your Java solution TLEs at the “right” complexity. What do you check?</h4>Boxing in the hot
+      loop, <code>String</code> concatenation, <code>ArrayList.remove(0)</code>, rebuilding maps/trees per query, streams in
+      tight loops, recursion overhead. Fix in that order.</div>
+      <div class="card"><h4><code>int</code> or <code>long</code> for the answer?</h4><code>long</code> whenever sums or
+      products can exceed 2.1 × 10<sup>9</sup> — including mid-computation values that are later reduced mod 10<sup>9</sup>+7.</div>
+      <div class="card"><h4>How do you avoid <code>StackOverflowError</code>?</h4>Convert deep recursion to an explicit
+      <code>ArrayDeque</code> stack (or increase <code>-Xss</code> if you control the JVM). ~10<sup>4</sup>–10<sup>5</sup>
+      frames is the practical ceiling.</div>
+      <div class="card"><h4>Why does my answer differ on the last test case only?</h4>Classic causes: a static/instance
+      field surviving between test cases, an unsorted assumption, or an overflow that only appears at maximum values.</div>
+      <div class="card"><h4>How would you test this without a judge?</h4>The 3-level loop: samples plus edge cases, then a
+      randomised stress test against a brute force with a fixed seed, then one max-size timing run.</div>
+      <div class="card"><h4>What would you do with 10× more time?</h4>Name a concrete improvement with its complexity
+      (“replace the O(n²) scan with a monotonic stack for O(n)”), not a vague “optimise”.</div>
+    </div>
+  </section>
+
+  <section class="sub">
+    <h3>15.4 Six warm-up problems with complete solutions</h3>
+    <pre><code>// 1 · Two Sum — hash map complement, O(n) ---------------------------------
+int[] twoSum(int[] nums, int target) {
+    Map&lt;Integer,Integer&gt; seen = new HashMap&lt;&gt;();
+    for (int i = 0; i &lt; nums.length; i++) {
+        int need = target - nums[i];
+        if (seen.containsKey(need)) return new int[]{seen.get(need), i};
+        seen.put(nums[i], i);
+    }
+    return new int[0];
+}
+
+// 2 · Reverse a linked list — iterative pointer surgery, O(n) --------------
+ListNode reverseList(ListNode head) {
+    ListNode prev = null;
+    while (head != null) { ListNode nxt = head.next; head.next = prev; prev = head; head = nxt; }
+    return prev;
+}
+
+// 3 · Maximum subarray — Kadane's algorithm, O(n) -------------------------
+int maxSubArray(int[] a) {
+    int best = a[0], cur = a[0];
+    for (int i = 1; i &lt; a.length; i++) { cur = Math.max(a[i], cur + a[i]); best = Math.max(best, cur); }
+    return best;
+}
+
+// 4 · Valid parentheses — stack, O(n) -------------------------------------
+boolean isValid(String s) {
+    Deque&lt;Character&gt; st = new ArrayDeque&lt;&gt;();
+    for (char c : s.toCharArray()) {
+        if (c == '(' || c == '[' || c == '{') st.push(c);
+        else {
+            if (st.isEmpty()) return false;
+            char o = st.pop();
+            if ((c == ')' &amp;&amp; o != '(') || (c == ']' &amp;&amp; o != '[') || (c == '}' &amp;&amp; o != '{')) return false;
+        }
+    }
+    return st.isEmpty();
+}
+
+// 5 · Binary search — exact search, O(log n) ------------------------------
+int search(int[] a, int target) {
+    int lo = 0, hi = a.length - 1;
+    while (lo &lt;= hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (a[mid] == target) return mid;
+        if (a[mid] &lt; target) lo = mid + 1; else hi = mid - 1;
+    }
+    return -1;
+}
+
+// 6 · Merge two sorted arrays in place — from the back, O(m + n) ----------
+void merge(int[] a, int m, int[] b, int n) {
+    int i = m - 1, j = n - 1, k = m + n - 1;
+    while (j &gt;= 0) a[k--] = (i &gt;= 0 &amp;&amp; a[i] &gt; b[j]) ? a[i--] : b[j--];
+}</code></pre>
+    <div class="tip"><b>Then go to the bank.</b> The <a href="java-leetcode.html">Java LeetCode question bank</a> takes
+    every topic in this guide through 6 easy → 12 medium → 12 hard problems, each with the statement, examples,
+    constraints and a complete solution in the style used here.</div>
+  </section>

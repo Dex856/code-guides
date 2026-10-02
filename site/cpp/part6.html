@@ -1,0 +1,324 @@
+  <section class="sub">
+    <h3>15.1 One-page cheat sheet</h3>
+    <pre><code>// ---------- includes &amp; shorthands ---------------------------------------
+#include &lt;bits/stdc++.h&gt;              // contest convenience
+using namespace std;
+using ll = long long;  using pii = pair&lt;int,int&gt;;  using vi = vector&lt;int&gt;;
+#define all(x) (x).begin(), (x).end()
+const int INF = 1e9;  const ll LINF = 4e18;  const ll MOD = 1'000'000'007;
+
+// ---------- io ----------------------------------------------------------
+ios::sync_with_stdio(false); cin.tie(nullptr);
+cin &gt;&gt; n;  getline(cin, line);
+cout &lt;&lt; x &lt;&lt; '\n';                    // '\n' not endl
+
+// ---------- vector ------------------------------------------------------
+vector&lt;int&gt; v(n, 0); v.reserve(n); v.push_back(x); v.pop_back();
+v.size(); v.empty(); v.front(); v.back(); v[i]; *max_element(all(v)); *min_element(all(v));
+sort(all(v)); sort(all(v), greater&lt;int&gt;());
+sort(all(v), [](int a, int b){ return a &lt; b; });
+reverse(all(v)); v.erase(unique(all(v)), v.end());
+accumulate(all(v), 0LL);
+
+// ---------- strings -----------------------------------------------------
+string s; s.substr(i, len); s.find(t); s.rfind(t); s.size();
+s += c; s.push_back(c); s.pop_back();
+stoi(s); stoll(s); to_string(x); sort(all(s)); reverse(all(s));
+for (char c : s) cnt[c - 'a']++;
+// split: stringstream ss(s); string tok; while (getline(ss, tok, ',')) …
+
+// ---------- maps / sets -------------------------------------------------
+unordered_map&lt;int,int&gt; mp;  mp[k]++;  mp.count(k);  mp.find(k) != mp.end();
+mp.erase(k);  mp.reserve(n);
+unordered_set&lt;int&gt; st;  st.insert(x);  st.count(x);  st.erase(x);
+map&lt;int,int&gt; om;  om.lower_bound(k);   set&lt;int&gt; os;  *os.begin();  *os.rbegin();
+multiset&lt;int&gt; ms;  ms.erase(ms.find(x));            // erase ONE copy
+
+// ---------- stack / queue / heap ---------------------------------------
+stack&lt;int&gt; stk; stk.push(x); stk.top(); stk.pop();
+queue&lt;int&gt; q;   q.push(x);   q.front(); q.pop();
+deque&lt;int&gt; dq;  dq.push_front(x); dq.pop_back(); dq.front(); dq.back();
+priority_queue&lt;int&gt; maxh;                               // top = max
+priority_queue&lt;int, vector&lt;int&gt;, greater&lt;int&gt;&gt; minh;    // top = min
+priority_queue&lt;pair&lt;int,int&gt;&gt; ph;                       // lexicographic
+
+// ---------- algorithms --------------------------------------------------
+sort · stable_sort · partial_sort · nth_element · unique · reverse · rotate
+lower_bound(all(v), x) - v.begin();     upper_bound(all(v), x) - v.begin();
+binary_search(all(v), x);  count(all(v), x);  count_if(all(v), pred);
+min({a,b,c});  max({a,b,c});  swap(a,b);  next_permutation(all(v));
+iota(all(v), 0);  fill(all(v), 0);  merge(all(a), all(b), back_inserter(c));
+set_intersection / set_union / set_difference (sorted inputs, output iterator)
+gcd(a,b); lcm(a,b); __builtin_popcount(x); __lg(x);
+
+// ---------- binary search on answer ------------------------------------
+while (lo &lt; hi) { ll mid = lo + (hi - lo) / 2; if (ok(mid)) hi = mid; else lo = mid + 1; }   // smallest
+while (lo &lt; hi) { ll mid = lo + (hi - lo + 1) / 2; if (ok(mid)) lo = mid; else hi = mid - 1; } // largest
+
+// ---------- graph -------------------------------------------------------
+vector&lt;vector&lt;int&gt;&gt; adj(n);
+adj[u].push_back(v); adj[v].push_back(u);
+vector&lt;int&gt; dist(n, -1); queue&lt;int&gt; bq; dist[s] = 0; bq.push(s);              // BFS
+vector&lt;char&gt; seen(n, 0);                                                       // DFS
+vector&lt;int&gt; indeg(n); /* Kahn: pop indeg-0, decrement neighbours */            // topo sort
+priority_queue&lt;pair&lt;ll,int&gt;, vector&lt;pair&lt;ll,int&gt;&gt;, greater&lt;&gt;&gt; pq;              // Dijkstra
+struct DSU { vector&lt;int&gt; p, r; /* find with path compression, unite by rank */ };  // ch. 8.1
+
+// ---------- DP ----------------------------------------------------------
+vector&lt;ll&gt; dp(n + 1, 0);  vector&lt;vector&lt;ll&gt;&gt; dp2(n + 1, vector&lt;ll&gt;(m + 1, 0));
+// knapsack: capacity downward (0/1) · upward (unbounded) · intervals by length
+
+// ---------- bits --------------------------------------------------------
+x &amp; (1 &lt;&lt; k)   x |= (1 &lt;&lt; k)   x &amp;= ~(1 &lt;&lt; k)   x ^= (1 &lt;&lt; k)
+x &amp; (x - 1)     x &amp; -x         __builtin_popcountll(x)   __builtin_ctz(x)
+for (int m = 0; m &lt; (1 &lt;&lt; n); ++m)  for (int sub = m; sub; sub = (sub - 1) &amp; m)
+
+// ---------- compile -----------------------------------------------------
+g++ -std=c++20 -O2 -Wall -Wextra sol.cpp -o sol &amp;&amp; ./sol
+g++ -std=c++20 -g -fsanitize=address,undefined sol.cpp -o sol_dbg &amp;&amp; ./sol_dbg</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>15.2 Index</h3>
+    <div class="grid3">
+      <a href="#ch1">setup, flags, sanitizers, headers</a>
+      <a href="#ch2">types, overflow, references, Python table</a>
+      <a href="#ch3">strings, chars, splitting, char classification</a>
+      <a href="#ch4">vector, grids, neighbours, in-place rotation</a>
+      <a href="#ch5">containers, complexity, unordered [], ordered secrets, heap</a>
+      <a href="#ch6">sort/search, binary search on answer, numeric</a>
+      <a href="#ch7">lambdas, comparators, templates, auto</a>
+      <a href="#ch8">structs, operators, ListNode/TreeNode, custom hash</a>
+      <a href="#ch9">memory, UB, performance</a>
+      <a href="#ch10">bits, subsets, sieve, modular math</a>
+      <a href="#ch11">pattern → STL map (30 patterns)</a>
+      <a href="#ch12">pitfalls that cost submissions</a>
+      <a href="#ch13">templates: graphs, DSU, binary search, DP, trie</a>
+      <a href="#ch14">complexity from constraints, interview signal</a>
+      <a href="#ch15">interview Q&amp;A + cheat sheet</a>
+    </div>
+  </section>
+
+  <section class="sub">
+    <h3>15.3 What to do next</h3>
+    <div class="grid3">
+      <div class="card"><h4>1 · Drill the bank</h4>Work the <a href="cpp-leetcode.html">C++ LeetCode question bank</a>: 6 easy → 12 medium → 12 hard per topic, each with a complete compiled solution.</div>
+      <div class="card"><h4>2 · Build a snippet file</h4>Keep a <code>template.cpp</code> with your fast-IO header, DSU, Dijkstra and the binary-search-on-answer frame. Re-read it before every contest or interview.</div>
+      <div class="card"><h4>3 · Practise the loop</h4>Timed sessions: 25 min easy, 40 min medium, 60 min hard — then read the editorial and re-implement from memory the next day.</div>
+    </div>
+  </section>
+</section>
+
+  </main>
+</div>
+
+<footer>
+  <p><b>C++ for LeetCode</b> — part of the Code Guides collection: C++, Java and Python references with matching LeetCode question banks.</p>
+  <p class="small">All diagrams are inline SVG · no external requests · works offline · every code block has a copy button.<br>
+  Standard: C++17/20/23 on GCC 14 / Clang. Templates in chapter 13 are compiled and tested locally.</p>
+  <p class="small"><a href="index.html">← All guides</a> · <a href="cpp-leetcode.html">C++ question bank</a> · <a href="java-guide.html">Java guide</a> · <a href="python-guide.html">Python guide</a></p>
+</footer>
+
+<button id="top" class="btn" title="Back to top">↑ Top</button>
+
+<style>
+.indexgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;margin:.8rem 0}
+.indexgrid a{display:block;border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:13.3px;background:var(--card);color:var(--fg)}
+.indexgrid a:hover{border-color:var(--accent);background:var(--accent-soft);text-decoration:none}
+</style>
+
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement, stored = null;
+  try { stored = localStorage.getItem("cppg-theme"); } catch (e) {}
+  if (!stored && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) stored = "dark";
+  if (stored) root.setAttribute("data-theme", stored);
+  var themeBtn = document.getElementById("theme");
+  function label(){ themeBtn.textContent = root.getAttribute("data-theme") === "dark" ? "☀️" : "🌙"; }
+  label();
+  themeBtn.addEventListener("click", function(){
+    var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("cppg-theme", next); } catch(e){}
+    label();
+  });
+  document.getElementById("print").addEventListener("click", function(){ window.print(); });
+
+  var KEYWORDS = ["alignas","alignof","asm","auto","bool","break","case","catch","char","class","concept","const","consteval","constexpr","constinit","const_cast","continue","co_await","co_return","co_yield","decltype","default","delete","do","double","dynamic_cast","else","enum","explicit","export","extern","false","float","for","friend","goto","if","inline","int","long","mutable","namespace","new","noexcept","nullptr","operator","private","protected","public","register","reinterpret_cast","requires","return","short","signed","sizeof","static","static_assert","static_cast","struct","switch","template","this","throw","true","try","typedef","typeid","typename","union","unsigned","using","virtual","void","volatile","while","override","final","not","and","or","xor","int8_t","uint64_t","size_t"];
+  var BUILTINS = ["vector","string","map","set","unordered_map","unordered_set","multiset","multimap","queue","deque","stack","priority_queue","pair","tuple","array","bitset","sort","stable_sort","partial_sort","nth_element","reverse","rotate","unique","lower_bound","upper_bound","binary_search","equal_range","min_element","max_element","minmax_element","count","count_if","find","fill","iota","accumulate","partial_sum","inner_product","gcd","lcm","abs","max","min","swap","next_permutation","prev_permutation","transform","for_each","merge","set_intersection","set_union","set_difference","make_pair","tie","move","begin","end","rbegin","rend","push_back","pop_back","emplace_back","reserve","resize","insert","erase","clear","empty","size","front","back","top","push","pop","emplace","find_if","remove_if","all_of","any_of","none_of","cout","cin","cerr","endl","getline","to_string","stoi","stoll","stod","hypot","sqrt","pow","log","ceil","floor","exp","swap_ranges","includes","_GLIBCXX_DEBUG"];
+  var esc = function(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); };
+  var RE = new RegExp(
+    "(\\/\\/[^\\n]*|\\/\\*[\\s\\S]*?\\*\\/)" +
+    "|(R\"\\([\\s\\S]*?\\)\"|\"(?:\\\\.|[^\"\\\\\\n])*\"|'(?:\\\\.|[^'\\\\\\n])*')" +
+    "|\\b(" + KEYWORDS.join("|") + ")\\b" +
+    "|\\b(0[xX][0-9a-fA-F']+|0[bB][01']+|\\d[\\d']*\\.?[\\d']*(?:[eE][-+]?\\d+)?)(?:[uUlLfF]{0,4})\\b" +
+    "|\\b(" + BUILTINS.join("|") + ")(?=\\s*[(<;:]|\\s*\\()" +
+    "|\\b([A-Z][A-Za-z0-9_]*)\\b" +
+    "|\\b([a-z_][A-Za-z0-9_]*)(?=\\s*\\()",
+    "g");
+  function highlight(code){
+    return code.replace(RE, function(m, c, s, k, num, b, cls, fn){
+      if (c) return '<span class="tok-c">' + c + '</span>';
+      if (s) return '<span class="tok-s">' + s + '</span>';
+      if (k) return '<span class="tok-k">' + k + '</span>';
+      if (num) return '<span class="tok-n">' + num + '</span>';
+      if (b) return '<span class="tok-b">' + b + '</span>';
+      if (cls) return '<span class="tok-t">' + cls + '</span>';
+      if (fn) return '<span class="tok-f">' + fn + '</span>';
+      return m;
+    });
+  }
+  var blocks = document.querySelectorAll("pre > code");
+  Array.prototype.forEach.call(blocks, function(code){
+    if (code.dataset.hl) return;
+    var text = code.textContent;
+    code.innerHTML = highlight(esc(text));
+    code.dataset.hl = "1";
+    var pre = code.parentNode;
+    if (getComputedStyle(pre).position === "static") pre.style.position = "relative";
+    var btn = document.createElement("button");
+    btn.className = "copy"; btn.type = "button"; btn.textContent = "copy";
+    btn.addEventListener("click", function(){
+      var done = function(){ btn.textContent = "copied ✓"; setTimeout(function(){ btn.textContent = "copy"; }, 1400); };
+      var fallback = function(){
+        var ta = document.createElement("textarea");
+        ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); done(); } catch(e){ btn.textContent = "⌘C"; }
+        document.body.removeChild(ta);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
+      else fallback();
+    });
+    pre.appendChild(btn);
+  });
+
+  var chapters = document.querySelectorAll("section.chapter");
+  var toc = document.getElementById("toc");
+  var slugOf = function(s){ return s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,48); };
+  var html = ['<div class="navhead">Contents</div>'];
+  Array.prototype.forEach.call(chapters, function(ch){
+    var h2 = ch.querySelector("h2");
+    var num = h2.querySelector(".num") ? h2.querySelector(".num").textContent : "";
+    var title = h2.textContent.replace(/^\s*\d+\s*/, "").trim();
+    html.push('<div class="navch" data-ch="' + ch.id + '"><a href="#' + ch.id + '"><span style="opacity:.6">' + num + '</span> ' + title + "</a>");
+    var subs = ch.querySelectorAll("h3");
+    if (subs.length) {
+      html.push("<ul>");
+      Array.prototype.forEach.call(subs, function(h3){
+        if (!h3.parentNode.id) h3.parentNode.id = ch.id + "-" + slugOf(h3.textContent);
+        html.push('<li><a href="#' + h3.parentNode.id + '">' + h3.textContent + "</a></li>");
+      });
+      html.push("</ul>");
+    }
+    html.push("</div>");
+  });
+  toc.innerHTML = html.join("");
+
+  var INDEX = [];
+  Array.prototype.forEach.call(chapters, function(ch){
+    var chtitle = ch.querySelector("h2").textContent.replace(/^\s*\d+\s*/,"").trim();
+    var source = ch.querySelectorAll(".sub");
+    var list = source.length ? source : [ch];
+    Array.prototype.forEach.call(list, function(blk){
+      var heading = blk.querySelector("h3");
+      var title = heading ? heading.textContent.trim() : chtitle;
+      var id = blk.id || ch.id;
+      var text = blk.textContent.replace(/\s+/g," ").trim();
+      INDEX.push({ id: id, title: title, ch: chtitle, text: text, lower: (title + " " + text).toLowerCase() });
+    });
+  });
+
+  var q = document.getElementById("q"), res = document.getElementById("results"), sel = -1;
+  function snippet(text, term){
+    var i = text.toLowerCase().indexOf(term), raw;
+    if (i < 0) raw = text.slice(0,130) + "…";
+    else { var start = Math.max(0, i-60); raw = (start?"…":"") + text.slice(start, start+170) + "…"; }
+    var safe = esc(raw);
+    var rxTerm = esc(term).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    try { return safe.replace(new RegExp("(" + rxTerm + ")", "ig"), "<mark>$1</mark>"); }
+    catch(e){ return safe; }
+  }
+  function render(){
+    var term = q.value.trim().toLowerCase();
+    if (term.length < 2) { res.classList.remove("on"); res.innerHTML = ""; sel = -1; return; }
+    var scored = [];
+    for (var i = 0; i < INDEX.length; i++) {
+      var e = INDEX[i], pos = e.lower.indexOf(term);
+      if (pos < 0) continue;
+      scored.push({ e: e, score: (e.title.toLowerCase().indexOf(term) >= 0 ? 0 : 1000) + pos });
+    }
+    scored.sort(function(a,b){ return a.score - b.score; });
+    var top = scored.slice(0, 25);
+    if (!top.length) { res.innerHTML = '<div style="padding:10px 12px;color:var(--muted)">No match for “' + esc(term) + '”.</div>'; res.classList.add("on"); return; }
+    res.innerHTML = top.map(function(t){
+      return '<a href="#' + t.e.id + '"><b>' + esc(t.e.title) + '</b><div class="rp">' + esc(t.e.ch) + " · " + snippet(t.e.text, term) + "</div></a>";
+    }).join("");
+    res.classList.add("on"); sel = -1;
+  }
+  q.addEventListener("input", render);
+  q.addEventListener("focus", function(){ if (q.value.trim().length >= 2) render(); });
+  q.addEventListener("keydown", function(ev){
+    var links = res.querySelectorAll("a");
+    if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+      if (!links.length) return; ev.preventDefault();
+      sel += ev.key === "ArrowDown" ? 1 : -1;
+      if (sel < 0) sel = links.length - 1;
+      if (sel >= links.length) sel = 0;
+      Array.prototype.forEach.call(links, function(a,i){ a.classList.toggle("sel", i === sel); });
+      links[sel].scrollIntoView({block:"nearest"});
+    } else if (ev.key === "Enter") {
+      var t = links[sel >= 0 ? sel : 0];
+      if (t) { window.location.hash = t.getAttribute("href"); res.classList.remove("on"); q.blur(); }
+    }
+  });
+  document.addEventListener("click", function(ev){
+    if (!res.contains(ev.target) && ev.target !== q) res.classList.remove("on");
+    if (ev.target.closest && ev.target.closest("#results a")) res.classList.remove("on");
+  });
+  document.addEventListener("keydown", function(ev){
+    var typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+    if (ev.key === "/" && !typing) { ev.preventDefault(); q.focus(); q.select(); }
+    if (ev.key === "Escape") { res.classList.remove("on"); q.blur(); }
+  });
+
+  var progress = document.getElementById("progress"), topBtn = document.getElementById("top");
+  function onScroll(){
+    var h = document.documentElement, max = h.scrollHeight - h.clientHeight;
+    progress.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%";
+    topBtn.classList.toggle("on", h.scrollTop > 800);
+    var best = null, bestTop = -Infinity;
+    Array.prototype.forEach.call(chapters, function(ch){
+      var t = ch.getBoundingClientRect().top;
+      if (t < 140 && t > bestTop) { bestTop = t; best = ch; }
+    });
+    if (best) Array.prototype.forEach.call(toc.querySelectorAll(".navch"), function(n){
+      var on = n.getAttribute("data-ch") === best.id;
+      n.classList.toggle("active", on);
+    });
+  }
+  var ticking = false;
+  window.addEventListener("scroll", function(){
+    if (ticking) return; ticking = true;
+    requestAnimationFrame(function(){ onScroll(); ticking = false; });
+  }, { passive: true });
+  topBtn.addEventListener("click", function(){ window.scrollTo({top:0, behavior:"smooth"}); });
+
+  var stats = document.getElementById("stats");
+  if (stats) {
+    var boxes = stats.querySelectorAll(".stat b");
+    if (boxes.length >= 4) {
+      boxes[0].textContent = String(chapters.length);
+      boxes[1].textContent = String(document.querySelectorAll(".sub").length);
+      boxes[2].textContent = String(blocks.length);
+      boxes[3].textContent = String(document.querySelectorAll("svg[role=img]").length);
+    }
+    var vt = document.getElementById("versions");
+    if (vt) vt.textContent = "C++17 / 20 / 23 · " + chapters.length + " chapters · " + blocks.length + " snippets";
+  }
+  onScroll();
+})();
+</script>
+</body>
+</html>

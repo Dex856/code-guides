@@ -1,0 +1,7 @@
+# editor / OS noise
+.DS_Store
+*.swp
+__pycache__/
+*.class
+*.o
+*.out

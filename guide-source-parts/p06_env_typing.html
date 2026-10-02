@@ -1,0 +1,367 @@
+<section class="chapter" id="ch12">
+  <h2><span class="num">12</span> Dependencies, environments and distribution</h2>
+  <p class="tagline">Version specifiers, lock files, resolving conflicts, and shipping code other people can install.</p>
+
+  <section class="sub">
+    <h3>12.1 Version specifiers — what <code>&gt;=1.2,&lt;2</code> actually means</h3>
+    <table class="tbl">
+      <thead><tr><th>Specifier</th><th>Meaning</th><th>Use when</th></tr></thead>
+      <tbody>
+        <tr><td><code>==1.4.2</code></td><td>Exactly this version</td><td>Pinning in a lock file or a reproducible app build.</td></tr>
+        <tr><td><code>&gt;=1.4</code></td><td>At least this version, any future</td><td>Libraries, for maximum compatibility.</td></tr>
+        <tr><td><code>~=1.4.2</code></td><td>Compatible release: <code>&gt;=1.4.2, ==1.4.*</code></td><td>The sweet spot for apps: patches &amp; fixes, no surprise minor bumps.</td></tr>
+        <tr><td><code>&gt;=1.4,&lt;2</code></td><td>Any 1.x</td><td>Apps that must not cross a major version.</td></tr>
+        <tr><td><code>!=1.4.5</code></td><td>Exclude a known-broken version</td><td>Workarounds (add a comment explaining why).</td></tr>
+        <tr><td><code>pkg[extra]</code></td><td>Install optional feature set</td><td><code>uv add "fastapi[standard]"</code>, <code>httpx[http2]</code>, <code>pandas[performance]</code>.</td></tr>
+        <tr><td><code>pkg @ https://…whl</code></td><td>Direct URL / local path</td><td>Vendored wheels, private builds, git refs: <code>pkg @ git+https://…@v1.2</code>.</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><b>Semantic versioning (semver):</b> <code>MAJOR.MINOR.PATCH</code> — major = breaking, minor =
+    backwards-compatible features, patch = backwards-compatible fixes. Not all projects follow it faithfully; pre-1.0
+    libraries are allowed to break in minor releases. <b>0.x means unstable by convention.</b></div>
+  </section>
+
+  <section class="sub">
+    <h3>12.2 Where dependencies come from — and why resolution is hard</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 320" role="img" aria-label="Dependency resolution graph">
+        <text class="tt" x="20" y="26">Your app is the tip of an iceberg of transitive dependencies</text>
+        <rect x="370" y="46" width="160" height="40" class="ba"/><text class="t" x="450" y="72" text-anchor="middle">your-app</text>
+        <rect x="200" y="120" width="150" height="40" class="bb"/><text class="sm" x="275" y="146" text-anchor="middle">fastapi 0.118</text>
+        <rect x="380" y="120" width="150" height="40" class="bb"/><text class="sm" x="455" y="146" text-anchor="middle">sqlalchemy 2.0</text>
+        <rect x="560" y="120" width="150" height="40" class="bb"/><text class="sm" x="635" y="146" text-anchor="middle">httpx 0.28</text>
+        <path class="ar2" d="M430 88 L280 118"/><path class="ar2" d="M450 88 V118"/><path class="ar2" d="M470 88 L630 118"/>
+        <rect x="120" y="200" width="170" height="40" class="bc"/><text class="sm" x="205" y="226" text-anchor="middle">pydantic 2.x</text>
+        <rect x="310" y="200" width="170" height="40" class="bc"/><text class="sm" x="395" y="226" text-anchor="middle">starlette</text>
+        <rect x="500" y="200" width="170" height="40" class="bc"/><text class="sm" x="585" y="226" text-anchor="middle">greenlet</text>
+        <rect x="690" y="200" width="170" height="40" class="bc"/><text class="sm" x="775" y="226" text-anchor="middle">h11 · certifi · idna</text>
+        <path class="ar" d="M275 162 V196"/><path class="ar" d="M450 162 L395 196"/><path class="ar" d="M455 162 L560 196"/><path class="ar" d="M635 162 L740 196"/>
+        <rect x="120" y="262" width="740" height="46" class="bd"/>
+        <text class="sm" x="140" y="282">A resolver must satisfy <b>every</b> constraint at once: if app wants <tspan class="mono">pydantic&gt;=2</tspan> and an old plugin wants <tspan class="mono">pydantic&lt;2</tspan>, there is no install that works.</text>
+        <text class="sm" x="140" y="300">Fix: upgrade the plugin, use an extra/marker (<tspan class="mono">dep ; python_version&lt;"3.12"</tspan>), or isolate the conflicting feature into its own environment/service.</text>
+      </svg>
+      <figcaption>Fig 12.1 — Resolution is a constraint problem. Lock files make the result reproducible instead of re-solved.</figcaption>
+    </figure>
+    <table class="tbl">
+      <thead><tr><th>Tool</th><th>What it solves</th><th>Files it owns</th></tr></thead>
+      <tbody>
+        <tr><td><b>uv</b></td><td>Everything: interpreters, venvs, resolution, locking, building, publishing, running tools. Rust-fast.</td><td><code>pyproject.toml</code>, <code>uv.lock</code>, <code>.python-version</code></td></tr>
+        <tr><td><b>pip</b></td><td>Installing from PyPI/URLs. No lock file, no resolver history (it resolves but does not record).</td><td><code>requirements.txt</code></td></tr>
+        <tr><td><b>Poetry / PDM / Hatch</b></td><td>Project + dependency + build management with lock files.</td><td><code>pyproject.toml</code>, <code>poetry.lock</code></td></tr>
+        <tr><td><b>pip-tools</b></td><td><code>pip-compile</code> turns loose requirements into a fully pinned one.</td><td><code>requirements.in</code> → <code>requirements.txt</code></td></tr>
+        <tr><td><b>conda / mamba / pixi</b></td><td>Non-Python binaries too (CUDA, GDAL, C libs) — the science stack.</td><td><code>environment.yml</code>, <code>pixi.toml</code></td></tr>
+        <tr><td><b>pipx / uvx</b></td><td>Run CLI tools in isolated envs (no dependency shadowing).</td><td>—</td></tr>
+      </tbody>
+    </table>
+    <pre><code># Classic requirements.txt workflow
+$ python -m pip install -r requirements.txt
+$ python -m pip freeze &gt; requirements.lock.txt        # snapshot of everything installed
+
+# pip-tools: separate intent from pins
+# requirements.in        →   httpx&gt;=0.28
+$ pip-compile requirements.in      # → requirements.txt with every transitive pinned + hashes
+$ pip-sync                          # make the env match exactly
+
+# uv, end to end
+$ uv init --app                    # or --lib for a library
+$ uv add 'httpx&gt;=0.28' 'polars&gt;=1'
+$ uv add --dev pytest ruff mypy
+$ uv add --group docs sphinx
+$ uv lock --upgrade-package httpx  # surgical upgrade
+$ uv sync --locked --no-dev        # production install, fails if lock is stale
+$ uv export --format requirements-txt &gt; requirements.txt
+$ uv tree                          # dependency tree
+$ uv tool run ruff check .         # a.k.a. uvx ruff check .
+
+# Private / extra indexes
+$ uv add --index https://pkgs.example.com/simple/ internal-lib
+# pyproject.toml
+[[tool.uv.index]]
+name = "internal"
+url = "https://pkgs.example.com/simple/"
+default = false
+# pip equivalent: --index-url / --extra-index-url · env: PIP_INDEX_URL
+
+# Platform-conditional dependencies (markers)
+dependencies = [
+  "tomli&gt;=2; python_version &lt; '3.11'",
+  "uvloop&gt;=0.19; sys_platform != 'win32'",
+]
+
+# Caching / CI speed
+$ uv cache dir; uv cache clean
+$ pip cache dir; pip cache purge</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>12.3 Shipping: apps vs libraries</h3>
+    <div class="grid2">
+      <div class="card"><h4>Application</h4>
+        <p>You control the environment. Pin tightly, commit the lock file, containerise.</p>
+        <pre><code>FROM python:3.14-slim
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+WORKDIR /app
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
+COPY . .
+RUN uv sync --frozen --no-dev
+CMD ["uv", "run", "python", "-m", "myapp"]</code></pre>
+        <p class="small muted">Multi-stage builds, non-root user, <code>.dockerignore</code> out <code>.venv</code> and
+        <code>.git</code>. Pin the base image digest for reproducibility.</p>
+      </div>
+      <div class="card"><h4>Library</h4>
+        <p>Others control the environment. Loosen your constraints, test the matrix, never pin transitives.</p>
+        <pre><code>[project]
+name = "my-lib"
+requires-python = "&gt;=3.10"        # support a range
+dependencies = ["httpx&gt;=0.27"]    # lower bound only
+
+[dependency-groups]
+dev = ["pytest", "ruff", "mypy",
+       "tox", "build", "twine"]
+
+[project.optional-dependencies]
+cli = ["typer&gt;=0.12"]
+test = ["pytest&gt;=8"]</code></pre>
+        <p class="small muted">Add CI that tests 3.10 → 3.14 (and free-threaded), ship <code>py.typed</code>, keep a
+        changelog. <code>uv build</code> → <code>uv publish</code> (or <code>twine upload dist/*</code>).</p>
+      </div>
+    </div>
+    <table class="tbl">
+      <thead><tr><th>Publishing step</th><th>Command</th></tr></thead>
+      <tbody>
+        <tr><td>Check metadata &amp; build</td><td><code>uv build</code> (creates <span class="mono">dist/*.whl</span> and <span class="mono">*.tar.gz</span>)</td></tr>
+        <tr><td>Dry-run publish</td><td><code>uv publish --dry-run</code> / <code>twine check dist/*</code></td></tr>
+        <tr><td>Upload to TestPyPI then PyPI</td><td><code>twine upload --repository testpypi dist/*</code> then <code>twine upload dist/*</code></td></tr>
+        <tr><td>Trusted publishing (no tokens)</td><td>Configure OIDC in PyPI + your CI provider’s workflow</td></tr>
+        <tr><td>Verify wheel contents</td><td><code>unzip -l dist/*.whl</code> — check nobody shipped tests or secrets</td></tr>
+      </tbody>
+    </table>
+  </section>
+</section>
+
+<section class="chapter" id="ch13">
+  <h2><span class="num">13</span> Type hints and modern typing</h2>
+  <p class="tagline">Types are documentation the computer can check. Here is the 20% of the typing system that covers 95% of real code.</p>
+
+  <section class="sub">
+    <h3>13.1 The basics: annotate everything public</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 250" role="img" aria-label="Annotated function anatomy">
+        <text class="tt" x="20" y="26">Anatomy of an annotated function</text>
+        <text class="mono" x="40" y="72" style="font-size:14px">def total(</text>
+        <text class="mono" x="40" y="96" style="font-size:14px">    rows: <tspan fill="#c99700">Sequence[dict[str, int]]</tspan>,</text>
+        <text class="mono" x="40" y="120" style="font-size:14px">    *, key: str = "qty",</text>
+        <text class="mono" x="40" y="144" style="font-size:14px">) -&gt; <tspan fill="#2e9e63">int</tspan>:</text>
+        <line x1="120" y1="86" x2="120" y2="132" stroke="#c99700" stroke-dasharray="4 4"/>
+        <line x1="120" y1="134" x2="120" y2="150" stroke="#2e9e63" stroke-dasharray="4 4"/>
+
+        <rect x="330" y="60" width="540" height="60" class="bb"/>
+        <text class="sm" x="350" y="84">Parameter annotations describe what you ACCEPT — be as general as</text>
+        <text class="sm" x="350" y="104">callers need (<tspan class="mono">Iterable</tspan> &gt; <tspan class="mono">Sequence</tspan> &gt; <tspan class="mono">list</tspan>). Callers can then pass any compatible type.</text>
+
+        <rect x="330" y="132" width="540" height="96" class="bc"/>
+        <text class="sm" x="350" y="156">The return annotation describes what you PROMISE.</text>
+        <text class="sm" x="350" y="178"><tspan class="mono">-&gt; None</tspan> = returns nothing meaningful · omit only for <tspan class="mono">__init__</tspan> ·</text>
+        <text class="sm" x="350" y="198"><tspan class="mono">-&gt; Iterator[int]</tspan> for generators · <tspan class="mono">-&gt; NoReturn</tspan> for functions that always raise.</text>
+        <text class="sm" x="350" y="220">Checkers verify the body matches the promise — that is the whole value.</text>
+
+        <rect x="40" y="176" width="260" height="52" class="bx"/>
+        <text class="sm" x="60" y="198">Annotations are metadata:</text>
+        <text class="mono sm" x="60" y="218">total.__annotations__</text>
+        <text class="sm" x="60" y="234" text-anchor="start">→ {'rows': Sequence[...], 'return': int}</text>
+      </svg>
+      <figcaption>Fig 13.1 — Annotations never run at runtime (in 3.14 they are <i>lazily</i> evaluated by default — PEP 649), so they cost nothing at import.</figcaption>
+    </figure>
+    <pre><code># Simple forms
+name: str = "Ada"
+count: int = 0
+ratio: float = 1.5
+flag: bool = True
+nothing: None = None
+anything: object = get_thing()          # object = "any non-None Python value"
+untyped: Any = anything                 # opt out of checking (use sparingly)
+
+# Collections — prefer the abstract type for parameters, concrete for returns
+names: list[str] = ["a"]
+lookup: dict[str, int] = {"a": 1}
+pair: tuple[int, str] = (1, "x")
+coord: tuple[float, float, float] = (1.0, 2.0, 3.0)   # fixed length/positions
+variadic: tuple[int, ...] = (1, 2, 3)                 # any length
+unique: set[str] = {"a"}
+frozen: frozenset[int] = frozenset({1})
+
+# Optional & unions
+maybe_id: int | None = None                            # modern (3.10+)
+result: int | str | None = None
+legacy: Optional[Union[int, str]] = None               # pre-3.10 style, same meaning
+
+# Callables and iterables
+from collections.abc import Callable, Iterable, Sequence, Mapping, Iterator, Hashable, Awaitable
+Transform = Callable[[int, str], bool]                 # (int, str) -> bool
+fn: Callable[..., int] = len
+def take(xs: Iterable[int]) -&gt; Iterator[int]: ...       # ← best parameter types
+def head(xs: Sequence[int]) -&gt; int: return xs[0]        # Sequence = indexable + len
+d: Mapping[str, int] = {}
+
+# Classes and generics (PEP 695 syntax, 3.12+)
+class Stack[T]:                                        # generic class
+    def __init__(self) -&gt; None: self._items: list[T] = []
+    def push(self, item: T) -&gt; None: self._items.append(item)
+    def pop(self) -&gt; T: return self._items.pop()
+
+def first[T](xs: Sequence[T]) -&gt; T: return xs[0]        # generic function
+
+type Vector = list[float]                              # type alias (3.12+)
+type Matrix = list[Vector]
+type Json = dict[str, "Json"] | list["Json"] | str | int | float | bool | None
+
+# Literal, Final, TypedDict, NamedTuple
+from typing import Literal, Final, TypedDict, NotRequired, Self, Protocol, Annotated
+def align(pos: Literal["left", "center", "right"] = "left") -&gt; None: ...
+MAX_RETRIES: Final = 5                                  # cannot be reassigned (checked)
+
+class Movie(TypedDict):
+    title: str
+    year: int
+    rating: NotRequired[float]                          # dict shape with types
+
+class Closeable(Protocol):                              # structural typing
+    def close(self) -&gt; None: ...
+
+class Builder:
+    def add(self, x: int) -&gt; Self:                      # fluent API, subclass-safe
+        return self
+
+UserId = Annotated[int, "must be &gt; 0"]                  # attach metadata/documented constraints</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Need</th><th>Use</th></tr></thead>
+      <tbody>
+        <tr><td>“some common type”</td><td><code>Callable</code>, <code>Iterable</code>, <code>Sequence</code>, <code>Mapping</code>, <code>Hashable</code></td></tr>
+        <tr><td>“one of these exact strings”</td><td><code>Literal["a", "b"]</code></td></tr>
+        <tr><td>“a fixed-shape dict”</td><td><code>TypedDict</code></td></tr>
+        <tr><td>“duck-typed interface”</td><td><code>Protocol</code></td></tr>
+        <tr><td>“this or that”</td><td><code>A | B</code></td></tr>
+        <tr><td>“a specific subtype”</td><td><code>TypeVar</code> / PEP 695 <code>[T]</code></td></tr>
+        <tr><td>“must be a class, not an instance”</td><td><code>type[X]</code></td></tr>
+        <tr><td>“I really cannot type this”</td><td><code>Any</code> (and move the check elsewhere) — never sprinkle everywhere</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>13.2 Narrowing, overloads and generics in practice</h3>
+    <pre><code># Narrowing: type checkers follow isinstance / in / is None / hasattr / match
+def describe(x: int | str | None) -&gt; str:
+    if x is None:
+        return "nothing"                    # here x: None
+    if isinstance(x, int):
+        return f"int {x + 1}"               # here x: int
+    return x.upper()                        # here x: str
+
+# assert_never-style exhaustiveness (typing.assert_never)
+from typing import assert_never
+def handle(state: Literal["new", "done"]) -&gt; str:
+    match state:
+        case "new": return "queued"
+        case "done": return "closed"
+        case _: assert_never(state)         # fails type checking if you add a state
+
+# Overloads: same function name, different accepted/returned types
+from typing import overload
+@overload
+def parse(value: str) -&gt; str: ...
+@overload
+def parse(value: int) -&gt; int: ...
+def parse(value: str | int) -&gt; str | int:      # the real implementation
+    return value
+
+# TypeVar with constraints vs bound
+from typing import TypeVar
+Number = TypeVar("Number", int, float)          # constrained: exactly these
+Comparable = TypeVar("Comparable", bound="SupportsRichComparison")
+def biggest(a: Number, b: Number) -&gt; Number: return a if a &gt; b else b
+
+# ParamSpec and TypeVarTuple for decorator/varargs typing
+from typing import ParamSpec, Concatenate
+P = ParamSpec("P"); R = TypeVar("R")
+def logged(fn: Callable[P, R]) -&gt; Callable[P, R]:
+    @wraps(fn)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -&gt; R:
+        print(fn.__name__)
+        return fn(*args, **kwargs)
+    return wrapper
+
+# Type-only imports to avoid cycles and import cost
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .heavy import Model          # never imported at runtime
+def use(m: "Model") -&gt; None: ...</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Tool</th><th>Speed / style</th><th>Best for</th></tr></thead>
+      <tbody>
+        <tr><td><b>mypy</b></td><td>Mature, configurable, slower</td><td>The industry default; strictest ecosystem support and plugins.</td></tr>
+        <tr><td><b>pyright / Pylance</b></td><td>Very fast (Node), excellent inference</td><td>Editor feedback (VS Code); <code>--strict</code> mode turns it into a strong gate.</td></tr>
+        <tr><td><b>ty</b> (Astral)</td><td>Very fast, new (2025+)</td><td>Early adoption; watch for missing features on complex code.</td></tr>
+        <tr><td><b>pyre / pytype</b></td><td>Meta / Google lineage</td><td>Large monorepos, security-oriented checking.</td></tr>
+      </tbody>
+    </table>
+    <pre><code># pyproject.toml — a strict but liveable setup
+[tool.mypy]
+python_version = "3.14"
+strict = true
+warn_unreachable = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]         # third-party libs without stubs
+module = ["some_untyped_lib.*"]
+ignore_missing_imports = true
+
+# Run
+$ uv run mypy src
+$ uv run pyright src
+$ uv run ty check</code></pre>
+    <div class="tip"><b>Adoption strategy that works:</b> enable the checker with <code>--strict</code> only on
+    <code>src/</code>, keep <code>Any</code> allowed at boundaries, annotate public functions first, and
+    <code># type: ignore[code]</code> with the specific error code (never a bare ignore). Ten minutes with a checker
+    routinely finds bugs that tests miss: <code>None</code> dereferences, wrong argument types, unreachable branches.</div>
+  </section>
+
+  <section class="sub">
+    <h3>13.3 Runtime validation: annotations that actually run</h3>
+    <pre><code># Type hints are not enforced — use a validation library at the edges of your system
+from pydantic import BaseModel, Field, field_validator, ConfigDict
+from datetime import date
+
+class Order(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    id: int
+    sku: str = Field(min_length=2, max_length=32, pattern=r"^[A-Z0-9-]+$")
+    qty: int = Field(gt=0, le=10_000)
+    placed: date
+    tags: set[str] = set()
+
+    @field_validator("sku")
+    @classmethod
+    def upper(cls, v: str) -&gt; str:
+        return v.upper()
+
+order = Order.model_validate_json('{"id": 1, "sku": "a1", "qty": 2, "placed": "2026-10-02"}')
+order.sku            # 'A1' — coerced and validated
+order.model_dump()   # plain dict, JSON-ready
+
+# FastAPI is built on exactly this: your annotations become docs, validation and serialisation
+from fastapi import FastAPI
+app = FastAPI()
+
+@app.post("/orders", response_model=Order)
+def create(order: Order) -&gt; Order:          # request is validated, response is typed
+    return order
+
+# Alternatives: msgspec (fastest), attrs + cattrs, marshmallow (legacy), dataclasses + manual checks</code></pre>
+  </section>
+</section>

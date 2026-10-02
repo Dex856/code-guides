@@ -1,0 +1,443 @@
+<section class="chapter" id="ch4">
+  <h2><span class="num">4</span> Control flow: conditions, loops, match</h2>
+  <p class="tagline">Branches, the <code>for</code> protocol, <code>while</code>, and structural pattern matching done right.</p>
+
+  <section class="sub">
+    <h3>4.1 Conditionals</h3>
+    <pre><code># Ternary — prefer explicit if/else when it stops being readable
+status = "adult" if age &gt;= 18 else "minor"
+label = "even" if n % 2 == 0 else "odd"
+
+# Chained comparisons read like maths
+if 0 &lt;= score &lt;= 100:
+    ...
+
+# Truthiness, not "== True"
+if items:            # non-empty container
+    ...
+if not items:        # empty
+    ...
+if x is None:        # identity — always for None
+    ...
+if x is not None:
+    ...
+
+# 3.10+ structural pattern matching — branches on SHAPE, not just value
+match command.split():
+    case ["go", direction]:                       # exactly 2 items, first is "go"
+        move(direction)
+    case ["go", direction, *rest]:                # 2+ items
+        move(direction, rest)
+    case ["look"] | ["l"]:                        # alternatives
+        look()
+    case {"action": action, **rest} if action:    # dict pattern + guard
+        do(action, rest)
+    case Point(x=0, y=0):                         # class pattern (duck-typed)
+        print("origin")
+    case int() | float() as n if n &gt; 0:           # capture with `as`
+        print("positive number", n)
+    case _:                                       # wildcard — default branch
+        raise ValueError(f"unknown: {command}")
+
+# Classic dispatch alternative: dict of functions beats long if/elif chains
+HANDLERS = {"go": move, "look": look, "quit": quit}
+HANDLERS.get(cmd, lambda *_: print("?"))(arg)</code></pre>
+    <div class="note"><b><code>match</code> is not <code>switch</code>.</b> It compares <i>structure</i> using
+    <code>==</code> for literals, supports unpacking, class patterns and guards, and a bare name like <code>case x:</code>
+    is a <b>capture</b> (matches everything), not a comparison — use <code>case Point():</code> or dotted names
+    (<code>case Color.RED:</code>) for value matching.</div>
+  </section>
+
+  <section class="sub">
+    <h3>4.2 The <code>for</code> loop is the iterator protocol in disguise</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 250" role="img" aria-label="For loop desugaring to iterator protocol">
+        <text class="tt" x="20" y="26">What <tspan class="mono">for item in iterable:</tspan> really does</text>
+        <rect x="30" y="60" width="290" height="120" class="ba"/>
+        <text class="mono" x="175" y="86" text-anchor="middle">it = iter(iterable)</text>
+        <text class="mono" x="175" y="112" text-anchor="middle">while True:</text>
+        <text class="mono" x="175" y="134" text-anchor="middle">    try: item = next(it)</text>
+        <text class="mono" x="175" y="156" text-anchor="middle">    except StopIteration: break</text>
+        <text class="mono" x="175" y="176" text-anchor="middle">    body(item)</text>
+
+        <rect x="380" y="60" width="220" height="120" class="bx"/>
+        <text class="t" x="490" y="84" text-anchor="middle">iterable</text>
+        <text class="sm" x="490" y="104" text-anchor="middle">implements __iter__</text>
+        <text class="sm" x="490" y="124" text-anchor="middle">list · dict · set · str</text>
+        <text class="sm" x="490" y="144" text-anchor="middle">file · generator</text>
+        <text class="sm" x="490" y="164" text-anchor="middle">range · NumPy array</text>
+
+        <rect x="650" y="60" width="220" height="120" class="bc"/>
+        <text class="t" x="760" y="84" text-anchor="middle">iterator</text>
+        <text class="sm" x="760" y="104" text-anchor="middle">implements __next__</text>
+        <text class="sm" x="760" y="124" text-anchor="middle">keeps its own position</text>
+        <text class="sm" x="760" y="144" text-anchor="middle">is exhausted after one pass</text>
+        <text class="sm" x="760" y="164" text-anchor="middle">iter(it) is it  ← identity!</text>
+        <path class="ar2" d="M378 120 H322"/><path class="ar2" d="M600 120 H648"/>
+
+        <rect x="30" y="196" width="840" height="40" class="bb"/>
+        <text class="sm" x="50" y="221">Consequence: a generator/zip/map object can be consumed only once — the classic “my second loop printed nothing” bug.</text>
+      </svg>
+      <figcaption>Fig 4.1 — Any object with <code>__iter__</code> (or legacy <code>__getitem__</code>) works in a <code>for</code> loop.</figcaption>
+    </figure>
+    <pre><code>it = iter([1, 2, 3])
+next(it)          # 1
+next(it, "done")  # 2 ; default avoids StopIteration
+list(it)          # [3]  ← iterator is stateful and now exhausted
+
+# Looping techniques
+for i, value in enumerate(items, start=1): ...      # index + value
+for a, b in zip(xs, ys, strict=True): ...           # parallel, raises on length mismatch (3.10+)
+for key in d: ...                                   # keys (insertion order, 3.7+)
+for k, v in d.items(): ...
+for name, *rest in rows: ...
+while (line := f.readline()) != "": ...             # walrus avoids double read
+
+# break / continue / else — the else runs if the loop finished WITHOUT break
+for n in numbers:
+    if n == target:
+        print("found"); break
+else:
+    print("not found")     # ← very handy, often forgotten
+
+# Iterating safely while mutating: iterate over a copy
+for k in list(d):
+    if d[k] is None: del d[k]
+d = {k: v for k, v in d.items() if v is not None}   # ← better: build a new dict
+
+# range is lazy and cheap
+list(range(0, 10, 3))    # [0, 3, 6, 9]
+range(10**9)             # costs O(1) memory — it produces values on demand
+
+# Loops over big data: avoid building intermediate lists
+total = sum(row["qty"] for row in rows)      # generator, no list allocation</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Helper</th><th>What it gives you</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td><code>enumerate</code></td><td>index + item</td><td><code>for i, x in enumerate(xs, 1)</code></td></tr>
+        <tr><td><code>zip</code></td><td>lock-step over several iterables</td><td><code>dict(zip(keys, values))</code>, <code>zip(*matrix)</code> = transpose</td></tr>
+        <tr><td><code>reversed</code></td><td>lazy reverse (needs <code>__reversed__</code>/sequence)</td><td><code>for x in reversed(xs)</code></td></tr>
+        <tr><td><code>sorted</code></td><td>new sorted list (any iterable)</td><td><code>sorted(d, key=d.get, reverse=True)</code></td></tr>
+        <tr><td><code>any / all</code></td><td>short-circuit booleans</td><td><code>all(x &gt; 0 for x in xs)</code> · <code>any(s.startswith("v") for s in names)</code></td></tr>
+        <tr><td><code>min / max / sum</code></td><td>aggregates with optional <code>key=</code>/<code>start=</code></td><td><code>max(rows, key=lambda r: r["qty"], default=None)</code></td></tr>
+        <tr><td><code>itertools</code></td><td>lazy combinatorics/grouping (ch. 14)</td><td><code>groupby</code>, <code>chain</code>, <code>islice</code>, <code>batched</code>, <code>product</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>4.3 <code>while</code>, and why loops are slower than they look</h3>
+    <pre><code>while (line := f.readline()):
+    process(line)
+
+# Retry with backoff — the practical while-loop idiom
+import random, time
+for attempt in range(5):
+    try:
+        result = fetch()
+        break
+    except TimeoutError:
+        time.sleep(2 ** attempt + random.random())   # 1, 2, 4, 8, 16s + jitter
+else:
+    raise RuntimeError("gave up after 5 attempts")</code></pre>
+    <div class="tip"><b>Performance rule of thumb:</b> in CPython the interpreter overhead per bytecode instruction
+    dominates. Moving work from a Python-level loop into C-level builtins is the cheapest big win:
+    <code>sum(x*x for x in xs)</code> beats a manual accumulator loop, and <code>numpy</code>/<code>polars</code> beat both
+    by 10–100×. See ch. 17.</div>
+  </section>
+</section>
+
+<section class="chapter" id="ch5">
+  <h2><span class="num">5</span> Data structures — the heart of Python</h2>
+  <p class="tagline">Lists, tuples, dicts, sets, collections, and how to choose between them in one second.</p>
+
+  <section class="sub">
+    <h3>5.1 Choose the right structure (decision table + map)</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 420" role="img" aria-label="Which data structure to use decision map">
+        <text class="tt" x="20" y="26">Pick a container in 10 seconds</text>
+        <rect x="30" y="46" width="270" height="44" class="ba"/>
+        <text class="sm" x="165" y="64" text-anchor="middle">Need an ordered collection that</text>
+        <text class="sm" x="165" y="80" text-anchor="middle">changes?  (append/remove/edit)</text>
+        <path class="ar" d="M165 90 V120"/>
+
+        <rect x="30" y="120" width="270" height="52" class="bx"/>
+        <text class="t" x="165" y="140" text-anchor="middle">list</text>
+        <text class="sm" x="165" y="158" text-anchor="middle">O(1) append/pop end · O(n) insert/delete middle</text>
+
+        <rect x="330" y="46" width="270" height="44" class="bb"/>
+        <text class="sm" x="465" y="64" text-anchor="middle">Fixed record of fields,</text>
+        <text class="sm" x="465" y="80" text-anchor="middle">hashable, never changes?</text>
+        <path class="ar" d="M465 90 V120"/>
+        <rect x="330" y="120" width="270" height="52" class="bx"/>
+        <text class="t" x="465" y="140" text-anchor="middle">tuple / NamedTuple</text>
+        <text class="sm" x="465" y="158" text-anchor="middle">hashable · unpackable · ~O(1) index</text>
+
+        <rect x="630" y="46" width="240" height="44" class="bc"/>
+        <text class="sm" x="750" y="64" text-anchor="middle">Look things up by key, or</text>
+        <text class="sm" x="750" y="80" text-anchor="middle">count/group them?</text>
+        <path class="ar" d="M750 90 V120"/>
+        <rect x="630" y="120" width="240" height="52" class="bx"/>
+        <text class="t" x="750" y="140" text-anchor="middle">dict / Counter / defaultdict</text>
+        <text class="sm" x="750" y="158" text-anchor="middle">O(1) average lookup · insertion-ordered</text>
+
+        <rect x="180" y="200" width="260" height="44" class="bp"/>
+        <text class="sm" x="310" y="218" text-anchor="middle">Uniqueness or set algebra</text>
+        <text class="sm" x="310" y="234" text-anchor="middle">(in, union, intersect, difference)?</text>
+        <path class="ar" d="M310 244 V272"/>
+        <rect x="180" y="272" width="260" height="52" class="bx"/>
+        <text class="t" x="310" y="292" text-anchor="middle">set / frozenset</text>
+        <text class="sm" x="310" y="310" text-anchor="middle">O(1) membership · unordered (no indexing)</text>
+
+        <rect x="480" y="200" width="390" height="44" class="bd"/>
+        <text class="sm" x="675" y="218" text-anchor="middle">Need fast insert/delete at BOTH ends, or a queue, or a</text>
+        <text class="sm" x="675" y="234" text-anchor="middle">priority queue, or counts of the top-N?</text>
+        <path class="ar" d="M675 244 V272"/>
+        <rect x="480" y="272" width="390" height="52" class="bx"/>
+        <text class="t" x="675" y="292" text-anchor="middle">collections.deque · heapq · Counter.most_common()</text>
+        <text class="sm" x="675" y="310" text-anchor="middle">deque: O(1) ends · heapq: O(log n) push/pop · never use list as a queue</text>
+
+        <rect x="30" y="344" width="840" height="60" class="ba"/>
+        <text class="sm" x="50" y="366">Numbers/vectors → <tspan class="mono">array</tspan> or <tspan class="mono">numpy.ndarray</tspan> (8× less memory than a list of floats, vectorised ops).</text>
+        <text class="sm" x="50" y="388">Records → <tspan class="mono">@dataclass(slots=True)</tspan> · two-way mapping → <tspan class="mono">bidict</tspan> or a dict of dicts · ordered stats → <tspan class="mono">sortedcontainers</tspan> (third-party).</text>
+      </svg>
+      <figcaption>Fig 5.1 — The container decision map. Ninety percent of Python code needs only list, dict, tuple, set.</figcaption>
+    </figure>
+  </section>
+
+  <section class="sub">
+    <h3>5.2 Time complexity cheat-sheet</h3>
+    <table class="tbl">
+      <thead><tr><th>Operation</th><th>list</th><th>deque</th><th>dict</th><th>set</th><th>tuple</th><th>str</th></tr></thead>
+      <tbody>
+        <tr><td>Index <code>x[i]</code></td><td>O(1)</td><td>O(1) ends only*</td><td>–</td><td>–</td><td>O(1)</td><td>O(1)</td></tr>
+        <tr><td>Lookup by key <code>d[k]</code></td><td>O(n)</td><td>–</td><td><b>O(1)</b></td><td><b>O(1)</b></td><td>–</td><td>–</td></tr>
+        <tr><td><code>x in coll</code></td><td>O(n)</td><td>O(n)</td><td>O(1)</td><td><b>O(1)</b></td><td>O(n)</td><td>O(n·m)</td></tr>
+        <tr><td>Append / push</td><td>O(1)†</td><td>O(1)</td><td>O(1)</td><td>O(1)</td><td>–</td><td>–</td></tr>
+        <tr><td>Insert / delete middle</td><td>O(n)</td><td>O(n)</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+        <tr><td>Delete from front</td><td><b>O(n)</b></td><td><b>O(1)</b></td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+        <tr><td>Sort</td><td>O(n log n)</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+        <tr><td>Iterate all</td><td>O(n)</td><td>O(n)</td><td>O(n)</td><td>O(n)</td><td>O(n)</td><td>O(n)</td></tr>
+        <tr><td>Copy</td><td>O(n)</td><td>O(n)</td><td>O(n)</td><td>O(n)</td><td>O(n)</td><td>O(n)</td></tr>
+      </tbody>
+    </table>
+    <p class="small muted">† amortised — occasional reallocation. * <code>deque</code> supports O(1) at both ends but O(n)
+    in the middle. Sets/dicts O(1) is <i>average</i>; adversarial hash collisions can degrade to O(n) (Python randomises
+    string hashes via PYTHONHASHSEED to mitigate this).</p>
+    <div class="warn"><b>The classic O(n²) bug:</b> <code>if item in some_list</code> inside a loop over n items is
+    O(n²). Convert <code>some_list</code> to a <code>set</code> once — the same program goes from 10 s to 0.01 s at
+    n=100 000. Same for <code>list.pop(0)</code> → <code>deque.popleft()</code> and string <code>+=</code> in a loop →
+    <code>"".join(parts)</code>.</div>
+  </section>
+
+  <section class="sub">
+    <h3>5.3 Lists</h3>
+    <pre><code>xs = [3, 1, 4, 1, 5]
+xs.append(9)          # end
+xs.insert(0, 0)       # O(n) — inserting at the front is expensive
+xs.extend([2, 6])     # same as xs += [2, 6]
+xs.pop()              # remove &amp; return last   ; xs.pop(0) is O(n)
+xs.remove(1)          # remove FIRST occurrence by value (raises ValueError if absent)
+xs.index(4)           # position of a value
+xs.count(1)           # occurrences
+xs.sort()             # in place, returns None (!)  — xs = xs.sort() is a classic bug
+xs.sort(key=abs, reverse=True)
+sorted(xs)            # returns a new list; works on any iterable
+xs.reverse()
+xs.clear()
+len(xs), min(xs), max(xs), sum(xs)
+xs.copy()             # shallow copy
+
+# List comprehensions — the idiomatic transform/filter
+squares = [x * x for x in range(10)]
+evens   = [x for x in xs if x % 2 == 0]
+matrix  = [[r * c for c in range(3)] for r in range(3)]
+labels  = [f"#{i}:{v}" for i, v in enumerate(xs) if v &gt; 2]
+
+# Sorting recipes
+rows = [("bob", 25), ("amy", 31), ("stu", 25)]
+rows.sort(key=lambda r: r[1])                       # by score
+rows.sort(key=lambda r: (-r[1], r[0]))              # score desc, then name asc
+from operator import itemgetter, attrgetter
+rows.sort(key=itemgetter(1, 0))
+rows.sort(key=itemgetter(1), reverse=True)          # stable sort: ties keep order
+import locale
+# locale.strxfrm for locale-aware text sorting; casefold() for case-insensitive
+sorted(words, key=str.casefold)</code></pre>
+    <div class="tip"><b>Stability matters:</b> Python's Timsort is stable, so “sort by A, then by B” gives you a
+    multi-key sort for free — the last sort dominates. <code>reverse=True</code> does <i>not</i> break the stability
+    guarantee.</div>
+  </section>
+
+  <section class="sub">
+    <h3>5.4 Tuples, NamedTuple and record types</h3>
+    <pre><code>point = (3, 4)
+x, y = point                 # unpacking
+point[0], len(point)         # index, length — but NO .append
+single = (5,)                # trailing comma required for a 1-tuple
+a, b = b, a                  # tuple packing/unpacking swaps values
+hash(point)                  # tuples of hashables are hashable → usable as dict keys
+
+from typing import NamedTuple
+class City(NamedTuple):      # tuple + named fields + methods, immutable
+    name: str
+    lat: float
+    lon: float
+c = City("Tirupati", 13.63, 79.42)
+c.name, c[0], c._asdict(), c._replace(lat=13.64)
+
+from dataclasses import dataclass
+@dataclass(frozen=True, slots=True)   # mutable record variant (ch. 8)
+class User:
+    id: int
+    email: str
+
+# When is a tuple the wrong choice?  When the meaning of fields is not obvious:
+# prefer a NamedTuple/dataclass so (13.6, 79.4) becomes City(name="...", lat=..., lon=...)</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>5.5 Dictionaries and sets — hash tables under the hood</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 330" role="img" aria-label="Hash table internals for dict and set">
+        <text class="tt" x="20" y="26">How <tspan class="mono">d["key"]</tspan> is O(1): hash → index → compare</text>
+        <rect x="30" y="60" width="180" height="56" class="ba"/>
+        <text class="mono" x="120" y="84" text-anchor="middle">"key"</text>
+        <text class="sm" x="120" y="104" text-anchor="middle">key object</text>
+        <path class="ar2" d="M212 88 H262"/>
+        <rect x="262" y="60" width="200" height="56" class="bb"/>
+        <text class="sm" x="362" y="82" text-anchor="middle">hash("key") → big int</text>
+        <text class="mono" x="362" y="102" text-anchor="middle">% table_size</text>
+        <path class="ar2" d="M464 88 H514"/>
+        <rect x="514" y="60" width="356" height="56" class="bc"/>
+        <text class="sm" x="692" y="82" text-anchor="middle">look up that slot · compare with <tspan class="mono">==</tspan></text>
+        <text class="sm" x="692" y="102" text-anchor="middle">collision? probe the next slot(s) — that's why load factor stays &lt; 2/3</text>
+
+        <rect x="30" y="146" width="256" height="160" class="bx"/>
+        <text class="t" x="158" y="170" text-anchor="middle">dict entries (compact, 3.6+)</text>
+        <text class="mono sm" x="46" y="196">hash  key    value</text>
+        <text class="mono sm" x="46" y="216">0x8f  "key"  42</text>
+        <text class="mono sm" x="46" y="236">0x1a  "age"  31</text>
+        <text class="mono sm" x="46" y="256">0x77  "city" "Tirupati"</text>
+        <text class="sm" x="46" y="284">Insertion-ordered by spec since 3.7 ·</text>
+        <text class="sm" x="46" y="300">~2–3× memory of a list, worth it</text>
+
+        <rect x="316" y="146" width="554" height="160" class="bp"/>
+        <text class="t" x="593" y="170" text-anchor="middle">Rules of hashability</text>
+        <text class="sm" x="336" y="190">1. Hashable keys only: str, int, float, bool, tuple (of hashables), frozenset,</text>
+        <text class="sm" x="352" y="206">None, Enum, dataclass(frozen=True)</text>
+        <text class="sm" x="336" y="228">2. Mutable keys (list/dict/set) → <tspan class="mono">TypeError: unhashable type</tspan>. convert: <tspan class="mono">tuple(lst)</tspan></text>
+        <text class="sm" x="336" y="250">3. Equal objects MUST have equal hashes. Custom class: define <tspan class="mono">__hash__</tspan> + <tspan class="mono">__eq__</tspan> (ch. 8)</text>
+        <text class="sm" x="336" y="272">4. Mutating a key inside a dict corrupts lookups — keys must be effectively immutable</text>
+        <text class="sm" x="336" y="294">5. Set/dict order is not meaningful → <tspan class="mono">sorted(s)</tspan> when order matters</text>
+
+      </svg>
+      <figcaption>Fig 5.2 — Hashing turns “search” into “compute an index”. O(1) average, and the reason keys must be immutable.</figcaption>
+    </figure>
+    <pre><code># --- dict essentials -------------------------------------------------------
+d = {"a": 1, "b": 2}
+d["c"] = 3
+d.get("z")                 # None — never raises
+d.get("z", 0)              # default
+d.setdefault("count", 0)   # insert if missing, in one lookup
+d.update({"d": 4})
+"a" in d, "a" in d.keys(), 1 in d.values()
+d.pop("a"), d.pop("zz", None), d.popitem()   # LIFO pair
+del d["b"]
+d.keys(), d.values(), d.items()              # views: live, not copies
+dict.fromkeys(["x", "y"], 0)                 # {'x':0,'y':0}
+d1 | d2                                      # merged NEW dict (3.9+)
+d1 |= d2                                     # in-place merge
+d | {"extra": 1}
+
+# Nesting + safe access
+config = {"db": {"host": "localhost", "port": 5432}}
+config["db"]["host"]
+config.get("db", {}).get("user", "default")
+
+# Inverting and grouping
+inverse = {v: k for k, v in d.items()}                      # values must be unique!
+from collections import defaultdict
+by_city = defaultdict(list)
+for person in people:
+    by_city[person.city].append(person.name)                # no KeyError
+
+# Counting
+from collections import Counter
+c = Counter("mississippi")            # Counter({'i':4,'s':4,'p':2,'m':1})
+c.most_common(2)                      # [('i',4), ('s',4)]
+c["z"]                                # 0 — missing keys count as zero
+c.update("miss"); c.total(); c["i"] -= 1
+Counter(words) + Counter(more_words)  # counters support + - &amp; |
+
+# --- set essentials --------------------------------------------------------
+s = {1, 2, 3}
+empty = set()            # NOT {} — that is an empty dict!
+s | {4}                  # union
+s &amp; {2, 9}               # intersection
+s - {1}                  # difference
+s ^ {2, 7}               # symmetric difference
+s &lt;= {1,2,3,4}           # subset ·  s.isdisjoint(other)
+s.add(9); s.discard(9); s.remove(1)   # remove raises, discard does not
+frozenset(s)             # immutable → hashable → usable as a dict key
+
+# Deduplicate while preserving order — the 1-liner everyone needs
+seen = list(dict.fromkeys(items))
+
+# Fast membership for big data
+allowed = set(big_list)                 # build ONCE
+hits = [x for x in stream if x in allowed]</code></pre>
+    <div class="note"><b>Where modern dict-like structures win:</b> <code>pandas.DataFrame</code>/<code>polars.DataFrame</code>
+    for tabular analysis, <code>sqlite3</code> for anything that outgrows RAM, <code>shelve</code>/<code>dbm</code> for a
+    persistent dict, <code>cachetools</code>/<code>functools.lru_cache</code> for memoisation (ch. 14, ch. 17).</div>
+  </section>
+
+  <section class="sub">
+    <h3>5.6 Comprehension syntax — all four forms</h3>
+    <pre><code>[x * 2 for x in range(5)]                    # list  → materialised
+{x * 2 for x in range(5)}                    # set   → deduplicated, unordered
+{x: x * 2 for x in range(5)}                 # dict  → key: value
+(x * 2 for x in range(5))                    # generator → lazy, single-use, lowest memory
+
+# with condition and nesting
+[x for x in xs if x &gt; 0]                      # filter
+[(x, y) for x in xs for y in ys if x != y]   # nested loops (same order as nested for)
+{x: [i for i, v in enumerate(row) if v] for x, row in grid.items()}
+
+# Reading order is important: value first, then the loops in for-order
+flat = [item for row in matrix for item in row]     # flatten (NOT [row for item ... ])
+
+# Walrus inside a comprehension avoids double work
+results = [y for x in data if (y := transform(x)) is not None]
+
+# Anti-pattern: side effects in a comprehension
+[print(x) for x in xs]        # ✗ builds a useless list — use a plain for loop
+[x for x in xs if len(set(x)) == len(x)]      # ✓ transform + filter, no side effects</code></pre>
+    <table class="tbl">
+      <thead><tr><th>You want</th><th>Write</th></tr></thead>
+      <tbody>
+        <tr><td>Transform each item</td><td><code>[f(x) for x in xs]</code> or <code>list(map(f, xs))</code></td></tr>
+        <tr><td>Filter</td><td><code>[x for x in xs if pred(x)]</code> or <code>list(filter(pred, xs))</code></td></tr>
+        <tr><td>Both, lazily</td><td><code>(f(x) for x in xs if pred(x))</code></td></tr>
+        <tr><td>Index + value</td><td><code>[f(i, x) for i, x in enumerate(xs)]</code></td></tr>
+        <tr><td>Sum/Aggregate</td><td><code>sum(f(x) for x in xs)</code> — generator, no intermediate list</td></tr>
+        <tr><td>Lookup table</td><td><code>{k: f(v) for k, v in d.items()}</code></td></tr>
+        <tr><td>Invert a dict</td><td><code>{v: k for k, v in d.items()}</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>5.7 Unpacking and star-args in data structures</h3>
+    <pre><code>head, *tail = [1, 2, 3, 4]           # 1, [2,3,4]
+a, (b, c) = 1, (2, 3)                # nested unpacking
+first, *_, last = [1, 2, 3, 4, 5]    # _ = ignored middle items
+merged = [*xs, *ys, 0]               # list spread
+config = {**defaults, **overrides}   # dict merge (right wins)
+t = (*xs, 9)                         # tuple spread
+s = {*a, *b}                         # set spread
+print(*rows, sep="\n")               # unpack into a call
+d = dict(zip(keys, values))
+transposed = list(zip(*matrix))      # rotate a matrix</code></pre>
+  </section>
+</section>

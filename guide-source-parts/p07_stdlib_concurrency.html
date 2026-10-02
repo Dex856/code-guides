@@ -1,0 +1,583 @@
+<section class="chapter" id="ch14">
+  <h2><span class="num">14</span> Standard library recipes</h2>
+  <p class="tagline">The batteries you will actually reach for, with copy-paste answers to the tasks that come up weekly.</p>
+
+  <section class="sub">
+    <h3>14.1 <code>collections</code> — the containers that do more</h3>
+    <pre><code>from collections import Counter, defaultdict, deque, OrderedDict, namedtuple, ChainMap
+
+# Counter — counting, ranking, multiset arithmetic
+Counter("abracadabra").most_common(3)          # [('a',5), ('b',2), ('r',2)]
+Counter(words) - Counter(stopwords)            # multiset difference (drops &lt;= 0)
+sum(Counter(words).values())                   # total items
+
+# defaultdict — never KeyError again
+index = defaultdict(list)
+for word in text.split():
+    index[word[0]].append(word)
+groups = defaultdict(set)
+counts = defaultdict(int)                      # auto zero
+
+# deque — O(1) append/pop from BOTH ends; the only correct queue
+q = deque(maxlen=3)                            # sliding window that auto-evicts
+q.extend([1, 2, 3, 4]); list(q)                # [2, 3, 4]
+dq = deque(); dq.appendleft(1); dq.popleft()
+dq.rotate(1)                                   # rotate right
+# BFS needs a FIFO: deque.popleft() beats list.pop(0) by orders of magnitude
+
+# namedtuple — tiny immutable records with field names (and dict conversion)
+Point = namedtuple("Point", "x y", defaults=(0, 0))
+p = Point(1, 2); p.x, p._asdict(), p._replace(y=5), Point(**{"x": 3, "y": 4})
+
+# ChainMap — layered dict lookup: process args → env → defaults
+from argparse import Namespace
+config = ChainMap(vars(args), os.environ, DEFAULTS)     # first hit wins
+config["port"]
+
+# OrderedDict — mostly obsolete (dicts keep insertion order since 3.7);
+# still useful for move_to_end() and explicit "order matters" intent
+od = OrderedDict.fromkeys("abc"); od.move_to_end("a", last=False)</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>14.2 Math, statistics, random and secrets</h3>
+    <pre><code>import math, statistics, random, secrets, decimal
+
+math.sqrt(2), math.isqrt(17), math.floor(2.7), math.ceil(2.1), math.trunc(-2.7)
+math.factorial(10), math.gcd(24, 36), math.lcm(4, 6), math.comb(5, 2), math.perm(5, 2)
+math.log(100, 10), math.log2(8), math.exp(1), math.pow(2, 10)
+math.pi, math.e, math.tau, math.inf, math.nan
+math.isclose(0.1 + 0.2, 0.3), math.isnan(x), math.isfinite(x)
+math.hypot(3, 4), math.dist([0, 0], [3, 4]), math.prod([2, 3, 4])
+math.radians(180), math.degrees(math.pi)
+math.fsum([0.1] * 10)              # exact summation, avoids float drift
+
+statistics.mean([1, 2, 3]), statistics.median(xs), statistics.mode(xs)
+statistics.stdev(xs), statistics.variance(xs)      # sample (n-1)
+statistics.pstdev(xs), statistics.pvariance(xs)    # population
+statistics.quantiles(xs, n=4), statistics.correlation(xs, ys), statistics.linear_regression(xs, ys)
+
+random.seed(42)                    # reproducible, NOT cryptographic
+random.random(), random.uniform(1, 5), random.gauss(0, 1)
+random.randint(1, 6), random.randrange(0, 100, 5)
+random.choice(items), random.choices(items, k=3, weights=[1, 2, 3])
+random.sample(items, k=2)          # without replacement
+random.shuffle(items)              # in place
+random.choice("".join(random.sample(...)))  # never for passwords!
+
+# Cryptographic randomness — for tokens, passwords, keys
+secrets.token_hex(16)              # '2f8c…' 32 hex chars
+secrets.token_urlsafe(32)
+secrets.choice("ABCDEF0123456789")
+secrets.compare_digest(a, b)       # constant-time comparison (avoid timing attacks)
+import string
+"".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(20))
+
+# Decimal — money math that adds up
+from decimal import Decimal, ROUND_HALF_UP, getcontext
+getcontext().prec = 28
+price = Decimal("19.99"); qty = Decimal("3")
+total = (price * qty).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)   # Decimal('59.97')</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>14.3 OS, process and shell integration</h3>
+    <pre><code>import os, sys, shutil, subprocess, platform, argparse, getpass
+
+os.name, platform.system(), platform.machine(), sys.version_info, sys.platform
+os.getenv("HOME"), os.environ.get("PATH", "").split(os.pathsep)
+os.cpu_count(), os.getpid(), os.getppid()
+os.makedirs("a/b/c", exist_ok=True), os.rename("a", "b"), os.remove("f")
+os.walk(".")                                  # recursive directory traversal
+shutil.copy2(src, dst)                        # copy + metadata
+shutil.move(src, dst)                         # move/rename across filesystems
+shutil.rmtree("dir", ignore_errors=True)
+shutil.disk_usage("/"), shutil.which("git")
+shutil.make_archive("backup", "zip", "data")  # zip a directory
+
+# Run external commands — always prefer the list form (no shell injection)
+r = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True)
+r.stdout.strip(), r.returncode
+subprocess.run(["tar", "-czf", "out.tgz", "dir"], check=True)
+p = subprocess.Popen(["ping", "-c", "3", "example.com"], stdout=subprocess.PIPE, text=True)
+for line in p.stdout: print(line, end="")
+p.wait(timeout=10)
+
+# Pipelines and shell features require shell=True — then be extremely careful
+subprocess.run("ls -l | grep py", shell=True, check=True, text=True)
+# NEVER interpolate untrusted input into a shell string. Use shlex.quote() if you must.
+
+# Environment management for child processes
+subprocess.run(["python", "-c", "import os;print(os.environ['MY_VAR'])"],
+               env={**os.environ, "MY_VAR": "1"}, check=True)
+
+# argparse — the CLI standard (typer/click in ch. 20 for complex CLIs)
+def cli(argv=None):
+    p = argparse.ArgumentParser(prog="tool", description="demo", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    p.add_argument("input", type=Path, help="file to process")
+    p.add_argument("-o", "--out", type=Path, default=Path("out.txt"))
+    p.add_argument("-v", "--verbose", action="count", default=0)      # -vv
+    p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--level", choices=["low", "high"], default="low")
+    p.add_argument("--tag", action="append")                          # repeatable
+    args = p.parse_args(argv)
+    if args.verbose &gt; 1: print("very verbose")
+    return args
+
+# Password prompt without echoing
+pw = getpass.getpass("Password: ")
+
+# Signals & graceful shutdown
+import signal
+def handler(signum, frame):
+    print("shutting down cleanly"); raise SystemExit(0)
+signal.signal(signal.SIGINT, handler)      # Ctrl+C
+signal.signal(signal.SIGTERM, handler)     # docker stop / kill</code></pre>
+    <div class="warn"><b><code>shell=True</code> + user input = remote code execution.</b> Prefer the argument-list
+    form, which passes arguments directly to <code>execve</code> with no shell parsing.</div>
+  </section>
+
+  <section class="sub">
+    <h3>14.4 <code>logging</code> — print’s grown-up sibling</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 280" role="img" aria-label="Logging pipeline: logger, handler, formatter">
+        <text class="tt" x="20" y="26">How one log line reaches the terminal</text>
+        <rect x="30" y="60" width="150" height="64" class="ba"/>
+        <text class="t" x="105" y="84" text-anchor="middle">Logger</text>
+        <text class="sm" x="105" y="104" text-anchor="middle">log = getLogger(__name__)</text>
+        <text class="sm" x="105" y="120" text-anchor="middle">level filter: DEBUG…CRITICAL</text>
+        <path class="ar2" d="M182 92 H212"/>
+        <rect x="212" y="60" width="150" height="64" class="bb"/>
+        <text class="t" x="287" y="84" text-anchor="middle">Handlers</text>
+        <text class="sm" x="287" y="104" text-anchor="middle">StreamHandler</text>
+        <text class="sm" x="287" y="120" text-anchor="middle">FileHandler · Rotating</text>
+        <path class="ar2" d="M364 92 H394"/>
+        <rect x="394" y="60" width="170" height="64" class="bc"/>
+        <text class="t" x="479" y="84" text-anchor="middle">Formatter</text>
+        <text class="mono sm" x="479" y="104" text-anchor="middle">%(asctime)s %(levelname)s</text>
+        <text class="mono sm" x="479" y="120" text-anchor="middle">%(name)s %(message)s</text>
+        <path class="ar2" d="M566 92 H596"/>
+        <rect x="596" y="60" width="140" height="64" class="bx"/>
+        <text class="t" x="666" y="84" text-anchor="middle">Destination</text>
+        <text class="sm" x="666" y="104" text-anchor="middle">stderr · file · SysLog</text>
+        <text class="sm" x="666" y="120" text-anchor="middle">cloud · journald</text>
+        <path class="ar" d="M736 92 H800"/>
+        <text class="sm" x="806" y="96">JSON</text>
+        <text class="sm" x="806" y="112">or text</text>
+
+        <rect x="30" y="150" width="840" height="110" class="bx"/>
+        <text class="t" x="450" y="174" text-anchor="middle">Levels — pick one and be consistent</text>
+        <text class="sm" x="50" y="200"><tspan class="mono">DEBUG</tspan> developer detail (off in prod) · <tspan class="mono">INFO</tspan> normal milestones (“server started”, “job finished”) · <tspan class="mono">WARNING</tspan> something odd but handled</text>
+        <text class="sm" x="50" y="224"><tspan class="mono">ERROR</tspan> an operation failed (user-visible) · <tspan class="mono">CRITICAL</tspan> the process cannot continue. <tspan class="mono">logger.exception()</tspan> logs ERROR + traceback.</text>
+        <text class="sm" x="50" y="248">Never log secrets, tokens, passwords or PII. Log IDs and counts, not payloads. Configure logging ONCE at program start, never in library modules.</text>
+      </svg>
+      <figcaption>Fig 14.1 — Libraries should only <code>getLogger(__name__)</code> and emit events; the application decides where they go.</figcaption>
+    </figure>
+    <pre><code>import logging, logging.config, sys, json
+from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
+from pathlib import Path
+
+# --- library code: never configure, just log ------------------------------
+log = logging.getLogger(__name__)
+log.debug("cache miss key=%s", key)                # lazy %-style: cheap when DEBUG is off
+log.info("processed %d rows in %.2fs", n, dt)
+log.warning("retrying, attempt %d", attempt)
+log.error("failed to write %s", path)
+log.exception("unhandled error")                   # inside except: adds traceback
+
+# --- application code: configure once -------------------------------------
+LOG_CONFIG = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "plain": {"format": "%(asctime)s %(levelname)-8s %(name)s %(message)s"},
+        "json":  {"()": "myapp.logging.JsonFormatter"},          # custom class for prod
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "stream": "ext://sys.stderr",
+                    "formatter": "plain", "level": "INFO"},
+        "file":    {"class": "logging.handlers.RotatingFileHandler",
+                    "filename": "app.log", "maxBytes": 5_000_000, "backupCount": 3,
+                    "formatter": "plain", "level": "DEBUG"},
+    },
+    "root": {"level": "DEBUG", "handlers": ["console", "file"]},
+}
+logging.config.dictConfig(LOG_CONFIG)
+
+# Quick and dirty for scripts:
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s",
+                    stream=sys.stderr, force=True)
+
+# Adding context to every log line
+logger = logging.getLogger("worker")
+adapter = logging.LoggerAdapter(logger, {"job_id": 42})
+adapter.info("started")                     # use %(job_id)s in the format string
+
+# Modern alternative: structlog (structured key/value events, JSON-native)
+# import structlog
+# log = structlog.get_logger()
+# log.info("order.created", order_id=1, total=199.5)
+# audit-friendly, greppable in production log aggregators</code></pre>
+    <div class="tip"><b>print vs logging:</b> print is for program <i>output</i> (stdout, what the user asked for);
+    logging is for diagnostics (stderr, for whoever runs the code later). A library that prints is a library you cannot
+    silence.</div>
+  </section>
+
+  <section class="sub">
+    <h3>14.5 Text, time, identity and misc batteries</h3>
+    <pre><code># hashing &amp; integrity
+import hashlib, hmac, secrets, uuid
+hashlib.sha256(b"data").hexdigest()                 # 64-char digest
+hashlib.file_digest(open("big.iso", "rb"), "sha256").hexdigest()   # streaming file hash
+hmac.new(key, msg, hashlib.sha256).hexdigest()      # keyed authentication
+uuid.uuid4()                                        # random UUID (v4)
+uuid.uuid7()                                        # time-ordered UUID (3.14+, sorts by creation!)
+uuid.uuid5(uuid.NAMESPACE_DNS, "example.com")       # deterministic from a name
+
+# text utilities
+import textwrap, difflib, unicodedata, shlex, string, pprint, base64, binascii
+textwrap.wrap(text, width=72), textwrap.dedent(doc), textwrap.shorten(text, 50)
+"\n".join(difflib.unified_diff(a.splitlines(), b.splitlines(), lineterm=""))
+difflib.get_close_matches("helo", ["hello", "help", "helm"])   # fuzzy suggestions
+difflib.SequenceMatcher(None, a, b).ratio()                    # similarity 0..1
+unicodedata.normalize("NFKC", "ﬁ")                 # unicode normalisation for comparison
+unicodedata.name("€")                             # 'EURO SIGN'
+shlex.split("cmd --flag 'a b'")                   # shell-like splitting/quoting
+shlex.quote("dangerous; rm -rf /")
+string.ascii_letters, string.digits, string.punctuation, string.whitespace
+pprint.pp(obj, width=100, sort_dicts=False)       # readable debug output
+base64.b64encode(b"\x00\xff"), base64.urlsafe_b64encode(blob)
+binascii.crc32(b"data")
+
+# time, dates and scheduling
+import time, datetime
+time.time(), time.time_ns(), time.perf_counter(), time.monotonic(), time.process_time()
+time.strftime("%Y-%m-%dT%H:%M:%S%z"), time.strptime("2026-10-02", "%Y-%m-%d")
+datetime.timedelta(days=1).total_seconds()
+# Scheduling: use cron/systemd/scheduler libs, not time.sleep loops.
+# APScheduler (in-process), schedule (simple), cron + wrapper script (production).
+
+# compression & archives
+import gzip, bz2, lzma, tarfile, zipfile, shutil, zlib
+import compression.zstd as zstd       # 3.14+: zstandard support in the stdlib
+gzip.compress(b"data"), zlib.compress(b"data"), zstd.compress(b"data", level=5)
+with tarfile.open("a.tar.gz", "w:gz") as t: t.add("dir")
+with zipfile.ZipFile("a.zip", "w", zipfile.ZIP_DEFLATED) as z: z.write("f.txt")
+with zipfile.ZipFile("a.zip") as z: z.extractall("./out")   # ⚠ sanitise paths for untrusted zips
+
+# data & conversions
+import csv, json, tomllib, configparser, struct
+struct.pack("&lt;I", 1024), struct.unpack("&lt;I", b"\x00\x04\x00\x00")   # binary protocols
+configparser.ConfigParser().read("app.ini")                        # legacy INI files
+# json.loads / json.dumps (see ch. 11)
+
+# misc essentials
+import functools, contextlib, itertools, copy, enum, dataclasses, tempfile, glob, warnings
+warnings.warn("deprecated", DeprecationWarning, stacklevel=2)
+tempfile.mkstemp(suffix=".csv"), tempfile.mkdtemp()
+glob.glob("**/*.py", recursive=True)
+functools.cached_property, functools.singledispatch, functools.reduce
+copy.copy(x), copy.deepcopy(x)
+dataclasses.fields(Product), dataclasses.asdict(p), dataclasses.replace(p, price=1)</code></pre>
+  </section>
+</section>
+
+<section class="chapter" id="ch15">
+  <h2><span class="num">15</span> Concurrency and parallelism</h2>
+  <p class="tagline">The GIL, threads, processes, asyncio, and free-threaded Python — with a decision tree you can actually use.</p>
+
+  <section class="sub">
+    <h3>15.1 The GIL in one picture</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 340" role="img" aria-label="GIL and concurrency models">
+        <text class="tt" x="20" y="26">Why threads do not speed up pure-Python CPU work (and what does)</text>
+        <rect x="30" y="50" width="400" height="120" class="bd"/>
+        <text class="t" x="230" y="74" text-anchor="middle">CPython with the GIL</text>
+        <text class="sm" x="50" y="98">One thread executes Python bytecode at a time,</text>
+        <text class="sm" x="50" y="118">even on a 16-core machine.</text>
+        <text class="sm" x="50" y="140">GIL is RELEASED during I/O syscalls and inside</text>
+        <text class="sm" x="50" y="158">C extensions that opt out (NumPy, hashlib, zlib…).</text>
+
+        <rect x="470" y="50" width="400" height="120" class="bc"/>
+        <text class="t" x="670" y="74" text-anchor="middle">Free-threaded CPython (PEP 703/779)</text>
+        <text class="sm" x="490" y="98">GIL removed: threads run in true parallel.</text>
+        <text class="sm" x="490" y="118">Supported officially from 3.14; still slower for</text>
+        <text class="sm" x="490" y="140">single-threaded code and needs free-threaded wheels.</text>
+        <text class="sm" x="490" y="158">Benchmark YOUR workload before switching.</text>
+
+        <rect x="30" y="190" width="270" height="130" class="ba"/>
+        <text class="t" x="165" y="214" text-anchor="middle">I/O-bound?</text>
+        <text class="sm" x="50" y="238">Network, disk, DB, subprocess, sleep.</text>
+        <text class="sm" x="50" y="260">→ asyncio (thousands of tasks, 1 thread)</text>
+        <text class="sm" x="50" y="280">→ or threads (dozens, simple, sync libs)</text>
+        <text class="sm" x="50" y="302">GIL is not the bottleneck: while one task</text>
+        <text class="sm" x="50" y="318">waits, others run.</text>
+        <rect x="315" y="190" width="270" height="130" class="bb"/>
+        <text class="t" x="450" y="214" text-anchor="middle">CPU-bound?</text>
+        <text class="sm" x="330" y="238">Math, parsing, image/video, compression.</text>
+        <text class="sm" x="330" y="260">→ multiprocessing / ProcessPoolExecutor</text>
+        <text class="sm" x="330" y="280">→ or a C/Rust/GPU library (NumPy, polars)</text>
+        <text class="sm" x="330" y="302">→ or threads on a free-threaded build</text>
+        <text class="sm" x="330" y="318">Each process has its own interpreter + GIL.</text>
+        <rect x="600" y="190" width="270" height="130" class="bp"/>
+        <text class="t" x="735" y="214" text-anchor="middle">Mixed?</text>
+        <text class="sm" x="615" y="238">Async for the I/O, offload the heavy math:</text>
+        <text class="mono sm" x="615" y="260">await asyncio.to_thread(cpu_ish)</text>
+        <text class="mono sm" x="615" y="282">loop.run_in_executor(pool, fn)</text>
+        <text class="sm" x="615" y="306">Keep the event loop free of blocking calls.</text>
+      </svg>
+      <figcaption>Fig 15.1 — Choose by workload type first, then by scale, then by how much rewrite you can afford.</figcaption>
+    </figure>
+    <table class="tbl">
+      <thead><tr><th>Model</th><th>Best for</th><th>Parallel CPU?</th><th>Memory cost</th><th>Complexity</th></tr></thead>
+      <tbody>
+        <tr><td>Sequential</td><td>&lt; 50 ms tasks, simple scripts</td><td>—</td><td>lowest</td><td>trivial</td></tr>
+        <tr><td><code>threading</code></td><td>I/O with sync libraries (dozens)</td><td>No (GIL), yes on free-threaded</td><td>~8 MB stack/thread</td><td>medium: locks, races</td></tr>
+        <tr><td><code>multiprocessing</code></td><td>CPU-bound work</td><td><b>Yes</b></td><td>high: one interpreter per process</td><td>medium: pickling, IPC</td></tr>
+        <tr><td><code>asyncio</code></td><td>Thousands of concurrent I/O ops</td><td>No (single thread)</td><td>very low per task</td><td>high: async-everywhere, blocking traps</td></tr>
+        <tr><td>Free-threaded threads</td><td>CPU work needing shared memory</td><td><b>Yes</b> (no-GIL build)</td><td>medium</td><td>medium: real race conditions now</td></tr>
+        <tr><td>Subinterpreters (3.14+ PEP 734)</td><td>Isolating plugins/tests with own GIL</td><td>Per-interpreter GIL</td><td>medium</td><td>new, limited API</td></tr>
+        <tr><td>External (Celery, Ray, job queues)</td><td>Scaling beyond one machine</td><td>Yes</td><td>cluster</td><td>highest</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>15.2 Threads and thread pools (I/O-bound)</h3>
+    <pre><code>from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading, time, queue
+
+# The 90% case: a pool, a list of work, results as they finish
+def fetch(url: str) -&gt; str:
+    time.sleep(0.2)                      # pretend network call
+    return f"body of {url}"
+
+urls = [f"https://ex.com/{i}" for i in range(20)]
+
+with ThreadPoolExecutor(max_workers=8) as pool:          # ~= 2–10× CPU count for I/O
+    futures = {pool.submit(fetch, u): u for u in urls}
+    for fut in as_completed(futures):
+        url = futures[fut]
+        try:
+            print(url, len(fut.result()))
+        except Exception as e:
+            print(url, "failed:", e)
+
+results = list(ThreadPoolExecutor(8).map(fetch, urls))    # preserves input order
+pool.submit(fn, *args, timeout=5)
+
+# Manual threads when you need long-lived workers
+def worker(q: queue.Queue):
+    while (item := q.get()) is not None:
+        try:
+            process(item)
+        finally:
+            q.task_done()                # unblocks q.join()
+
+q = queue.Queue(maxsize=100)
+threads = [threading.Thread(target=worker, args=(q,), daemon=True) for _ in range(4)]
+[t.start() for t in threads]
+[q.put(x) for x in items]
+q.join()                                 # wait until everything is done
+[t.join(timeout=1) for t in threads]
+
+# --- Shared state and races ----------------------------------------------
+counter = 0
+lock = threading.Lock()
+
+def bump():
+    global counter
+    with lock:                           # critical section
+        counter += 1                 # non-atomic without the lock!
+
+# The GIL does NOT make this safe: += is read-modify-write (multiple bytecodes)
+# Rule: protect any shared mutable state; or avoid sharing entirely (preferred).
+from threading import RLock, Semaphore, Event, Condition
+sem = Semaphore(5)                       # limit concurrency to 5
+evt = Event()                            # one thread signals others
+local = threading.local()                # per-thread storage — the escape hatch from sharing
+
+# Timeouts and deadlines
+if not evt.wait(timeout=5):
+    raise TimeoutError("worker never signalled")
+
+# Stop being scared of threads: the safe patterns are
+#  1. share nothing (pass data in/out of submit)   2. queue.Queue for handoff
+#  3. lock only tiny critical sections              4. never hold a lock across I/O
+#  5. use a pool instead of one thread per task</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>15.3 Processes (CPU-bound) and what free-threading changes</h3>
+    <pre><code>from concurrent.futures import ProcessPoolExecutor
+import multiprocessing as mp
+
+def crunch(n: int) -&gt; int:                      # MUST be importable (picklable)
+    return sum(i * i for i in range(n))
+
+if __name__ == "__main__":                      # required on Windows/macOS spawn
+    with ProcessPoolExecutor(max_workers=mp.cpu_count()) as pool:
+        results = list(pool.map(crunch, range(8), chunksize=1))
+        print(results)
+
+    # ProcessPoolExecutor is the friendly API; mp.Pool is the classic one
+    with mp.Pool() as p:
+        print(p.starmap(sorted, [(xs,), (ys,)]))
+
+    # Imap for streaming results in order
+    for r in pool.map(crunch, big_list):
+        handle(r)</code></pre>
+    <div class="warn"><b>Process gotchas:</b> arguments and results are pickled (so closures, local functions, open
+    sockets and file handles fail); <code>__main__</code> must be import-safe (no side effects at import); start method
+    differs by OS — <i>fork</i> on Linux (fast, but thread-unsafe), <i>spawn</i> on Windows/macOS (slow, safe). Set it
+    explicitly: <code>mp.set_start_method("spawn", force=True)</code>. For shared read-mostly data use
+    <code>mp.shared_memory</code> or pass a memory-mapped NumPy array instead of copying.</div>
+    <pre><code># Free-threaded Python: threads that actually run in parallel (3.14+, no-GIL build)
+# Same code as with the GIL — the difference is the interpreter you run it on.
+$ uv venv --python 3.14+freethreaded
+$ PYTHON_GIL=0 python app.py          # if the build supports runtime disabling
+&gt;&gt;&gt; import sys; sys._is_gil_enabled()  # False on a no-GIL build
+
+# What to watch out for:
+#  • Real race conditions appear where the GIL used to hide them — re-check shared state.
+#  • Single-threaded code is ~5–15% slower in 3.14; improving every release.
+#  • C extensions must declare free-threaded support (wheels are platform-specific).
+#  • Use it when: CPU-bound + threads + shared memory, and benchmarking shows a win.
+
+# Subinterpreters (3.14+, PEP 734) — isolated interpreters in one process
+# from concurrent import interpreters      # no shared globals; own GIL each
+# interp = interpreters.create(); interp.exec("print('isolated')")</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>15.4 asyncio — cooperative concurrency</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 330" role="img" aria-label="Event loop timeline">
+        <text class="tt" x="20" y="26">One thread, one loop, many tasks: concurrency without threads</text>
+        <line x1="60" y1="60" x2="860" y2="60" stroke="#9aa7b8"/>
+        <text class="sm" x="60" y="50">time →</text>
+
+        <rect x="60" y="70" width="120" height="34" class="bc"/><text class="sm" x="120" y="92" text-anchor="middle">task A runs</text>
+        <rect x="180" y="70" width="150" height="34" class="bd"/><text class="sm" x="255" y="92" text-anchor="middle">await I/O (A waits)</text>
+        <rect x="330" y="70" width="120" height="34" class="bc"/><text class="sm" x="390" y="92" text-anchor="middle">loop runs B</text>
+        <rect x="450" y="70" width="150" height="34" class="bd"/><text class="sm" x="525" y="92" text-anchor="middle">await I/O (B waits)</text>
+        <rect x="600" y="70" width="120" height="34" class="bc"/><text class="sm" x="660" y="92" text-anchor="middle">A resumes</text>
+        <rect x="720" y="70" width="140" height="34" class="bj bx"/><text class="sm" x="790" y="92" text-anchor="middle">B resumes…</text>
+
+        <text class="sm" x="60" y="132">While A is waiting for the network, the SAME thread executes B. No OS threads, no context-switch cost.</text>
+        <text class="sm" x="60" y="152">A blocking call (time.sleep, requests.get, heavy maths) freezes ALL tasks — that is the one rule of asyncio.</text>
+
+        <rect x="60" y="176" width="380" height="140" class="ba"/>
+        <text class="t" x="250" y="200" text-anchor="middle">The three keywords</text>
+        <text class="mono sm" x="80" y="226">async def f(): ...        # defines a coroutine function</text>
+        <text class="mono sm" x="80" y="250">coro = f()                # calling it makes a coroutine OBJECT</text>
+        <text class="mono sm" x="80" y="274">await coro                # runs it, suspending here if it waits</text>
+        <text class="mono sm" x="80" y="298">asyncio.run(main())       # starts the event loop (once, at top level)</text>
+
+        <rect x="470" y="176" width="390" height="140" class="bp"/>
+        <text class="t" x="665" y="200" text-anchor="middle">Rules of thumb</text>
+        <text class="sm" x="490" y="226">• <tspan class="mono">await</tspan> only inside <tspan class="mono">async def</tspan>.</text>
+        <text class="sm" x="490" y="250">• Never call blocking functions in a coroutine — use <tspan class="mono">asyncio.to_thread</tspan>.</text>
+        <text class="sm" x="490" y="274">• Use async libraries: httpx, aiohttp, asyncpg, aiofiles, aiomysql.</text>
+        <text class="sm" x="490" y="292">• Don't create tasks without keeping a</text>
+        <text class="sm" x="490" y="308">reference — they can be garbage-collected mid-flight.</text>
+      </svg>
+      <figcaption>Fig 15.2 — The event loop is a scheduler for “waiting”. <code>await</code> means “I’m pausing here; run someone else”.</figcaption>
+    </figure>
+    <pre><code>import asyncio, httpx, time
+
+async def fetch(client: httpx.AsyncClient, url: str) -&gt; int:
+    r = await client.get(url)                 # yields control while waiting
+    return len(r.content)
+
+async def main() -&gt; None:
+    urls = [f"https://httpbin.org/delay/1?i={i}" for i in range(20)]
+
+    # 1 · Sequentially (slow): each await waits for the previous
+    async with httpx.AsyncClient(timeout=10) as client:
+        start = time.perf_counter()
+        seq = [await fetch(client, u) for u in urls]         # 20 × ~1s ≈ 20s
+        print("sequential", time.perf_counter() - start)
+
+    # 2 · Concurrently with a TaskGroup (3.11+, structured concurrency — PREFER THIS)
+    async with httpx.AsyncClient(timeout=10) as client:
+        start = time.perf_counter()
+        async with asyncio.TaskGroup() as tg:
+            tasks = [tg.create_task(fetch(client, u)) for u in urls]
+        sizes = [t.result() for t in tasks]                   # ≈1s total
+        print("taskgroup", time.perf_counter() - start)
+
+    # 3 · gather (classic API; return_exceptions=True to collect errors instead of raising)
+    results = await asyncio.gather(*(fetch(client, u) for u in urls), return_exceptions=True)
+
+    # 4 · Bound the concurrency with a semaphore
+    sem = asyncio.Semaphore(10)
+    async def limited(u):
+        async with sem:
+            return await fetch(client, u)
+    await asyncio.gather(*(limited(u) for u in urls))
+
+    # 5 · Stream results as they complete
+    for coro in asyncio.as_completed([fetch(client, u) for u in urls]):
+        print(await coro)
+
+    # 6 · Timeouts and cancellation
+    try:
+        async with asyncio.timeout(5):        # 3.11+
+            await fetch(client, urls[0])
+    except TimeoutError:
+        print("too slow")
+
+    # 7 · Async generators + async for
+    async def pages(client):
+        for i in range(3):
+            yield await fetch(client, urls[i])
+    async for size in pages(client):
+        print(size)
+
+    # 8 · Queues for producer/consumer
+    q: asyncio.Queue[int] = asyncio.Queue(maxsize=10)
+    async def producer():
+        for i in range(10):
+            await q.put(i); await asyncio.sleep(0.01)
+    async def consumer():
+        while True:
+            item = await q.get(); q.task_done()
+    async with asyncio.TaskGroup() as tg:
+        tg.create_task(producer()); tg.create_task(consumer())
+
+    # 9 · Offload blocking work so it does not freeze the loop
+    data = await asyncio.to_thread(blocking_db_call)          # thread
+    # heavy CPU: use a process pool instead
+    loop = asyncio.get_running_loop()
+    with ProcessPoolExecutor() as pool:
+        n = await loop.run_in_executor(pool, crunch, 10_000_000)
+
+asyncio.run(main())          # the ONLY entry point you should use</code></pre>
+    <div class="gotcha"><b>Async red flags to look for in code review:</b> <code>time.sleep()</code> inside
+    <code>async def</code> (use <code>asyncio.sleep</code>); <code>requests.get()</code> inside <code>async def</code>
+    (use httpx/aiohttp); <code>subprocess.run()</code> or a big <code>for</code> loop of CPU work inside a coroutine;
+    a bare <code>create_task()</code> whose return value is thrown away (task may vanish); calling
+    <code>asyncio.run()</code> inside a running loop (use <code>await</code> instead).</div>
+  </section>
+
+  <section class="sub">
+    <h3>15.5 Choosing — and combining</h3>
+    <table class="tbl">
+      <thead><tr><th>Scenario</th><th>Solution</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Fetch 500 URLs</td><td><code>asyncio</code> + httpx</td><td>Thousands of light tasks, tiny memory per task.</td></tr>
+        <tr><td>Fetch 10 URLs in a script that already uses requests</td><td><code>ThreadPoolExecutor(10)</code></td><td>Three lines, no rewrite.</td></tr>
+        <tr><td>Resize 20 000 images</td><td><code>ProcessPoolExecutor</code> (or Pillow’s own threads)</td><td>CPU + C-library work; processes bypass the GIL.</td></tr>
+        <tr><td>Web server handling 10 000 connections</td><td>Async framework (FastAPI/Starlette, aiohttp)</td><td>Concurrency per connection without threads.</td></tr>
+        <tr><td>Numeric pipeline on 100 M rows</td><td>NumPy / polars / DuckDB (single process, vectorised)</td><td>Better than naive parallelism; C-level loops release the GIL.</td></tr>
+        <tr><td>ML training</td><td>GPU (PyTorch) + DataLoader workers</td><td>Processes for input, device for compute.</td></tr>
+        <tr><td>Long background jobs</td><td>Queue + workers (Celery, RQ, arq, Dramatiq)</td><td>Survives restarts, scales horizontally, retries built in.</td></tr>
+        <tr><td>Big data across many machines</td><td>Ray / Dask / Spark</td><td>Distributed scheduling and shared memory.</td></tr>
+      </tbody>
+    </table>
+    <div class="tip"><b>Measure before parallelising.</b> Profile single-threaded first (ch. 17). Many “slow” programs are
+    I/O-waiting on 5 calls that could be batched, or doing O(n²) work that a dict/set fixes. Concurrency adds real
+    complexity: races, deadlocks, harder debugging, worse tracebacks.</div>
+  </section>
+</section>

@@ -1,0 +1,528 @@
+<section class="chapter" id="ch8">
+  <h2><span class="num">8</span> Object-oriented Python and the data model</h2>
+  <p class="tagline">Classes, dunder methods, inheritance &amp; MRO, dataclasses, protocols and enums — done the Pythonic way.</p>
+
+  <section class="sub">
+    <h3>8.1 Classes, instances, and where attributes live</h3>
+    <pre><code>class Account:
+    kind = "savings"                      # CLASS attribute — shared by all instances
+    __slots__ = ("owner", "balance")      # optional: no __dict__, ~40% less memory
+
+    def __init__(self, owner: str, balance: float = 0.0):
+        self.owner = owner                # INSTANCE attributes (per object)
+        self.balance = balance
+
+    def deposit(self, amount: float) -&gt; None:
+        if amount &lt;= 0:
+            raise ValueError("amount must be positive")
+        self.balance += amount
+
+    def __repr__(self) -&gt; str:            # unambiguous, for developers
+        return f"Account({self.owner!r}, {self.balance})"
+
+    def __str__(self) -&gt; str:             # readable, for users (falls back to __repr__)
+        return f"{self.owner}: ₹{self.balance:,.2f}"
+
+a = Account("Ada", 100)
+a.deposit(50)
+print(a)                                  # Ada: ₹150.00
+a.kind, Account.kind                      # 'savings' both ways
+a.kind = "current"                        # creates an INSTANCE attribute that shadows the class one
+del a.kind                                # reveals the class attribute again
+
+# Attribute lookup order: instance __dict__ → type's MRO dicts → __getattr__ → AttributeError
+vars(a)          # instance dict (not available with __slots__)
+dir(a)           # everything reachable, for the REPL
+hasattr(a, "x"), getattr(a, "x", None), setattr(a, "x", 1)</code></pre>
+    <figure class="dg">
+      <svg viewBox="0 0 900 250" role="img" aria-label="Attribute lookup order">
+        <text class="tt" x="20" y="26">Looking up <tspan class="mono">a.balance</tspan> — the real order</text>
+        <rect x="30" y="60" width="150" height="60" class="ba"/>
+        <text class="t" x="105" y="86" text-anchor="middle">1 · data descriptors</text>
+        <text class="sm" x="105" y="106" text-anchor="middle">property / slots on the class</text>
+        <rect x="210" y="60" width="150" height="60" class="bb"/>
+        <text class="t" x="285" y="86" text-anchor="middle">2 · instance __dict__</text>
+        <text class="sm" x="285" y="106" text-anchor="middle">per-object values</text>
+        <rect x="390" y="60" width="170" height="60" class="bc"/>
+        <text class="t" x="475" y="86" text-anchor="middle">3 · class and bases (MRO)</text>
+        <text class="sm" x="475" y="106" text-anchor="middle">methods, class attrs</text>
+        <rect x="590" y="60" width="250" height="60" class="bp"/>
+        <text class="t" x="715" y="86" text-anchor="middle">4 · __getattr__ / 5 · AttributeError</text>
+        <text class="sm" x="715" y="106" text-anchor="middle">dynamic fallback, then failure</text>
+        <path class="ar2" d="M182 90 H208"/><path class="ar2" d="M362 90 H388"/><path class="ar2" d="M562 90 H588"/>
+        <rect x="30" y="150" width="810" height="80" class="bx"/>
+        <text class="sm" x="50" y="174">• Functions defined in a class become <tspan class="mono">methods</tspan> via the descriptor protocol: <tspan class="mono">a.deposit(1)</tspan> ⟶ <tspan class="mono">Account.deposit(a, 1)</tspan>.</text>
+        <text class="sm" x="50" y="196">• <tspan class="mono">@property</tspan> = computed attribute with getter/setter; <tspan class="mono">@staticmethod</tspan> = no self; <tspan class="mono">@classmethod</tspan> = receives the class (factories, alternative constructors).</text>
+        <text class="sm" x="50" y="218">• Setting an attribute only ever writes to the instance dict — that is why mutating a class-level <tspan class="mono">list</tspan> shared by all instances is a classic bug.</text>
+      </svg>
+      <figcaption>Fig 8.1 — Descriptors power <code>property</code>, <code>classmethod</code>, <code>staticmethod</code> and <code>__slots__</code>.</figcaption>
+    </figure>
+  </section>
+
+  <section class="sub">
+    <h3>8.2 The dunder (magic) method map</h3>
+    <table class="tbl">
+      <thead><tr><th>Protocol</th><th>Methods to implement</th><th>Enables</th></tr></thead>
+      <tbody>
+        <tr><td>Construction / repr</td><td><code>__init__</code> <code>__new__</code> <code>__repr__</code> <code>__str__</code> <code>__format__</code> <code>__hash__</code></td><td><code>Account(...)</code>, <code>print(obj)</code>, <code>f"{obj}"</code>, dict keys</td></tr>
+        <tr><td>Equality / ordering</td><td><code>__eq__</code> <code>__lt__</code> <code>__le__</code> <code>__gt__</code> <code>__ge__</code> (<code>total_ordering</code>)</td><td><code>==</code>, <code>sorted()</code>, <code>min/max</code></td></tr>
+        <tr><td>Arithmetic</td><td><code>__add__ __sub__ __mul__ __truediv__ __floordiv__ __mod__ __pow__</code> + <code>__iadd__</code> family + <code>__radd__</code> (reflected)</td><td><code>v1 + v2</code>, <code>v1 += v2</code>, <code>2 * v</code></td></tr>
+        <tr><td>Containers</td><td><code>__len__ __getitem__ __setitem__ __delitem__ __contains__ __iter__ __next__ __reversed__</code></td><td>indexing, slicing, <code>in</code>, <code>for</code>, unpacking</td></tr>
+        <tr><td>Callable</td><td><code>__call__</code></td><td><code>obj()</code> — objects that behave like functions</td></tr>
+        <tr><td>Context manager</td><td><code>__enter__ __exit__</code></td><td><code>with obj:</code></td></tr>
+        <tr><td>Attributes</td><td><code>__getattr__ __getattribute__ __setattr__ __delattr__ __dir__</code></td><td>proxies, dynamic attributes, ORMs</td></tr>
+        <tr><td>Conversion</td><td><code>__int__ __float__ __bool__ __index__</code></td><td><code>int(obj)</code>, truthiness, slicing with objects</td></tr>
+        <tr><td>Copy / pickle</td><td><code>__copy__ __deepcopy__ __reduce__ __getstate__ __setstate__</code></td><td><code>copy.copy</code>, <code>pickle</code>, multiprocessing</td></tr>
+      </tbody>
+    </table>
+    <pre><code>from dataclasses import dataclass
+from functools import total_ordering
+
+@total_ordering
+class Money:
+    __slots__ = ("amount", "currency")
+
+    def __init__(self, amount: int, currency: str = "INR"):   # store minor units (paise)
+        self.amount, self.currency = amount, currency
+
+    def __repr__(self):  return f"Money({self.amount}, {self.currency!r})"
+    def __str__(self):   return f"{self.currency} {self.amount / 100:,.2f}"
+    def __eq__(self, other):    return (self.amount, self.currency) == (other.amount, other.currency) if isinstance(other, Money) else NotImplemented
+    def __hash__(self): return hash((self.amount, self.currency))
+    def __lt__(self, other): return self.amount &lt; other.amount
+    def __add__(self, other):   return Money(self.amount + other.amount, self.currency)
+    def __mul__(self, n):       return Money(self.amount * n, self.currency)
+    def __bool__(self): return self.amount != 0
+
+Money(1000) + Money(250)      # Money(1250, 'INR')  →  INR 12.50
+bool(Money(0))                # False
+sorted([Money(500), Money(100)])[0]</code></pre>
+    <div class="note"><b>Return <code>NotImplemented</code></b> (the sentinel, not <code>NotImplementedError</code>) from a
+    binary dunder when you cannot handle the other type — that lets Python try the reflected operation
+    (<code>other.__radd__</code>) instead of raising. It is how <code>2 "a"</code> … sorry, how
+    <code>"a" * 2</code> and <code>2 * "a"</code> both work.</div>
+  </section>
+
+  <section class="sub">
+    <h3>8.3 Inheritance, MRO and super()</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 300" role="img" aria-label="Diamond inheritance and MRO">
+        <text class="tt" x="20" y="26">The diamond problem and C3 linearisation</text>
+        <rect x="360" y="46" width="180" height="46" class="bx"/><text class="t" x="450" y="75" text-anchor="middle">Base</text>
+        <rect x="220" y="126" width="180" height="46" class="ba"/><text class="t" x="310" y="155" text-anchor="middle">Loggable(Base)</text>
+        <rect x="500" y="126" width="180" height="46" class="ba"/><text class="t" x="590" y="155" text-anchor="middle">Cacheable(Base)</text>
+        <rect x="360" y="206" width="180" height="46" class="bc"/><text class="t" x="450" y="235" text-anchor="middle">Service(Loggable, Cacheable)</text>
+        <path class="ar" d="M400 92 L330 124"/><path class="ar" d="M500 92 L570 124"/>
+        <path class="ar" d="M370 172 L400 204"/><path class="ar" d="M530 172 L500 204"/>
+
+        <rect x="620" y="60" width="250" height="196" class="bp"/>
+        <text class="t" x="745" y="84" text-anchor="middle">MRO of Service</text>
+        <text class="mono sm" x="640" y="110">Service</text>
+        <text class="mono sm" x="640" y="132">Loggable</text>
+        <text class="mono sm" x="640" y="154">Cacheable</text>
+        <text class="mono sm" x="640" y="176">Base</text>
+        <text class="mono sm" x="640" y="198">object</text>
+        <text class="sm" x="640" y="226">Each class appears once · linear order</text>
+        <text class="sm" x="640" y="246">Service.__mro__ shows it at runtime</text>
+
+        <rect x="30" y="60" width="330" height="196" class="bb"/>
+        <text class="t" x="195" y="84" text-anchor="middle">Rules of thumb</text>
+        <text class="sm" x="50" y="108">• <tspan class="mono">super().method()</tspan> calls the NEXT class in the MRO,</text>
+        <text class="sm" x="66" y="126">not “the parent” — always pass through *args/**kwargs.</text>
+        <text class="sm" x="50" y="152">• Multiple inheritance is fine for mixins and Protocols,</text>
+        <text class="sm" x="66" y="170">painful for stateful hierarchies.</text>
+        <text class="sm" x="50" y="196">• Prefer composition (“has-a”) over inheritance (“is-a”).</text>
+        <text class="sm" x="50" y="222">• <tspan class="mono">isinstance(x, A)</tspan> is True for subclasses — check with</text>
+        <text class="sm" x="66" y="240">Protocols/ABCs instead of concrete classes where you can.</text>
+      </svg>
+      <figcaption>Fig 8.2 — C3 linearisation keeps multiple inheritance predictable; <code>super()</code> follows that order.</figcaption>
+    </figure>
+    <pre><code>class Base:
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)          # cooperative multiple inheritance
+        self.ready = True
+
+class Loggable:
+    def log(self, msg): print(f"[log] {msg}")
+
+class Cacheable:
+    _cache: dict = {}
+    def cached(self, key, factory):
+        if key not in self._cache:
+            self._cache[key] = factory()
+        return self._cache[key]
+
+class Service(Loggable, Cacheable, Base):   # mixins first, concrete base last
+    def run(self):
+        self.log("starting")
+        return self.cached("k", lambda: 42)
+
+Service.__mro__          # (Service, Loggable, Cacheable, Base, object)
+s = Service(); s.run()
+
+# Abstract base classes: enforce an interface at instantiation time
+from abc import ABC, abstractmethod
+class Repository(ABC):
+    @abstractmethod
+    def get(self, key: str) -&gt; dict: ...
+    @property
+    @abstractmethod
+    def name(self) -&gt; str: ...
+
+# Repository()  → TypeError: Can't instantiate abstract class
+
+# Duck typing without inheritance: Protocol (structural typing, ch. 13)
+from typing import Protocol, runtime_checkable
+@runtime_checkable
+class Closeable(Protocol):
+    def close(self) -&gt; None: ...
+isinstance(socket_like, Closeable)          # True if it has .close()</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>8.4 Dataclasses (and when to skip classes entirely)</h3>
+    <pre><code>from dataclasses import dataclass, field, asdict, replace
+
+@dataclass(slots=True)                       # slots=True → less memory, faster attr access
+class Product:
+    sku: str
+    price: float
+    tags: list[str] = field(default_factory=list)    # ← never use a bare [] here
+    active: bool = True
+
+    def __post_init__(self):                 # validation after generated __init__
+        if self.price &lt; 0:
+            raise ValueError("price must be &gt;= 0")
+
+p = Product("A1", 99.5, ["sale"])
+p == Product("A1", 99.5, ["sale"])           # True — __eq__ generated
+replace(p, price=89.0)                       # copy with a change
+asdict(p)                                    # → plain dict (for JSON)
+
+@dataclass(frozen=True)                      # immutable + hashable → usable in sets/dict keys
+class Point:
+    x: int
+    y: int
+
+# Ordering and safety switches
+@dataclass(order=True)                       # generates __lt__ etc. via field order
+class Version:
+    major: int
+    minor: int
+
+# Alternatives: NamedTuple (tuple semantics), attrs (mature extras),
+# pydantic (runtime validation + parsing from JSON), msgspec (fastest).
+from pydantic import BaseModel, Field
+class User(BaseModel):
+    id: int
+    email: str = Field(pattern=r".+@.+")
+    nickname: str | None = None
+User.model_validate_json('{"id": 1, "email": "a@b.c"}')   # validated, typed
+User(id="2", email="x@y.z")                                # coerces "2" → 2 or raises</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Need</th><th>Use</th></tr></thead>
+      <tbody>
+        <tr><td>A bag of named data with methods</td><td><code>@dataclass</code> (add <code>slots=True, frozen=True</code> when possible)</td></tr>
+        <tr><td>Immutable record, tuple behaviour, tiny memory</td><td><code>NamedTuple</code></td></tr>
+        <tr><td>Parse/validate untrusted input (JSON, env, APIs)</td><td><code>pydantic</code> / <code>msgspec</code> / <code>attrs</code> + validators</td></tr>
+        <tr><td>A fixed set of named constants</td><td><code>enum.Enum</code> / <code>StrEnum</code> / <code>IntEnum</code></td></tr>
+        <tr><td>An interface to be implemented by others</td><td><code>Protocol</code> (structural) or <code>ABC</code> (nominal)</td></tr>
+        <tr><td>Just a function</td><td>A function. Not every pattern needs a class.</td></tr>
+      </tbody>
+    </table>
+    <h4>Enums — replace magic strings</h4>
+    <pre><code>from enum import Enum, StrEnum, IntEnum, auto, Flag
+
+class Status(StrEnum):            # str-compatible: works in f-strings, JSON, SQL
+    PENDING = auto()
+    ACTIVE = "active"             # explicit value
+    BANNED = "banned"
+
+Status.ACTIVE == "active"          # True — StrEnum subclass of str
+status = Status("active")          # lookup by value → Status.ACTIVE
+Status.ACTIVE.name, Status.ACTIVE.value
+
+class Perm(Flag):                  # bitwise combinations
+    READ, WRITE, EXEC = auto(), auto(), auto()
+perms = Perm.READ | Perm.WRITE
+Perm.READ in perms                 # True
+
+@dataclass
+class Order: status: Status = Status.PENDING
+Order().status is Status.PENDING</code></pre>
+    <h4>Properties, static and class methods</h4>
+    <pre><code>class Temperature:
+    def __init__(self, celsius: float): self._c = celsius
+
+    @property                                  # computed, read-only attribute
+    def celsius(self) -&gt; float: return self._c
+
+    @celsius.setter                            # validate on assignment
+    def celsius(self, v: float):
+        if v &lt; -273.15: raise ValueError("below absolute zero")
+        self._c = v
+
+    @property
+    def fahrenheit(self) -&gt; float: return self._c * 9 / 5 + 32
+
+    @staticmethod                              # no access to self/cls — a namespaced function
+    def from_kelvin(k: float) -&gt; "Temperature": return Temperature(k - 273.15)
+
+    @classmethod                               # alternative constructor (inherits properly)
+    def from_fahrenheit(cls, f: float) -&gt; "Temperature": return cls((f - 32) * 5 / 9)
+
+t = Temperature(25); t.fahrenheit            # 77.0
+Temperature.from_fahrenheit(77.0).celsius    # 25.0
+t.celsius = -300                             # ValueError</code></pre>
+  </section>
+</section>
+
+<section class="chapter" id="ch9">
+  <h2><span class="num">9</span> Exceptions and context managers</h2>
+  <p class="tagline">Ask forgiveness, not permission: the exception hierarchy, EAFP vs LBYL, cleanup, and custom error design.</p>
+
+  <section class="sub">
+    <h3>9.1 The exception hierarchy</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 400" role="img" aria-label="Python exception hierarchy">
+        <text class="tt" x="20" y="26">Catch the narrowest thing that can actually happen</text>
+        <rect x="360" y="42" width="180" height="38" class="bx"/><text class="t" x="450" y="67" text-anchor="middle">BaseException</text>
+        <rect x="200" y="100" width="120" height="34" class="bd"/><text class="sm" x="260" y="123" text-anchor="middle">SystemExit</text>
+        <rect x="336" y="100" width="130" height="34" class="bd"/><text class="sm" x="401" y="123" text-anchor="middle">KeyboardInterrupt</text>
+        <rect x="482" y="100" width="150" height="34" class="bd"/><text class="sm" x="557" y="123" text-anchor="middle">GeneratorExit</text>
+        <rect x="650" y="100" width="180" height="34" class="ba"/><text class="t" x="740" y="123" text-anchor="middle">Exception</text>
+        <path class="ar" d="M420 80 L270 98"/><path class="ar" d="M440 80 L406 98"/><path class="ar" d="M480 80 L546 98"/><path class="ar" d="M500 80 L700 98"/>
+        <text class="sm" x="60" y="120">NEVER catch these with a bare <tspan class="mono">except:</tspan> — you break Ctrl+C and shutdown.</text>
+
+        <rect x="60" y="160" width="180" height="34" class="bb"/><text class="sm" x="150" y="183" text-anchor="middle">OSError / IOError</text>
+        <rect x="260" y="160" width="180" height="34" class="bb"/><text class="sm" x="350" y="183" text-anchor="middle">ValueError / TypeError</text>
+        <rect x="460" y="160" width="180" height="34" class="bb"/><text class="sm" x="550" y="183" text-anchor="middle">LookupError</text>
+        <rect x="660" y="160" width="180" height="34" class="bb"/><text class="sm" x="750" y="183" text-anchor="middle">RuntimeError</text>
+        <path class="lnd" d="M740 136 V158"/><path class="lnd" d="M150 158 V136"/>
+
+        <text class="sm" x="80" y="216">FileNotFoundError ·</text><text class="sm" x="80" y="232">PermissionError ·</text><text class="sm" x="80" y="248">TimeoutError ·</text><text class="sm" x="80" y="264">ConnectionError</text>
+        <text class="sm" x="280" y="216">ValueError raised when the type is right</text><text class="sm" x="280" y="232">but the value is wrong; TypeError when</text><text class="sm" x="280" y="248">the TYPE itself is wrong</text>
+        <text class="sm" x="480" y="216">KeyError (dict) ·</text><text class="sm" x="480" y="232">IndexError (list) ·</text><text class="sm" x="480" y="248">AttributeError (obj)</text>
+        <text class="sm" x="680" y="216">RecursionError ·</text><text class="sm" x="680" y="232">NotImplementedError ·</text><text class="sm" x="680" y="248">StopIteration</text>
+
+        <rect x="60" y="290" width="780" height="96" class="bc"/>
+        <text class="t" x="450" y="314" text-anchor="middle">Your own hierarchy — always derive from Exception (or a shared app base)</text>
+        <text class="mono sm" x="80" y="340">class AppError(Exception): """Base for this application."""</text>
+        <text class="mono sm" x="80" y="362">class ConfigError(AppError): ...         # callers can catch AppError, or be specific</text>
+        <text class="mono sm" x="80" y="382">class NotFoundError(AppError): ...       # libraries: document which exceptions you raise</text>
+      </svg>
+      <figcaption>Fig 9.1 — <code>except Exception</code> is the broadest thing you should ever write; a bare <code>except:</code> catches Ctrl+C too.</figcaption>
+    </figure>
+    <table class="tbl">
+      <thead><tr><th>Exception</th><th>Raised when</th><th>Typical handling</th></tr></thead>
+      <tbody>
+        <tr><td><code>ValueError</code></td><td>Right type, bad value: <code>int("abc")</code></td><td>Validate input, re-raise with context.</td></tr>
+        <tr><td><code>TypeError</code></td><td>Wrong type: <code>"a" + 1</code></td><td>Usually a bug — fix the code, do not catch.</td></tr>
+        <tr><td><code>KeyError</code> / <code>IndexError</code></td><td>Missing key / out-of-range index</td><td>Use <code>.get()</code>/<code>in</code>, or catch to fall back.</td></tr>
+        <tr><td><code>FileNotFoundError</code></td><td>Path does not exist</td><td>Create it, or return a clear error; subclass of <code>OSError</code>.</td></tr>
+        <tr><td><code>AttributeError</code></td><td>Missing attribute/method</td><td>Check API/version; use <code>getattr(obj, name, default)</code>.</td></tr>
+        <tr><td><code>ImportError</code> / <code>ModuleNotFoundError</code></td><td>Cannot import</td><td>Install dependency or fix <code>sys.path</code>/name (ch. 10).</td></tr>
+        <tr><td><code>ZeroDivisionError</code></td><td>Divide by zero</td><td>Guard with a default when the data allows zeros.</td></tr>
+        <tr><td><code>TimeoutError</code></td><td>Operation exceeded a deadline</td><td>Retry with backoff (ch. 6.3).</td></tr>
+        <tr><td><code>RuntimeError</code></td><td>Generic runtime problem; <code>RecursionError</code> is a subclass</td><td>Look at the message; often a logic bug.</td></tr>
+        <tr><td><code>StopIteration</code></td><td>Iterator exhausted</td><td>Do not swallow inside generators (PEP 479 turns it into RuntimeError).</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>9.2 try / except / else / finally — the full flow</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 330" role="img" aria-label="try except else finally control flow">
+        <text class="tt" x="20" y="26">Four clauses, four different jobs</text>
+        <rect x="40" y="50" width="150" height="50" class="ba"/>
+        <text class="t" x="115" y="72" text-anchor="middle">try</text>
+        <text class="sm" x="115" y="90" text-anchor="middle">only the risky lines</text>
+
+        <path class="ar" d="M192 62 C240 62 240 130 300 130"/>
+        <text class="sm" x="230" y="52">no exception</text>
+        <rect x="302" y="108" width="150" height="50" class="bc"/>
+        <text class="t" x="377" y="130" text-anchor="middle">else</text>
+        <text class="sm" x="377" y="148" text-anchor="middle">runs only on success</text>
+
+        <path class="ar" d="M192 88 C250 88 250 210 300 210"/>
+        <text class="sm" x="212" y="160">exception raised</text>
+        <rect x="302" y="186" width="170" height="60" class="bb"/>
+        <text class="t" x="387" y="208" text-anchor="middle">except SomeError as e</text>
+        <text class="sm" x="387" y="228" text-anchor="middle">handles only matching types</text>
+
+        <rect x="530" y="108" width="150" height="50" class="bx"/>
+        <text class="t" x="605" y="130" text-anchor="middle">finally</text>
+        <text class="sm" x="605" y="148" text-anchor="middle">ALWAYS runs</text>
+        <path class="ar2" d="M454 133 H528"/>
+        <path class="ar2" d="M474 216 C520 216 520 145 528 140"/>
+
+        <rect x="700" y="50" width="180" height="250" class="bp"/>
+        <text class="t" x="790" y="74" text-anchor="middle">Rules</text>
+        <text class="sm" x="716" y="100">try: minimal — 1–3 lines</text>
+        <text class="sm" x="716" y="124">except: name the exact type</text>
+        <text class="sm" x="716" y="148">else: code that must not be</text>
+        <text class="sm" x="730" y="166">covered by the except</text>
+        <text class="sm" x="716" y="192">finally: cleanup (or use with:)</text>
+        <text class="sm" x="716" y="218">Never <tspan class="mono">return</tspan> inside finally</text>
+        <text class="sm" x="716" y="242">— it swallows exceptions</text>
+        <text class="sm" x="716" y="268">3.14 warns (PEP 765) on</text>
+        <text class="sm" x="716" y="286">return/break/continue in finally</text>
+
+        <rect x="40" y="262" width="430" height="50" class="bd"/>
+        <text class="sm" x="60" y="284">Order matters: <tspan class="mono">except ValueError</tspan> before <tspan class="mono">except Exception</tspan> — first match wins, later clauses never see it.</text>
+        <text class="sm" x="60" y="304">An unhandled exception propagates up the stack, running each frame's <tspan class="mono">finally</tspan> on the way out.</text>
+      </svg>
+      <figcaption>Fig 9.2 — <code>else</code> and <code>finally</code> exist so that <code>try</code> can stay tiny.</figcaption>
+    </figure>
+    <pre><code>import json, logging
+
+log = logging.getLogger(__name__)
+
+def load_config(path: str) -&gt; dict:
+    try:
+        with open(path, encoding="utf-8") as fh:      # risky: file may not exist
+            raw = fh.read()
+    except FileNotFoundError:
+        log.warning("no config at %s, using defaults", path)
+        return {}
+    except PermissionError as e:
+        raise ConfigError(f"cannot read {path}") from e        # add context, keep cause
+    else:
+        try:
+            return json.loads(raw)                                 # parse errors are different
+        except json.JSONDecodeError as e:
+            raise ConfigError(f"{path} is not valid JSON: {e}") from e
+    finally:
+        log.debug("load_config finished")                          # always runs
+
+# Round-trip: catch → inspect → decide
+try:
+    value = int(user_input)
+except ValueError:
+    value = 0
+except (KeyError, IndexError) as e:        # several types
+    log.error("bad structure: %r", e)
+except Exception:                           # last resort: log &amp; re-raise, never silently pass
+    log.exception("unexpected failure")
+    raise
+else:
+    use(value)                              # only if no exception
+finally:
+    cleanup()
+
+# EAFP vs LBYL
+# EAFP (Pythonic):         # LBYL (risky under concurrency)
+try:                       # if key in d:
+    v = d[key]             #     v = d[key]
+except KeyError:           # else:
+    v = default            #     v = default
+
+# Re-raising with context
+try:
+    api_call()
+except requests.Timeout as e:
+    raise ServiceUnavailable("upstream timed out after 5s") from e
+# On the traceback you'll see BOTH: "The above exception was the direct cause..."
+# Use `raise ... from None` to suppress the original when it is just noise.</code></pre>
+    <div class="warn"><b>Three anti-patterns that hide real bugs:</b>
+    (1) <code>except Exception: pass</code> — swallows everything, including typos;
+    (2) <code>try: big_block_of_code()</code> — you cannot tell which line failed;
+    (3) catching an exception just to <code>raise SomeError(str(e))</code> — this loses the original
+    traceback; always use <code>raise NewError(...) from e</code>.</div>
+  </section>
+
+  <section class="sub">
+    <h3>9.3 Exception groups and <code>except*</code> <span class="pill hot">3.11+</span></h3>
+    <pre><code># Concurrency (asyncio TaskGroup, anyio) raises MULTIPLE errors at once.
+try:
+    async with asyncio.TaskGroup() as tg:
+        tg.create_task(fetch("a"))
+        tg.create_task(fetch("b"))
+except* TimeoutError as eg:
+    print("timed out:", len(eg.exceptions))
+except* ValueError as eg:
+    print("bad data:", eg.exceptions)
+
+# Building one by hand
+eg = ExceptionGroup("batch failed", [ValueError("x"), KeyError("k")])
+raise eg
+# 3.14: brackets are optional if you have a single exception type in except*/except
+#   except ValueError, TypeError:   ← valid in 3.14+</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>9.4 Context managers — guaranteed cleanup</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 240" role="img" aria-label="Context manager protocol">
+        <text class="tt" x="20" y="26">What <tspan class="mono">with open(...) as fh:</tspan> guarantees</text>
+        <rect x="40" y="56" width="150" height="50" class="ba"/><text class="t" x="115" y="78" text-anchor="middle">__enter__</text><text class="sm" x="115" y="96" text-anchor="middle">acquire resource</text>
+        <rect x="230" y="56" width="240" height="50" class="bc"/><text class="t" x="350" y="78" text-anchor="middle">your with-block</text><text class="sm" x="350" y="96" text-anchor="middle">the risky work</text>
+        <rect x="510" y="56" width="180" height="50" class="bb"/><text class="t" x="600" y="78" text-anchor="middle">__exit__(exc_type,…)</text><text class="sm" x="600" y="96" text-anchor="middle">release · runs even on error</text>
+        <path class="ar2" d="M192 81 H228"/><path class="ar2" d="M472 81 H508"/>
+        <path class="ar" d="M350 108 C350 150 600 150 600 110"/>
+        <text class="sm" x="470" y="168" text-anchor="middle">exception? → __exit__ sees it; returning True SUPPRESSES it (rarely what you want)</text>
+
+        <rect x="40" y="186" width="650" height="44" class="bx"/>
+        <text class="sm" x="60" y="205">Same protocol, many resources: files · DB transactions · locks · sockets · temp dirs · timers · redirect_stdout · pytest fixtures (yield).</text>
+        <text class="sm" x="60" y="223">Prefer <tspan class="mono">with</tspan> over try/finally: it is shorter, exception-safe, and re-entrant when written as classes.</text>
+        <rect x="710" y="186" width="170" height="44" class="bp"/>
+        <text class="sm" x="795" y="205" text-anchor="middle">3.10+ parenthesis</text>
+        <text class="sm" x="795" y="223" text-anchor="middle">with (open(a), open(b)):</text>
+      </svg>
+      <figcaption>Fig 9.3 — <code>with</code> is the RAII of Python: acquire in <code>__enter__</code>, release in <code>__exit__</code>.</figcaption>
+    </figure>
+    <pre><code># --- Using what exists ----------------------------------------------------
+from contextlib import (contextmanager, closing, suppress, redirect_stdout,
+                        ExitStack, nullcontext, chdir, AsyncExitStack)
+import tempfile, sqlite3, io, os, time
+
+with open("data.txt", encoding="utf-8") as fh:            # closes even on exception
+    data = fh.read()
+
+with suppress(FileNotFoundError):                          # ignore a specific error, cleanly
+    os.remove("maybe-there.tmp")
+
+with tempfile.TemporaryDirectory() as tmp:                 # auto-cleanup
+    path = os.path.join(tmp, "scratch.bin")
+
+with sqlite3.connect("app.db") as conn:                    # commits on success, rolls back on error
+    conn.execute("insert into t values (?)", (1,))
+
+buf = io.StringIO()
+with redirect_stdout(buf):
+    print("hello")                                         # captured into buf
+
+# --- Writing your own (generator version) --------------------------------
+@contextmanager
+def timed_block(label: str):
+    t0 = time.perf_counter()
+    try:
+        yield                                              # with-block runs here
+    finally:
+        print(f"{label}: {time.perf_counter()-t0:.3f}s")   # always
+
+# --- Writing your own (class version — reusable, inspectable) -------------
+class Transaction:
+    def __init__(self, conn):
+        self.conn = conn
+    def __enter__(self):
+        self.conn.execute("BEGIN")
+        return self.conn
+    def __exit__(self, exc_type, exc, tb):
+        if exc_type is None:
+            self.conn.execute("COMMIT")
+        else:
+            self.conn.execute("ROLLBACK")                   # return None → exception propagates
+        return False
+
+# --- Managing many at once (nested with-blocks, flattened) ----------------
+with ExitStack() as stack:
+    files = [stack.enter_context(open(p)) for p in paths]
+    conn = stack.enter_context(sqlite3.connect("app.db"))
+    # everything closed/rolled back in reverse order at the end of the block</code></pre>
+    <div class="tip"><b>Design tip:</b> state-changing helpers are the best candidates for context managers —
+    <code>chdir()</code>, <code>pushd</code>, a DB transaction, a temporary feature flag, a mock, a stdout redirect.
+    If you find yourself writing “remember to close/reset this later” in a comment, write a context manager instead.</div>
+  </section>
+</section>

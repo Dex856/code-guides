@@ -1,0 +1,537 @@
+
+<section class="chapter" id="ch9">
+  <h2><span class="num">9</span> Memory, performance &amp; the JVM</h2>
+  <p class="tagline">Java hides memory from you — until the judge hands back <code>Memory Limit Exceeded</code> or
+  <code>Time Limit Exceeded</code> at the complexity you thought was fine.</p>
+
+  <div class="hero">
+    <h1>Why Java is slower — and how to fix it</h1>
+    <p class="lede">Every Java object carries an 8-byte header, every collection element is a reference, every
+    <code>Integer</code> is a separate allocation, and <code>int[][]</code> is an array of pointers to arrays. None of that
+    matters in business code and all of it matters at n = 10<sup>6</sup>. This chapter is the cost model, the five hot-spot
+    fixes, and how to estimate memory before you hit the limit.</p>
+  </div>
+
+  <section class="sub">
+    <h3>9.1 The object cost model</h3>
+    <table class="tbl">
+      <thead><tr><th>Thing</th><th>Bytes (64-bit JVM, compressed oops)</th><th>Consequence</th></tr></thead>
+      <tbody>
+        <tr><td><code>int</code> in an array</td><td>4</td><td>10<sup>6</sup> ints = 4 MB ✅</td></tr>
+        <tr><td><code>long</code> in an array</td><td>8</td><td>10<sup>6</sup> longs = 8 MB</td></tr>
+        <tr><td>Object header</td><td>12–16</td><td>an empty object is not free</td></tr>
+        <tr><td><code>Integer</code> object</td><td>16 (header + int, padded)</td><td><code>List&lt;Integer&gt;</code>: 4 B data → 16 B + 4–8 B reference ≈ 20–24 B per element</td></tr>
+        <tr><td>Array object overhead</td><td>~16</td><td><code>int[1000][1000]</code> adds 1000 row objects and 1000 references</td></tr>
+        <tr><td><code>HashMap</code> entry (<code>Node</code>)</td><td>~32 + key + value objects</td><td>10<sup>6</sup> entries ≈ 80–150 MB — the usual cause of MLE</td></tr>
+        <tr><td><code>String</code></td><td>~40 + 2 × length</td><td>10<sup>5</sup> short strings ≈ several MB plus the objects</td></tr>
+        <tr><td>Reference</td><td>4 (with compressed oops)</td><td><code>int[][]</code> rows are pointer-chased</td></tr>
+      </tbody>
+    </table>
+    <figure class="dg">
+      <svg viewBox="0 0 900 330" role="img" aria-label="Memory layout comparison between primitive arrays, boxed lists and hash maps">
+        <text class="tt" x="450" y="28" text-anchor="middle">The same 10⁶ numbers, three ways</text>
+        <rect class="bc" x="30" y="52" width="270" height="120" rx="9"/>
+        <text class="t" x="46" y="76">int[] a = new int[1_000_000]</text>
+        <text class="sm" x="46" y="98">· one contiguous block</text>
+        <text class="sm" x="46" y="118">· 4 MB total</text>
+        <text class="sm" x="46" y="138">· a[i] = one bounds-checked load</text>
+        <text class="sm" x="46" y="158">✅ the choice for hot paths</text>
+        <rect class="bb" x="315" y="52" width="270" height="120" rx="9"/>
+        <text class="t" x="331" y="76">List&lt;Integer&gt; of 10⁶</text>
+        <text class="sm" x="331" y="98">· 10⁶ boxed objects (16 B each)</text>
+        <text class="sm" x="331" y="118">· + references + caches</text>
+        <text class="sm" x="331" y="138">· ≈ 20–28 MB, pointer chase per read</text>
+        <text class="sm" x="331" y="158">⚠ 5–6× the memory, 2–4× slower</text>
+        <rect class="bd" x="600" y="52" width="270" height="120" rx="9"/>
+        <text class="t" x="616" y="76">HashMap with 10⁶ entries</text>
+        <text class="sm" x="616" y="98">· table array + Node objects</text>
+        <text class="sm" x="616" y="118">· boxed keys and values</text>
+        <text class="sm" x="616" y="138">· ≈ 80–150 MB</text>
+        <text class="sm" x="616" y="158">❌ the usual “MLE” in Java</text>
+        <line class="lnd" x1="30" y1="192" x2="870" y2="192"/>
+        <text class="t" x="30" y="218">Estimating before you submit</text>
+        <text class="mono sm" x="30" y="240">memory ≈ (#ints × 4) + (#longs × 8) + (#objects × 24) + (map entries × 48)</text>
+        <text class="sm" x="30" y="266">LeetCode's limit is typically 256 MB per submission. A 1000 × 1000 long[][] DP = 8 MB ✅</text>
+        <text class="sm" x="30" y="286">A 10<sup>5</sup>-node graph as Map&lt;Integer, List&lt;Integer&gt;&gt; ≈ 15 MB — fine; 10<sup>6</sup> nodes is not.</text>
+        <text class="sm" x="30" y="310">“Roll the DP rows” (keep only the previous row) turns an O(n·m) table into O(m) memory.</text>
+      </svg>
+      <figcaption>Fig 9.1 — Choose the container for the data volume, not for the API you like. The memory limit is a
+      correctness constraint like any other.</figcaption>
+    </figure>
+  </section>
+
+  <section class="sub">
+    <h3>9.2 Where Java solutions actually lose time</h3>
+    <table class="tbl">
+      <thead><tr><th>Hot spot</th><th>Cost</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td>Boxing inside a loop over 10<sup>6</sup>+ elements</td><td>allocation + indirection per access</td><td><code>int[]</code>/<code>long[]</code>; convert at the boundary only</td></tr>
+        <tr><td>String concatenation in loops</td><td>O(n²) copying</td><td><code>StringBuilder</code></td></tr>
+        <tr><td><code>HashMap&lt;Integer,…&gt;</code> where an array index would do</td><td>~10–20× slower per lookup</td><td>values are small/bounded → <code>int[]</code> or <code>char[]</code> counter</td></tr>
+        <tr><td><code>LinkedList</code> / <code>Stack</code></td><td>node per element, poor locality</td><td><code>ArrayDeque</code></td></tr>
+        <tr><td><code>ArrayList.remove(0)</code> in a loop</td><td>O(n) shift each time → O(n²)</td><td><code>ArrayDeque</code> (O(1) at both ends) or an index pointer</td></tr>
+        <tr><td>Streams in a hot path</td><td>lambda dispatch + boxing</td><td>plain loops</td></tr>
+        <tr><td><code>System.out.println</code> per element</td><td>synchronised writes</td><td>print nothing in submissions; in scripts use one <code>StringBuilder</code></td></tr>
+        <tr><td>Recursion with heavy frames (many locals)</td><td>10<sup>5</sup> frames may overflow</td><td>explicit stack, or fewer locals per frame</td></tr>
+        <tr><td>Rebuilding a map/tree per query</td><td>factor q on top</td><td>precompute once (prefix sums, sparse table, sort once)</td></tr>
+        <tr><td>Quadratic string building of paths in DFS</td><td>each level copies the prefix</td><td><code>StringBuilder</code> with <code>setLength</code> backtracking</td></tr>
+      </tbody>
+    </table>
+    <pre><code>// The same algorithm, 10× apart — learn to see these
+// ❌ 4 HashMap lookups per element, boxing, allocation
+long bad(long[] a) {
+    Map&lt;Integer,Integer&gt; seen = new HashMap&lt;&gt;();
+    long total = 0;
+    for (int i = 0; i &lt; a.length; i++) {
+        if (seen.containsKey((int) a[i])) total += seen.get((int) a[i]);
+        seen.put((int) a[i], seen.getOrDefault((int) a[i], 0) + 1);
+    }
+    return total;
+}
+// ✅ array counter when the range is known; primitives throughout
+long good(int[] a, int maxVal) {
+    int[] cnt = new int[maxVal + 1];
+    long total = 0;
+    for (int v : a) { total += cnt[v]; cnt[v]++; }
+    return total;
+}</code></pre>
+    <div class="tip"><b>The 30-second audit before submitting:</b> (1) any boxed types inside the outermost loop? (2) any
+    string concatenation? (3) any <code>remove(0)</code> or <code>contains</code> on a list? (4) any hash container that
+    could be an array? (5) any recursion deeper than ~10<sup>5</sup>? Fix them in that order — it matches the order they
+    appear in profiles.</div>
+  </section>
+
+  <section class="sub">
+    <h3>9.3 Measuring instead of guessing</h3>
+    <pre><code>long t0 = System.nanoTime();
+// … the code under test …
+long ms = (System.nanoTime() - t0) / 1_000_000;
+System.out.println(ms + " ms");</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Rule</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Warm up: run the measured block ~3 times, time the last run</td><td>The JIT compiles hot methods after a few thousand iterations; the first run is interpreted</td></tr>
+        <tr><td>Use <code>nanoTime</code>, never <code>currentTimeMillis</code></td><td>Millisecond resolution is too coarse for micro-benchmarks</td></tr>
+        <tr><td>Measure the <i>max-size</i> input, not a small one</td><td>Worst case is what the judge runs</td></tr>
+        <tr><td>Compare implementations, not absolute numbers</td><td>Machines differ; ratios are transferable</td></tr>
+        <tr><td>Never leave timing in the submission</td><td>The judge counts every instruction</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>9.4 Threads, virtual threads, and why the judge does not care</h3>
+    <p>LeetCode runs your method on one thread, once per test case. Concurrency tools are relevant in system-design rounds
+    and production code, not in an algorithm submission. One paragraph, so you are not caught out if it comes up:</p>
+    <table class="tbl">
+      <thead><tr><th>Concept</th><th>One-line reality</th></tr></thead>
+      <tbody>
+        <tr><td><code>Thread</code> / <code>ExecutorService</code></td><td>OS-backed threads, ~1 MB stack each — parallelism for CPU-bound work</td></tr>
+        <tr><td><code>ConcurrentHashMap</code>, <code>AtomicInteger</code></td><td>Lock-free/synchronised structures for sharing state between threads</td></tr>
+        <tr><td>Virtual threads (Java 21+)</td><td>Millions of cheap threads for blocking I/O; still not useful for a CPU-bound algorithm</td></tr>
+        <tr><td><code>synchronized</code> / <code>volatile</code></td><td>Mutual exclusion / visibility; in LeetCode they only slow you down</td></tr>
+      </tbody>
+    </table>
+    <div class="note"><b>If an interviewer asks “how would you parallelise this?”</b> the expected answer is about
+    partitioning the input (split the array, merge partial results), not about syntax. Mention
+    <code>Arrays.parallelSort</code> and parallel streams as the built-in forms, then note that for n ≤ 10<sup>6</sup> the
+    single-threaded version is already fast enough that coordination would dominate.</div>
+  </section>
+
+  <section class="sub">
+    <h3>9.5 Memory-saving patterns</h3>
+    <table class="tbl">
+      <thead><tr><th>Pattern</th><th>Before → after</th><th>Where used</th></tr></thead>
+      <tbody>
+        <tr><td>Rolling DP rows</td><td><code>long[n][m]</code> → two <code>long[m]</code> rows</td><td>edit distance, knapsack, grid paths (when only the previous row is needed)</td></tr>
+        <tr><td>In-place DP on the input</td><td>extra table → the array itself</td><td>house robber, longest increasing subsequence (patching)</td></tr>
+        <tr><td>Bitset state compression</td><td><code>boolean[n]</code> → <code>long[]</code> bits (64× smaller)</td><td>visited flags, subset-sum over a value range</td></tr>
+        <tr><td>Value-range arrays instead of maps</td><td><code>HashMap&lt;Integer,…&gt;</code> → <code>int[maxVal+1]</code></td><td>counting, freq of chars/letters, coordinates after compression</td></tr>
+        <tr><td>Flatten 2-D to 1-D</td><td><code>int[m][n]</code> → <code>int[m*n]</code></td><td>grids, DSU over cells (<code>r*cols + c</code>)</td></tr>
+        <tr><td>Reuse buffers</td><td>new <code>StringBuilder</code> per level → one, with <code>setLength</code></td><td>backtracking, path building</td></tr>
+      </tbody>
+    </table>
+    <pre><code>// Rolling rows: 0/1 knapsack in O(capacity) memory instead of O(n × capacity)
+int knapsack(int[] w, int[] v, int cap) {
+    int[] dp = new int[cap + 1];
+    for (int i = 0; i &lt; w.length; i++)
+        for (int c = cap; c &gt;= w[i]; c--)              // ⚠ downward: each item used once
+            dp[c] = Math.max(dp[c], dp[c - w[i]] + v[i]);
+    return dp[cap];
+}
+// Unbounded knapsack (coin change): the SAME loop, direction UP
+// for (int c = w[i]; c &lt;= cap; c++) dp[c] = Math.max(dp[c], dp[c - w[i]] + v[i]);</code></pre>
+    <div class="trap"><b>The direction of that inner loop is the whole difference</b> between “use each item once” and
+    “use each item any number of times”. Write the loop variable, then ask: <i>when I read <code>dp[c - w[i]]</code>, do I
+    want the value from before this item or after?</i></div>
+  </section>
+</section>
+
+<section class="chapter" id="ch10">
+  <h2><span class="num">10</span> Bits &amp; modular arithmetic</h2>
+  <p class="tagline">Bit tricks turn O(n) space into O(1); modular arithmetic turns “the answer is astronomically large”
+  into “compute it mod 10<sup>9</sup>+7”.</p>
+
+  <div class="hero">
+    <h1>Bits, sets and modular math</h1>
+    <p class="lede">Two families of tricks that appear in every interview cycle: bit manipulation (XOR, masks, subsets) and
+    number theory under a modulus (powers, inverses, combinations, sieves). Both are memorisable in an afternoon and are
+    individually worth several problems in the bank.</p>
+  </div>
+
+  <section class="sub">
+    <h3>10.1 The bit operation toolkit</h3>
+    <table class="tbl">
+      <thead><tr><th>Expression</th><th>Meaning</th><th>Canonical use</th></tr></thead>
+      <tbody>
+        <tr><td><code>x &amp; (1 &lt;&lt; k)</code></td><td>is bit k set?</td><td>membership test, visited flags</td></tr>
+        <tr><td><code>x | (1 &lt;&lt; k)</code></td><td>set bit k</td><td>add to set</td></tr>
+        <tr><td><code>x &amp; ~(1 &lt;&lt; k)</code></td><td>clear bit k</td><td>remove from set</td></tr>
+        <tr><td><code>x ^ (1 &lt;&lt; k)</code></td><td>toggle bit k</td><td>flip a state</td></tr>
+        <tr><td><code>x &amp; (x - 1)</code></td><td>clear the lowest set bit</td><td>count set bits (Brian Kernighan), power-of-two test</td></tr>
+        <tr><td><code>x &amp; -x</code></td><td>isolate the lowest set bit</td><td>Fenwick trees, splitting XOR-with-two-singles</td></tr>
+        <tr><td><code>x &gt;&gt; k</code> / <code>&gt;&gt;&gt; k</code></td><td>arithmetic / logical shift</td><td>divide by 2<sup>k</sup>; <code>&gt;&gt;&gt;</code> treats the value as unsigned</td></tr>
+        <tr><td><code>x * 2</code> vs <code>x &lt;&lt; 1</code></td><td>same result; shift is not faster in Java</td><td>use whichever is clearer — the JIT handles it</td></tr>
+        <tr><td><code>Integer.bitCount(x)</code></td><td>popcount, intrinsic</td><td>Hamming distance/weight</td></tr>
+      </tbody>
+    </table>
+    <pre><code>// XOR identities (the source of every “find the single number” problem):
+//     x ^ x == 0        x ^ 0 == x        a ^ b ^ a == b
+// 1 · one element appears once, all others twice
+int single = 0; for (int v : a) single ^= v;
+
+// 2 · two elements appear once (all others twice): split by a differing bit
+int xr = 0; for (int v : a) xr ^= v;
+int low = xr &amp; -xr;                       // lowest bit where the two singles differ
+int g1 = 0, g2 = 0;
+for (int v : a) { if ((v &amp; low) != 0) g1 ^= v; else g2 ^= v; }
+
+// 3 · the third number appears once among triples: count bits mod 3
+int once = 0;
+for (int b = 0; b &lt; 32; b++) {
+    int cnt = 0;
+    for (int v : a) cnt += (v &gt;&gt; b) &amp; 1;
+    if (cnt % 3 != 0) once |= (1 &lt;&lt; b);
+}
+
+// 4 · power of two, and the next power of two
+boolean isPow2 = x &gt; 0 &amp;&amp; (x &amp; (x - 1)) == 0;
+int highest = Integer.highestOneBit(x);
+int nextPow2 = Integer.highestOneBit(x) &lt;&lt; 1;   // (x is already a power of two)
+int minPow2 = Integer.MAX_VALUE - Integer.numberOfLeadingZeros(x) &gt;&gt; 27;  // arithmetic-free variant</code></pre>
+    <div class="tip"><b>Fastest power-of-two check for arrays:</b> capacity 8, 16, 32… lets you replace
+    <code>i % n</code> with <code>i &amp; (n - 1)</code>. Java's own <code>HashMap</code> does exactly this.</div>
+  </section>
+
+  <section class="sub">
+    <h3>10.2 Subsets, masks and bitmask DP</h3>
+    <pre><code>// Iterate all 2^n subsets of n elements (n ≤ 20 in practice)
+for (int mask = 0; mask &lt; (1 &lt;&lt; n); mask++) {
+    for (int i = 0; i &lt; n; i++)
+        if ((mask &amp; (1 &lt;&lt; i)) != 0) { /* element i is in this subset */ }
+}
+int size = Integer.bitCount(mask);                 // Cardinality in O(1)
+
+// Iterate the submasks of a given mask (total 3^n over all masks — n ≤ 15–18)
+for (int sub = mask; sub &gt; 0; sub = (sub - 1) &amp; mask) { /* proper non-empty subset */ }
+
+// Set algebra on masks
+int union = a | b, inter = a &amp; b, diff = a &amp; ~b;
+boolean subset = (a &amp; b) == a;                    // a ⊆ b
+
+// Bitmask DP: dp[mask] = best value using exactly the elements in mask
+int[] dp = new int[1 &lt;&lt; n];
+Arrays.fill(dp, Integer.MAX_VALUE);
+dp[0] = 0;
+for (int mask = 0; mask &lt; (1 &lt;&lt; n); mask++) {
+    if (dp[mask] == Integer.MAX_VALUE) continue;
+    for (int i = 0; i &lt; n; i++) {
+        if ((mask &amp; (1 &lt;&lt; i)) != 0) continue;     // already used
+        int next = mask | (1 &lt;&lt; i);
+        dp[next] = Math.min(dp[next], dp[mask] + cost[i]);   // adapt the transition
+    }
+}
+// answer is typically dp[(1 &lt;&lt; n) - 1]</code></pre>
+    <div class="warn"><b>Choosing the state encoding.</b> A <code>long</code> holds 63 usable bits; a state needing more
+    than 20–22 items as a plain mask becomes memory-hostile (2<sup>n</sup> entries). When n ≥ 25, look for a different
+    structure — greedy, matching, or interval DP.</div>
+  </section>
+
+  <section class="sub">
+    <h3>10.3 Primes: sieve and factorisation</h3>
+    <pre><code>// Sieve of Eratosthenes — all primes below n, O(n log log n)
+boolean[] isComposite = new boolean[n];
+for (int p = 2; (long) p * p &lt; n; p++)                  // ⚠ the cast prevents overflow
+    if (!isComposite[p])
+        for (int m = p * p; m &lt; n; m += p) isComposite[m] = true;
+
+// Trial division for one number — O(sqrt n)
+boolean isPrime(long x) {
+    if (x &lt; 2) return false;
+    for (long d = 2; d * d &lt;= x; d++) if (x % d == 0) return false;
+    return true;
+}
+
+// Smallest-prime-factor sieve: factorise any x ≤ n in O(log x)
+int[] spf = new int[n + 1];
+for (int i = 2; i &lt;= n; i++) if (spf[i] == 0)
+    for (int j = i; j &lt;= n; j += i) if (spf[j] == 0) spf[j] = i;
+
+List&lt;Integer&gt; factorise(int x, int[] spf) {
+    List&lt;Integer&gt; out = new ArrayList&lt;&gt;();
+    while (x &gt; 1) { out.add(spf[x]); x /= spf[x]; }
+    return out;
+}
+
+// Greatest common divisor / least common multiple
+int gcd(int a, int b) { while (b != 0) { int t = a % b; a = b; b = t; } return a; }  // Euclid
+long lcm(long a, long b) { return a / gcd((int) a, (int) b) * b; }                  // divide FIRST
+
+// Count divisors by trial division: for (d = 1; d*d &lt;= x; d++) if (x % d == 0) cnt += (d*d == x ? 1 : 2);</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Limit</th><th>Best primality method</th></tr></thead>
+      <tbody>
+        <tr><td>x ≤ 10<sup>6</sup>, many queries</td><td>Sieve (or SPF sieve if you also need factorisation)</td></tr>
+        <tr><td>x ≤ 10<sup>12</sup>, one query</td><td>Trial division to √x (10<sup>6</sup> iterations — fast enough)</td></tr>
+        <tr><td>x up to 10<sup>18</sup>, one query</td><td>Miller–Rabin (deterministic bases 2,3,5,7,11,13,17,19,23,29,31,37 cover 64-bit) + Pollard's rho if you must factor</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>10.4 Modular arithmetic — the “answer mod 10<sup>9</sup>+7” drill</h3>
+    <pre><code>static final long MOD = 1_000_000_007L;
+
+long add(long a, long b) { return (a + b) % MOD; }
+long sub(long a, long b) { return (a - b % MOD + MOD) % MOD; }        // ⚠ negatives
+long mul(long a, long b) { return (a * b) % MOD; }                   // a,b &lt; 1e9 → product &lt; 1e18 ✅ fits in long
+
+long pow(long base, long exp) {                                       // fast exponentiation O(log exp)
+    long r = 1; base %= MOD;
+    while (exp &gt; 0) {
+        if ((exp &amp; 1) == 1) r = r * base % MOD;
+        base = base * base % MOD;
+        exp &gt;&gt;= 1;
+    }
+    return r;
+}
+
+long modInverse(long a) {                                             // Fermat: a^(p−2) when p is prime
+    return pow(a, MOD - 2);
+}
+long divide(long a, long b) { return a % MOD * modInverse(b) % MOD; } // “division” under a prime modulus
+
+// nCr mod p with factorials (precompute once: O(n))
+long[] fact, invFact;
+void precompute(int n) {
+    fact = new long[n + 1]; invFact = new long[n + 1];
+    fact[0] = 1;
+    for (int i = 1; i &lt;= n; i++) fact[i] = fact[i - 1] * i % MOD;
+    invFact[n] = modInverse(fact[n]);
+    for (int i = n; i &gt; 0; i--) invFact[i - 1] = invFact[i] * i % MOD;
+}
+long nCr(int n, int r) {
+    if (r &lt; 0 || r &gt; n) return 0;
+    return fact[n] * invFact[r] % MOD * invFact[n - r] % MOD;
+}</code></pre>
+    <div class="trap"><b>Modulo is not distributable over subtraction in Java.</b> <code>(a - b) % MOD</code> can be
+    negative. Always <code>((a - b) % MOD + MOD) % MOD</code>. The same applies to accumulating differences and to
+    hash-code-style keys.</div>
+    <table class="tbl">
+      <thead><tr><th>Symptom in the judge</th><th>Likely modular bug</th></tr></thead>
+      <tbody>
+        <tr><td>Negative answer</td><td>Subtraction without <code>+MOD</code></td></tr>
+        <tr><td>Answer off by a small constant</td><td>Missing <code>% MOD</code> on one branch of a DP transition</td></tr>
+        <tr><td>Answer correct for small n, wrong later</td><td><code>int</code> multiplication overflowing before the <code>% MOD</code> — use <code>long</code></td></tr>
+        <tr><td>Wrong on “divide by k” problems</td><td>Used integer division instead of the modular inverse</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>10.5 Geometry without floating point</h3>
+    <pre><code>// Prefer integer arithmetic: exact answers, no epsilon decisions
+long cross(int ax, int ay, int bx, int by, int cx, int cy) {   // (b−a) × (c−a)
+    return (long) (bx - ax) * (cy - ay) - (long) (by - ay) * (cx - ax);
+}
+// cross &gt; 0 → c is left of a→b · cross &lt; 0 → right · == 0 → collinear
+boolean onSegment(int ax, int ay, int bx, int by, int px, int py) {
+    return cross(ax, ay, bx, by, px, py) == 0
+        &amp;&amp; Math.min(ax, bx) &lt;= px &amp;&amp; px &lt;= Math.max(ax, bx)
+        &amp;&amp; Math.min(ay, by) &lt;= py &amp;&amp; py &lt;= Math.max(ay, by);
+}
+long sqDist(int ax, int ay, int bx, int by) {                  // compare squared distances
+    long dx = ax - bx, dy = ay - by;  return dx * dx + dy * dy;   // no sqrt needed for comparisons
+}
+double dist(int ax, int ay, int bx, int by) {
+    return Math.hypot((double) ax - bx, (double) ay - by);
+}
+
+// Convex hull (Andrew monotone chain) skeleton
+// 1 · sort points by x then y
+// 2 · build the lower hull: pop while the last turn is not counter-clockwise (cross &lt;= 0)
+// 3 · repeat backwards for the upper hull · concatenate, dropping the duplicated endpoints</code></pre>
+    <div class="note"><b>Precision rule of thumb:</b> if the answers are integers, stay in <code>long</code> (cross
+    products, squared distances, area × 2). Only convert to <code>double</code> for an output that is explicitly a real
+    number, and compare with an epsilon (ch. 2.6).</div>
+  </section>
+</section>
+
+<section class="chapter" id="ch11">
+  <h2><span class="num">11</span> Pattern → Java API map</h2>
+  <p class="tagline">Read the problem’s shape, pick the structure, write ten lines. This table is the recognition layer —
+  the fastest chapter in the guide to re-read before an interview.</p>
+
+  <div class="hero">
+    <h1>From pattern to API in one lookup</h1>
+    <p class="lede">Every interview problem is a known pattern in disguise. The left column tells you the disguise; the
+    right columns give the Java types and the exact methods. Skim it, then close the guide and implement from memory — that
+    is how recognition becomes reflex.</p>
+  </div>
+
+  <section class="sub">
+    <h3>11.1 The table</h3>
+    <table class="tbl">
+      <thead><tr><th>Problem says…</th><th>Pattern</th><th>Java structure</th><th>Key methods</th></tr></thead>
+      <tbody>
+        <tr><td>“find a pair/triple summing to X”</td><td>two pointers (sorted) or hash complement</td><td><code>int[]</code> sorted; <code>HashSet&lt;Integer&gt;</code></td><td><code>Arrays.sort</code>, <code>add</code>/<code>contains</code></td></tr>
+        <tr><td>“contiguous subarray with …, longest/shortest window”</td><td>sliding window</td><td>two <code>int</code> indices + a counter <code>int[]</code>/<code>Map</code></td><td>move <code>right</code>, shrink <code>left</code> while invalid</td></tr>
+        <tr><td>“subarray sum equals k”, “range sum”, “prefix divisible by k”</td><td>prefix sums</td><td><code>long[]</code> prefix; <code>HashMap&lt;Long,Integer&gt;</code></td><td><code>getOrDefault</code>, <code>merge</code></td></tr>
+        <tr><td>“count occurrences/frequencies”</td><td>frequency table</td><td><code>int[26]</code>, <code>int[128]</code>, or <code>HashMap</code></td><td><code>c - 'a'</code>, <code>merge(k,1,Integer::sum)</code></td></tr>
+        <tr><td>“has this been seen before?”, duplicates</td><td>hash set / map</td><td><code>HashSet&lt;T&gt;</code>, <code>HashMap&lt;T,V&gt;</code></td><td><code>add</code> returns false if present ✅</td></tr>
+        <tr><td>“nearest greater / smaller element”, “span”, “histogram”</td><td>monotonic stack</td><td><code>Deque&lt;Integer&gt;</code> of indices</td><td><code>push/pop/peek</code>, while <code>a[top] &lt; a[i]</code> pop</td></tr>
+        <tr><td>“max/min in every window of size k”</td><td>monotonic deque</td><td><code>ArrayDeque&lt;Integer&gt;</code> of indices</td><td><code>pollLast</code> while dominated, <code>peekFirst</code> = answer</td></tr>
+        <tr><td>“first k / k-th largest / merge k sorted”</td><td>heap</td><td><code>PriorityQueue&lt;T&gt;</code></td><td>size-k heap, <code>offer</code>/<code>poll</code>/<code>peek</code></td></tr>
+        <tr><td>“median of a stream”</td><td>two heaps</td><td>max-heap + min-heap</td><td>rebalance to size ±1 (ch. 13.9)</td></tr>
+        <tr><td>“sorted insertion + closest value”</td><td>balanced BST</td><td><code>TreeMap</code>, <code>TreeSet</code></td><td><code>floorKey</code>, <code>ceilingKey</code>, <code>higherKey</code>, <code>lowerKey</code></td></tr>
+        <tr><td>“least recently used cache”</td><td>hash + order</td><td><code>LinkedHashMap&lt;K,V&gt;(16, .75f, true)</code></td><td><code>get</code> reorders, <code>removeEldestEntry</code> override</td></tr>
+        <tr><td>“schedule/intervals: merge, insert, meeting rooms”</td><td>sort by start</td><td><code>int[][]</code> + comparator</td><td><code>Arrays.sort(iv, (a,b)-&gt;Integer.compare(a[0],b[0]))</code></td></tr>
+        <tr><td>“minimum platforms / max events at once”, “k closest points”</td><td>sort + heap</td><td>sort + <code>PriorityQueue</code></td><td>sweep and keep a heap of active items</td></tr>
+        <tr><td>“smallest/largest capacity such that feasible”</td><td>binary search on answer</td><td>two <code>long</code> bounds + predicate</td><td><code>lo + (hi-lo)/2</code> (templates B/C, ch. 13.4)</td></tr>
+        <tr><td>“search in a rotated/sorted matrix”</td><td>binary search variants</td><td><code>int[]</code>/<code>int[][]</code></td><td>compare <code>mid</code> with the sorted half’s ends</td></tr>
+        <tr><td>“k-th smallest in a matrix / two sorted arrays”</td><td>heap or binary search partition</td><td><code>PriorityQueue</code> or index maths</td><td>partition sizes <code>k</code> and <code>k+1</code></td></tr>
+        <tr><td>“shortest path, unweighted”</td><td>BFS</td><td><code>ArrayDeque&lt;int[]&gt;</code> + <code>int[][] dist</code></td><td><code>offer</code>, <code>poll</code>, level loop by size</td></tr>
+        <tr><td>“shortest path, weights ≥ 0”</td><td>Dijkstra</td><td><code>PriorityQueue&lt;long[]&gt;</code></td><td>skip stale entries: <code>if (d &gt; dist[u]) continue;</code></td></tr>
+        <tr><td>“0/1 weights”</td><td>0-1 BFS</td><td><code>ArrayDeque&lt;int[]&gt;</code></td><td><code>offerFirst</code>/<code>offerLast</code></td></tr>
+        <tr><td>“prerequisites / course order / build order”</td><td>topological sort (Kahn)</td><td><code>int[] indeg</code> + <code>ArrayDeque</code></td><td>count processed nodes to detect cycles</td></tr>
+        <tr><td>“connected components / merging accounts / cycle in undirected graph”</td><td>union-find</td><td><code>DSU</code> (ch. 8.1)</td><td><code>find</code>, <code>union</code> returns false on a cycle</td></tr>
+        <tr><td>“islands / flood fill / rotting oranges / walls”</td><td>grid BFS/DFS</td><td><code>char[][]</code>/<code>int[][]</code> + queue</td><td>8 equal direction arrays, in-place marking</td></tr>
+        <tr><td>“number of ways / min cost / can we reach state”</td><td>dynamic programming</td><td><code>long[]</code>/<code>long[][]</code></td><td>define the state, then the transition, then the order</td></tr>
+        <tr><td>“each item used once / any number of times”</td><td>0-1 vs unbounded knapsack</td><td>1-D <code>long[]</code> over capacity</td><td>loop capacity <b>down</b> vs <b>up</b> (ch. 9.5)</td></tr>
+        <tr><td>“longest increasing subsequence”</td><td>patience sorting (tails array)</td><td><code>int[] tails</code></td><td>manual lower-bound loop, O(n log n)</td></tr>
+        <tr><td>“edit distance / wildcard / LCS”</td><td>2-D DP + rolling rows</td><td>two rows of <code>int[]</code></td><td><code>dp[i][j] = f(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])</code></td></tr>
+        <tr><td>“generate all subsets/permutations/valid boards”</td><td>backtracking</td><td>recursive DFS + <code>used[]</code></td><td>choose → explore → unchoose</td></tr>
+        <tr><td>“shortest transformation / word ladder”</td><td>BFS over states</td><td><code>HashSet&lt;String&gt;</code> frontier</td><td>generate neighbours, mark visited at enqueue</td></tr>
+        <tr><td>“prefix search / autocomplete / wildcard words”</td><td>trie</td><td><code>int[nodes][26]</code> or node maps</td><td><code>insert</code>, <code>startsWith</code> (ch. 8.3)</td></tr>
+        <tr><td>“single number / pairs of bits / subsets of a bitmask”</td><td>bit manipulation</td><td><code>int</code>/<code>long</code> masks</td><td><code>^</code>, <code>&amp;</code>, <code>x &amp; -x</code>, <code>bitCount</code></td></tr>
+        <tr><td>“count ways mod 10<sup>9</sup>+7”</td><td>modular combinatorics</td><td><code>long</code> + factorials</td><td><code>pow</code>, <code>nCr</code>, <code>modInverse</code> (ch. 10.4)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>11.2 Reading a problem in 60 seconds</h3>
+    <ol>
+      <li><b>Restate it in one sentence</b> with the input/output types. If you cannot, you have not understood it yet.</li>
+      <li><b>Write the smallest example by hand</b> and solve it manually. The manual steps are the algorithm’s first draft.</li>
+      <li><b>Read the constraints</b> and pick the intended complexity from the table in ch. 14.1. This single step rules out most wrong approaches.</li>
+      <li><b>Find the pattern in the table above</b> — the phrasing “contiguous”, “k-th”, “number of ways”, “shortest” maps directly.</li>
+      <li><b>Check the edge cases</b> before coding: empty input, single element, all equal, negatives, duplicates, maximum size.</li>
+      <li><b>State the plan out loud</b> (or in a comment) in ≤ 2 sentences, then write the code.</li>
+    </ol>
+    <div class="tip"><b>The interview scoring order is: clarify → approach → code → complexity → test.</b> Skipping the first
+    two to “save time” is the most common way to fail an otherwise solvable problem, because the interviewer is scoring the
+    reasoning, not the typing.</div>
+  </section>
+</section>
+
+<section class="chapter" id="ch12">
+  <h2><span class="num">12</span> Pitfalls that cost submissions</h2>
+  <p class="tagline">A checklist you read before every submit. Each line has cost someone an offer.</p>
+
+  <div class="hero">
+    <h1>The failure checklist</h1>
+    <p class="lede">Wrong answers in Java cluster: equality, overflow, mutation during iteration, unordered assumptions,
+    and default values that are <code>null</code> instead of <code>0</code>. Forty pitfalls, grouped, each with the fix in
+    one line.</p>
+  </div>
+
+  <section class="sub">
+    <h3>12.1 Equality, identity and defaults</h3>
+    <table class="tbl">
+      <thead><tr><th>#</th><th>Pitfall</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td><code>Integer == Integer</code> outside −128…127</td><td><code>equals</code> / <code>intValue()</code> / unbox by assignment to <code>int</code></td></tr>
+        <tr><td>2</td><td><code>String == String</code> for runtime-built strings</td><td><code>equals</code>, <code>equalsIgnoreCase</code></td></tr>
+        <tr><td>3</td><td><code>arr.equals(other)</code></td><td><code>Arrays.equals</code> / <code>deepEquals</code></td></tr>
+        <tr><td>4</td><td><code>Integer[]</code> initialized to <code>null</code>, not 0</td><td>explicit <code>Arrays.fill(a, 0)</code> or use <code>int[]</code></td></tr>
+        <tr><td>5</td><td>Unboxing a <code>null</code> from a map/list</td><td><code>getOrDefault</code>, null checks, never store nulls</td></tr>
+        <tr><td>6</td><td><code>map.get(k) != null</code> as “containsKey”</td><td>fine only if nulls are never stored — otherwise use <code>containsKey</code></td></tr>
+        <tr><td>7</td><td>Comparing <code>Double</code>/<code>double</code> with <code>==</code></td><td>epsilon compare, <code>Double.compare</code></td></tr>
+        <tr><td>8</td><td><code>List.of(...)</code> used where mutation is needed</td><td><code>new ArrayList&lt;&gt;(List.of(...))</code></td></tr>
+        <tr><td>9</td><td><code>Map.of(...)</code> iterated expecting a fixed order</td><td>order is unspecified — sort keys if output must be deterministic</td></tr>
+        <tr><td>10</td><td><code>new Integer(5)</code> (deprecated)</td><td><code>Integer.valueOf(5)</code> / autoboxing</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>12.2 Arithmetic and boundaries</h3>
+    <table class="tbl">
+      <thead><tr><th>#</th><th>Pitfall</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td>11</td><td><code>int * int</code> overflow</td><td>widen an operand to <code>long</code> before multiplying</td></tr>
+        <tr><td>12</td><td><code>(lo + hi) / 2</code></td><td><code>lo + (hi - lo) / 2</code></td></tr>
+        <tr><td>13</td><td>Accumulating sums in <code>int</code></td><td><code>long</code> accumulator whenever values can exceed 2 × 10<sup>9</sup></td></tr>
+        <tr><td>14</td><td>Negative results with <code>%</code></td><td><code>((a % m) + m) % m</code> or <code>Math.floorMod</code></td></tr>
+        <tr><td>15</td><td><code>Math.abs(Integer.MIN_VALUE)</code> negative</td><td>widen to <code>long</code> first</td></tr>
+        <tr><td>16</td><td><code>-7 / 2 == -3</code> when floor was intended</td><td><code>Math.floorDiv</code> / <code>Math.floor(-7.0/2)</code></td></tr>
+        <tr><td>17</td><td>Comparator by subtraction <code>a - b</code></td><td><code>Integer.compare</code> / <code>Long.compare</code></td></tr>
+        <tr><td>18</td><td><code>(char) (c + 1)</code> omitted</td><td>cast back to <code>char</code> after <code>int</code> arithmetic</td></tr>
+        <tr><td>19</td><td>Off-by-one: <code>&lt;=</code> in a 0-based loop</td><td><code>i &lt; n</code>; write the loop bounds as a half-open interval mentally</td></tr>
+        <tr><td>20</td><td>Empty input reaching <code>a[0]</code></td><td>guard <code>if (n == 0) return …;</code> first</td></tr>
+        <tr><td>21</td><td><code>while (lo &lt;= hi)</code> with template C-style updates</td><td>use the exact template frames from ch. 13.4</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>12.3 Collections and iteration</h3>
+    <table class="tbl">
+      <thead><tr><th>#</th><th>Pitfall</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td>22</td><td>Removing inside for-each</td><td><code>iterator.remove()</code> or <code>removeIf</code></td></tr>
+        <tr><td>23</td><td><code>list.remove(1)</code> on <code>List&lt;Integer&gt;</code> removes index 1</td><td><code>remove(Integer.valueOf(1))</code></td></tr>
+        <tr><td>24</td><td>Assuming <code>HashMap</code> iteration order</td><td><code>TreeMap</code>/<code>LinkedHashMap</code>, or sort the keys</td></tr>
+        <tr><td>25</td><td>Assuming <code>PriorityQueue</code> iteration is sorted</td><td>poll repeatedly, or sort</td></tr>
+        <tr><td>26</td><td><code>List.subList</code> treated as a copy</td><td><code>new ArrayList&lt;&gt;(list.subList(a,b))</code></td></tr>
+        <tr><td>27</td><td><code>Arrays.asList</code> result mutated (<code>add</code>)</td><td>wrap in <code>new ArrayList&lt;&gt;(...)</code></td></tr>
+        <tr><td>28</td><td><code>subList</code> of <code>Arrays.asList</code>, then structural edit</td><td>same fix — copy first</td></tr>
+        <tr><td>29</td><td><code>keySet()</code> assumed to be a snapshot</td><td>copy with <code>new HashSet&lt;&gt;(map.keySet())</code> before mutating the map</td></tr>
+        <tr><td>30</td><td><code>Set</code> of arrays/mutable objects</td><td>immutable keys: <code>List.of</code>, records, packed longs</td></tr>
+        <tr><td>31</td><td><code>TreeSet</code> used as a multiset</td><td>deduplicates silently — use <code>TreeMap&lt;T,Integer&gt;</code> counts</td></tr>
+        <tr><td>32</td><td><code>ArrayDeque</code> given <code>null</code></td><td>it throws NPE by design — use a sentinel or <code>LinkedList</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>12.4 Judge-specific traps</h3>
+    <table class="tbl">
+      <thead><tr><th>#</th><th>Pitfall</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td>33</td><td>Instance/static state left over between test cases</td><td>reinitialise in the public method; prefer locals</td></tr>
+        <tr><td>34</td><td>Printing inside the solution</td><td>remove all output; the judge compares return values</td></tr>
+        <tr><td>35</td><td>Changing the given method signature</td><td>keep the exact signature; add an overloaded helper if needed</td></tr>
+        <tr><td>36</td><td>Returning <code>null</code> instead of an empty array/list</td><td>match the document: usually <code>new int[0]</code> / <code>Collections.emptyList()</code></td></tr>
+        <tr><td>37</td><td>Returning <code>List&lt;int[]&gt;</code> from an <code>int[][]</code> signature</td><td>convert with <code>toArray(new int[0][])</code></td></tr>
+        <tr><td>38</td><td>Recursion depth on a 10<sup>5</sup>-node list/graph</td><td>iterate or use an explicit stack (ch. 7.4)</td></tr>
+        <tr><td>39</td><td>HashMap-driven TLE (<code>hashCode</code> collisions on adversarial input)</td><td>encode to <code>long</code>/arrays; Java uses tree bins so it rarely degrades, but the boxing cost remains</td></tr>
+        <tr><td>40</td><td>Answer correct but time-marginal</td><td>audit ch. 9.2 (boxing, strings, <code>remove(0)</code>, rebuild-per-query)</td></tr>
+      </tbody>
+    </table>
+    <div class="tip"><b>The 20-second pre-submit ritual:</b> (1) reread the signature and return type; (2) check the empty and
+    single-element cases; (3) check the largest input for overflow and complexity; (4) confirm no prints, no leftover
+    fields, no debug code. Four checks, four different classes of bug.</div>
+  </section>
+</section>

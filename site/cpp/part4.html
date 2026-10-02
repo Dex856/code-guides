@@ -1,0 +1,415 @@
+<section class="chapter" id="ch9">
+  <h2><span class="num">9</span> Memory, undefined behaviour and speed</h2>
+  <p class="tagline">What actually makes C++ fast, what makes it dangerous, and the handful of habits that keep solutions safe on the judge.</p>
+
+  <section class="sub">
+    <h3>9.1 Where objects live</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 330" role="img" aria-label="Memory layout: stack, heap, static, and typical limits">
+        <text class="tt" x="20" y="26">Stack vs heap vs static — and the limits that decide your data structure</text>
+        <rect x="30" y="50" width="330" height="252" class="bx"/>
+        <text class="t" x="195" y="72" text-anchor="middle">Process memory</text>
+        <rect x="50" y="84" width="290" height="52" class="bc"/>
+        <text class="sm" x="66" y="104">stack — local variables, frames</text>
+        <text class="sm" x="66" y="124">grows DOWN · ~1–8 MB total · fast (pointer bump)</text>
+        <rect x="50" y="146" width="290" height="52" class="bb"/>
+        <text class="sm" x="66" y="166">heap — <tspan class="mono">new</tspan>, <tspan class="mono">vector</tspan> buffers, <tspan class="mono">ptr = new TreeNode()</tspan></text>
+        <text class="sm" x="66" y="186">grows UP · GBs available · allocation costs ~100 ns</text>
+        <rect x="50" y="208" width="290" height="40" class="ba"/>
+        <text class="sm" x="66" y="232">static / global — zero-initialised, whole program</text>
+        <rect x="50" y="254" width="290" height="38" class="bp"/>
+        <text class="sm" x="66" y="278">code (text) — binary, read-only</text>
+
+        <rect x="390" y="50" width="480" height="122" class="bd"/>
+        <text class="t" x="630" y="72" text-anchor="middle">Common crashes in contest code</text>
+        <text class="sm" x="410" y="96">✗ <tspan class="mono">int a[1000000];</tspan> inside a function → stack overflow (silent SIGSEGV)</text>
+        <text class="sm" x="410" y="118">✓ make it <tspan class="mono">static</tspan>, global, or a <tspan class="mono">vector</tspan> (heap) instead</text>
+        <text class="sm" x="410" y="140">✗ recursion deeper than ~10⁴–10⁵ frames → stack overflow</text>
+        <text class="sm" x="410" y="162">✓ convert to an explicit stack, or keep depth in check (DFS on 2·10⁵ nodes is risky)</text>
+
+        <rect x="390" y="184" width="480" height="118" class="bc"/>
+        <text class="t" x="630" y="206" text-anchor="middle">LeetCode limits to keep in mind</text>
+        <text class="sm" x="410" y="230">Memory limit is typically 256 MB. A <tspan class="mono">vector&lt;int&gt;</tspan> of 10⁷ ints = 40 MB.</text>
+        <text class="sm" x="410" y="252">A 2000×2000 int grid = 16 MB; the same grid of <tspan class="mono">bool</tspan> is ~0.25 MB.</text>
+        <text class="sm" x="410" y="272">Time limit is typically 1–3 s; a 10⁸-op loop in C++ usually runs in ~0.2–0.6 s.</text>
+        <text class="sm" x="410" y="292">Prefer <tspan class="mono">vector&lt;char&gt;</tspan>/<tspan class="mono">bitset</tspan> for visited flags, flat arrays for hot loops.</text>
+      </svg>
+      <figcaption>Fig 9.1 — Most “mysterious crashes” are one of the two red lines above: stack overflow, or reading past the end.</figcaption>
+    </figure>
+  </section>
+
+  <section class="sub">
+    <h3>9.2 Undefined behaviour checklist</h3>
+    <table class="tbl">
+      <thead><tr><th>UB</th><th>Example</th><th>Symptom on the judge</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td>Out-of-bounds read/write</td><td><code>v[i]</code>, <code>v[v.size()]</code>, <code>a[i+1]</code></td><td>Wrong answer, crash, or “works” locally</td><td>Check bounds; use <code>.at()</code> while debugging; ASan</td></tr>
+        <tr><td>Signed integer overflow</td><td><code>int x = 1e9; x + x</code></td><td>Wrong answer (wraps), unpredictable</td><td><code>long long</code>; promote with <code>1LL *</code></td></tr>
+        <tr><td>Iterator invalidation</td><td><code>push_back</code> while iterating a vector</td><td>Garbage values / crash</td><td>Copy, or use indices; <code>reserve</code> first</td></tr>
+        <tr><td>Dangling reference</td><td>returning a reference to a local; <code>string_view</code> to a temporary</td><td>Random wrong results</td><td>Return by value, or keep the owner alive</td></tr>
+        <tr><td>Null dereference</td><td><code>node-&gt;val</code> when <code>node == nullptr</code></td><td>Runtime error</td><td>Early return / guard clauses</td></tr>
+        <tr><td>Uninitialised variables</td><td><code>int x; cout &lt;&lt; x;</code></td><td>Random on every run</td><td><code>{} </code>, <code>vector(n, 0)</code></td></tr>
+        <tr><td>Invalid comparator</td><td><code>a &lt;= b</code> in <code>sort</code></td><td>Crash or scrambled output</td><td>Use strict <code>&lt;</code></td></tr>
+        <tr><td>Modifying while iterating</td><td><code>for (auto&amp; x : v) v.push_back(...)</code></td><td>Crash / infinite loop</td><td>Iterate over indices, or collect then apply</td></tr>
+        <tr><td>Use after free</td><td><code>delete p; p-&gt;x;</code></td><td>Random crash</td><td>Set <code>nullptr</code>; prefer no manual <code>new</code></td></tr>
+        <tr><td>Division by zero</td><td><code>x % 0</code></td><td>Runtime error / SIGFPE</td><td>Guard the modulus</td></tr>
+      </tbody>
+    </table>
+    <pre><code>// Turn silent UB into a loud, catchable exit during local testing:
+//   g++ -std=c++20 -g -fsanitize=address,undefined -fno-omit-frame-pointer sol.cpp
+//   ASan reports: "heap-buffer-overflow … READ of size 4 at 0x…" with the exact line.
+// Then recompile WITHOUT sanitizers for the judge (they cost 2× time).
+// On LeetCode you never see sanitizer output — so these bugs must be found locally.</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>9.3 Performance habits that move the needle</h3>
+    <pre><code>// 1 · Compile-level (judge already uses -O2; know why it matters)
+//    -O2 typically gives 5–20× over -O0. Inline small functions, mark hot lambdas
+//    with [](...) rather than std::function.
+
+// 2 · IO: the single biggest win for input-heavy problems
+ios::sync_with_stdio(false);     // stop syncing C++ streams with C stdio
+cin.tie(nullptr);                // stop flushing cout before every cin
+
+// 3 · Reserve and avoid copies
+vector&lt;int&gt; res; res.reserve(n);
+for (const auto&amp; x : big) { }     // const&amp;: no copy per element
+auto byValue = bigVector;          // ✗ O(n) copy
+const auto&amp; ref = bigVector;      // ✓
+
+// 4 · Choose the right container (the algorithmic win)
+//    membership: unordered_set O(1)  vs  vector O(n)
+//    ordered queries: set/map O(log n)
+//    top-K: priority_queue O(n log k) vs sort O(n log n)
+//    prefix sums: O(1) range queries
+
+// 5 · Cache friendliness (why vector beats list by 10× on real hardware)
+//    contiguous memory → prefetcher works; pointer chasing → cache misses
+
+// 6 · Avoid needless work in loops
+int n = (int)v.size();                       // hoist
+for (int i = 0; i &lt; n; ++i) { ... }          // not v.size() each time
+// compute prefix sums once instead of summing inside a loop (O(n²) → O(n))
+
+// 7 · Recursion overhead: iterative DFS/BFS over recursion when depth is large
+// 8 · Bitset tricks for set operations on 64/1024-bit sets (ch. 10)
+// 9 · Move semantics: std::move on containers you will not use again
+res.push_back(std::move(temp));              // avoid copying the buffer
+vector&lt;int&gt; steal = std::move(bigVec);       // bigVec becomes empty
+
+// 10 · Measure, do not guess
+//   chrono::steady_clock around suspect blocks; count operations; try small→large input sizes.</code></pre>
+    <div class="tip"><b>Practical time budget for C++ on LeetCode</b> (there is no fixed instruction count, but these are
+    the orders of magnitude that decide pass/TLE with a 1–2 s limit): 10⁸ simple operations ≈ 0.2–0.5 s ·
+    10⁷ <code>unordered_map</code> ops ≈ 0.5–1 s · 10⁷ <code>map</code>/<code>set</code> ops ≈ 2–5 s (too slow) ·
+    recursion on 10⁵ nodes is fine if depth stays O(log n) · O(n²) with n = 10⁴ is 10⁸ → borderline; with n = 10⁵ it never
+    passes.</div>
+  </section>
+</section>
+
+<section class="chapter" id="ch10">
+  <h2><span class="num">10</span> Bit manipulation and number theory</h2>
+  <p class="tagline">The tools for subset-enumeration, XOR puzzles, modular arithmetic and “O(1) math” questions.</p>
+
+  <section class="sub">
+    <h3>10.1 Bit operations</h3>
+    <figure class="dg">
+      <svg viewBox="0 0 900 300" role="img" aria-label="Bit manipulation operations">
+        <text class="tt" x="20" y="26">The six operations that answer most bit questions</text>
+        <rect x="30" y="50" width="410" height="106" class="bx"/>
+        <text class="mono sm" x="50" y="74">x &amp; (1 &lt;&lt; k)        // test bit k</text>
+        <text class="mono sm" x="50" y="96">x |= (1 &lt;&lt; k)       // set bit k</text>
+        <text class="mono sm" x="50" y="118">x &amp;= ~(1 &lt;&lt; k)      // clear bit k</text>
+        <text class="mono sm" x="50" y="140">x ^= (1 &lt;&lt; k)       // toggle bit k</text>
+        <rect x="470" y="50" width="400" height="106" class="bx"/>
+        <text class="mono sm" x="490" y="74">x &amp; (x - 1)         // clear the LOWEST set bit</text>
+        <text class="mono sm" x="490" y="96">x &amp; -x              // isolate the lowest set bit</text>
+        <text class="mono sm" x="490" y="118">x &gt;&gt;&gt;/&lt;&lt;&gt;             // logical shift (use unsigned)</text>
+        <text class="mono sm" x="490" y="140">__builtin_popcount(x)  // count set bits (GCC/Clang)</text>
+
+        <rect x="30" y="176" width="270" height="104" class="bc"/>
+        <text class="t" x="165" y="198" text-anchor="middle">Bit identities worth memorising</text>
+        <text class="sm" x="50" y="222">x ^ x = 0 · x ^ 0 = x · a ^ b = b ^ a</text>
+        <text class="sm" x="50" y="244">x &amp; (x-1) == 0  ⇔  x is a power of two</text>
+        <text class="sm" x="50" y="266">n &amp; 1 → odd/even · n &gt;&gt; 1 → n/2</text>
+        <rect x="320" y="176" width="270" height="104" class="bb"/>
+        <text class="t" x="455" y="198" text-anchor="middle">Builtins (GCC/Clang, O(1))</text>
+        <text class="mono sm" x="340" y="222">__builtin_popcountll(x)</text>
+        <text class="mono sm" x="340" y="244">__builtin_ctz(x)   // trailing zeros</text>
+        <text class="mono sm" x="340" y="266">__builtin_clz(x) · __lg(x)</text>
+        <rect x="610" y="176" width="260" height="104" class="bp"/>
+        <text class="t" x="740" y="198" text-anchor="middle">Subset enumeration</text>
+        <text class="mono sm" x="630" y="222">for (int m = 0; m &lt; (1&lt;&lt;n); ++m)</text>
+        <text class="mono sm" x="630" y="244">  if (m &gt;&gt; i &amp; 1) /* i in subset */</text>
+        <text class="mono sm" x="630" y="266">// all submasks of S:</text>
+        <text class="mono sm" x="630" y="284">for (int sub=S; sub; sub=(sub-1)&amp;S)</text>
+      </svg>
+      <figcaption>Fig 10.1 — Bit tricks turn many “hard” problems into three lines: XOR cancellation, submask enumeration and popcount DP.</figcaption>
+    </figure>
+    <pre><code>// ---- the classic XOR problems -------------------------------------------
+int singleNumber(const vector&lt;int&gt;&amp; a) {           // every element twice, one once
+    int x = 0; for (int v : a) x ^= v; return x;    // O(1) space, no hashing
+}
+pair&lt;int,int&gt; twoSingles(const vector&lt;int&gt;&amp; a) {    // two elements appear once
+    int xr = 0; for (int v : a) xr ^= v;
+    int low = xr &amp; -xr;                             // isolate a differing bit
+    int g1 = 0, g2 = 0;
+    for (int v : a) (v &amp; low ? g1 : g2) ^= v;
+    return {g1, g2};
+}
+
+// ---- counts and powers ---------------------------------------------------
+__builtin_popcount(255);                            // 8
+__builtin_popcountll(1ULL &lt;&lt; 40);                   // 1
+bool isPow2(long long x) { return x &gt; 0 &amp;&amp; (x &amp; (x - 1)) == 0; }
+int lowbit(int x) { return x &amp; -x; }               // value of the lowest set bit
+
+// ---- subset DP (bitmask over n ≤ 20 elements) ----------------------------
+// dp[mask] = best value using exactly the elements in mask
+int n = (int)cost.size();                           // problem input
+vector&lt;long long&gt; dp(1 &lt;&lt; n, 0);
+for (int mask = 1; mask &lt; (1 &lt;&lt; n); ++mask) {
+    int i = __builtin_ctz(mask);                    // lowest set index
+    dp[mask] = dp[mask ^ (1 &lt;&lt; i)] + cost[i];       // adapt this recurrence per problem
+}
+// Enumerate all submasks of a mask (total work is 3^n)
+void enumerateSubmasks(int mask) {
+    for (int sub = mask; sub; sub = (sub - 1) &amp; mask) { /* use sub */ }
+}
+
+// ---- bitmask as a set, with bitset for larger universes ------------------
+bitset&lt;1000&gt; reachable;                             // fast shifts/AND/OR/count
+reachable |= (reachable &lt;&lt; x);                      // subset-sum reachability
+reachable.count();                                  // number of reachable sums
+
+// ---- Gray code, parity, reversing ---------------------------------------
+int gray = i ^ (i &gt;&gt; 1);                            // i-th Gray code
+bool oddParity = __builtin_parity(x);
+// (no standard __builtin_bitreverse32 — reverse with a loop or std::bitset&lt;32&gt;)</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>10.2 Number theory essentials</h3>
+    <pre><code>// ---- gcd / lcm -----------------------------------------------------------
+long long gcdll(long long a, long long b) { return b ? gcdll(b, a % b) : a; }
+long long lcmll(long long a, long long b) { return a / gcdll(a, b) * b; }   // divide FIRST
+
+// ---- sieve of Eratosthenes: all primes up to n in O(n log log n) ----------
+vector&lt;int&gt; primes;
+vector&lt;bool&gt; isComposite(n + 1, false);
+for (long long i = 2; i &lt;= n; ++i) {
+    if (!isComposite[i]) {
+        primes.push_back((int)i);
+        for (long long j = i * i; j &lt;= n; j += i) isComposite[j] = true;    // i*i can overflow int!
+    }
+}
+// O(n) linear sieve variant tracks the smallest prime factor (SPF) for factorisation:
+vector&lt;int&gt; spf(n + 1);
+for (int i = 2; i &lt;= n; ++i) {
+    if (!spf[i]) { spf[i] = i; primes.push_back(i); }
+    for (int p : primes) { if (p &gt; spf[i] || 1LL * i * p &gt; n) break; spf[i * p] = p; }
+}
+// factorise x using spf
+vector&lt;pair&lt;int,int&gt;&gt; factorise(int x, const vector&lt;int&gt;&amp; spf) {
+    vector&lt;pair&lt;int,int&gt;&gt; f;
+    while (x &gt; 1) { int p = spf[x], c = 0; while (x % p == 0) { x /= p; ++c; } f.push_back({p, c}); }
+    return f;
+}
+
+// ---- modular arithmetic -------------------------------------------------
+const long long MOD = 1'000'000'007;                 // prime
+long long add(long long a, long long b) { return (a + b) % MOD; }
+long long mul(long long a, long long b) { return a * b % MOD; }         // a,b &lt; 1e9 → fits
+long long mpow(long long b, long long e) { long long r = 1; b %= MOD;
+    while (e) { if (e &amp; 1) r = r * b % MOD; b = b * b % MOD; e &gt;&gt;= 1; } return r; }
+long long inv(long long a) { return mpow(a, MOD - 2); }                 // Fermat
+long long sub(long long a, long long b) { return ((a - b) % MOD + MOD) % MOD; }
+
+// ---- combinatorics ------------------------------------------------------
+// factorials + inverse factorials for O(1) nCr mod p (p prime)
+vector&lt;long long&gt; fact(N + 1), invFact(N + 1);
+fact[0] = 1;
+for (int i = 1; i &lt;= N; ++i) fact[i] = fact[i-1] * i % MOD;
+invFact[N] = inv(fact[N]);
+for (int i = N; i &gt; 0; --i) invFact[i-1] = invFact[i] * i % MOD;
+auto C = [&amp;](int n, int k) {
+    if (k &lt; 0 || k &gt; n) return 0LL;
+    return fact[n] * invFact[k] % MOD * invFact[n-k] % MOD;
+};
+
+// ---- geometry / precision -------------------------------------------------
+struct Pt { long long x, y; };
+long long cross(const Pt&amp; a, const Pt&amp; b, const Pt&amp; c) {   // >0: left turn (ccw)
+    return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+}
+bool onSegment(const Pt&amp; a, const Pt&amp; b, const Pt&amp; p) {  // collinear + within bbox
+    return cross(a, b, p) == 0 &amp;&amp; min(a.x,b.x) &lt;= p.x &amp;&amp; p.x &lt;= max(a.x,b.x)
+                              &amp;&amp; min(a.y,b.y) &lt;= p.y &amp;&amp; p.y &lt;= max(a.y,b.y);
+}
+double dist(const Pt&amp; a, const Pt&amp; b) { return hypot((double)(a.x-b.x), (double)(a.y-b.y)); }</code></pre>
+    <table class="tbl">
+      <thead><tr><th>Question type</th><th>Tool</th><th>Complexity</th></tr></thead>
+      <tbody>
+        <tr><td>“element appearing once, others twice”</td><td>XOR fold</td><td>O(n) time, O(1) space</td></tr>
+        <tr><td>“count set bits / power of two / lowest bit”</td><td><code>__builtin_*</code>, <code>x &amp; -x</code></td><td>O(1)</td></tr>
+        <tr><td>“all subsets of ≤20 elements”</td><td>bitmask enumeration <code>1&lt;&lt;n</code></td><td>O(2ⁿ · n)</td></tr>
+        <tr><td>“sum over submasks”</td><td>submask loop <code>(sub-1)&amp;mask</code></td><td>O(3ⁿ)</td></tr>
+        <tr><td>“primes up to n”, “prime factorisation”</td><td>sieve / SPF sieve</td><td>O(n log log n) / O(log x)</td></tr>
+        <tr><td>“count ways mod 1e9+7”</td><td>DP + Fermat inverse</td><td>O(n) precompute</td></tr>
+        <tr><td>“which side of a line / collinear points”</td><td>cross product</td><td>O(1)</td></tr>
+      </tbody>
+    </table>
+    <div class="warn"><b>Precision rule:</b> never compare floating-point results for equality on geometry problems if
+    coordinates are integers — do the geometry in <code>long long</code> with cross products, and only convert to
+    <code>double</code> at the very end (preferably with <code>sqrt</code> applied last).</div>
+  </section>
+</section>
+
+<section class="chapter" id="ch11">
+  <h2><span class="num">11</span> Pattern → STL map</h2>
+  <p class="tagline">Twenty interview patterns, the C++ construct that implements each, and the complexity you should claim out loud.</p>
+  <table class="tbl">
+    <thead><tr><th>Pattern</th><th>C++ implementation</th><th>Key line</th><th>Complexity</th></tr></thead>
+    <tbody>
+      <tr><td>Frequency counting</td><td><code>unordered_map&lt;T,int&gt;</code> or <code>int cnt[26]</code></td><td><code>cnt[x]++</code></td><td>O(n) / O(1) per op</td></tr>
+      <tr><td>Seen / dedupe</td><td><code>unordered_set&lt;T&gt;</code></td><td><code>if (seen.count(x)) …; seen.insert(x);</code></td><td>O(1) avg</td></tr>
+      <tr><td>Two pointers (sorted)</td><td>indices <code>l, r</code></td><td><code>while (l &lt; r) { if (…) ++l; else --r; }</code></td><td>O(n)</td></tr>
+      <tr><td>Sliding window (fixed k)</td><td>running sum + add/remove</td><td><code>sum += a[i]; if (i &gt;= k) sum -= a[i-k];</code></td><td>O(n)</td></tr>
+      <tr><td>Sliding window (variable)</td><td><code>l</code> + count map</td><td><code>while (bad) remove a[l++];</code></td><td>O(n)</td></tr>
+      <tr><td>Prefix sums</td><td><code>vector&lt;long long&gt; pre(n+1)</code></td><td><code>pre[r+1]-pre[l]</code></td><td>O(1) query</td></tr>
+      <tr><td>Prefix sums + hash (subarray sum = k)</td><td><code>unordered_map&lt;ll,int&gt;</code> of prefix counts</td><td><code>ans += mp[pre - k]; mp[pre]++;</code></td><td>O(n)</td></tr>
+      <tr><td>Difference array (range updates)</td><td><code>vector&lt;ll&gt; d(n+1)</code></td><td><code>d[l]+=v; d[r+1]-=v;</code> then prefix</td><td>O(1) update</td></tr>
+      <tr><td>Binary search (value / answer)</td><td><code>lower_bound</code> or lo/hi loop</td><td><code>lo + (hi-lo)/2</code></td><td>O(log n)</td></tr>
+      <tr><td>Monotonic stack</td><td><code>stack&lt;int&gt;</code> of indices</td><td><code>while (!st.empty() &amp;&amp; a[st.top()] &lt; a[i]) …</code></td><td>O(n)</td></tr>
+      <tr><td>Monotonic deque (window max/min)</td><td><code>deque&lt;int&gt;</code> of indices</td><td>see ch. 5.5</td><td>O(n)</td></tr>
+      <tr><td>Top-K / k-th largest</td><td><code>priority_queue</code></td><td>min-heap of size k</td><td>O(n log k)</td></tr>
+      <tr><td>Merge k sorted lists</td><td><code>priority_queue&lt;T, vector&lt;T&gt;, cmp&gt;</code></td><td>push heads, pop min, push next</td><td>O(N log k)</td></tr>
+      <tr><td>BFS shortest path (unweighted)</td><td><code>queue&lt;int&gt;</code> + <code>dist</code></td><td><code>dist[v] = dist[u] + 1</code></td><td>O(V+E)</td></tr>
+      <tr><td>DFS / flood fill / components</td><td>recursive lambda or <code>stack</code></td><td><code>visited[u] = true; for (v : adj[u]) …</code></td><td>O(V+E)</td></tr>
+      <tr><td>Topological sort</td><td><code>queue</code> + <code>indegree</code> (Kahn) or DFS post-order</td><td><code>if (--indeg[v] == 0) q.push(v);</code></td><td>O(V+E)</td></tr>
+      <tr><td>Shortest path, weighted (no negatives)</td><td><code>priority_queue</code> Dijkstra</td><td><code>priority_queue&lt;pair&lt;ll,int&gt;, …, greater&lt;&gt;&gt;</code></td><td>O((V+E) log V)</td></tr>
+      <tr><td>Union-Find (connectivity, Kruskal)</td><td><code>struct DSU</code> (ch. 8.1)</td><td><code>p[x]=find(p[x])</code></td><td>~O(1) amortised</td></tr>
+      <tr><td>Tree traversal (in/pre/post/level)</td><td>recursion / <code>queue</code></td><td>see ch. 8.2</td><td>O(n)</td></tr>
+      <tr><td>BST ordered queries</td><td><code>set</code>/<code>map</code> with <code>lower_bound</code></td><td><code>s.lower_bound(x)</code></td><td>O(log n)</td></tr>
+      <tr><td>Ordered sweep / intervals</td><td><code>sort</code> + <code>multiset</code>/<code>priority_queue</code></td><td>sort by start, keep active ends</td><td>O(n log n)</td></tr>
+      <tr><td>DP (1D/2D/knapsack/LIS/intervals)</td><td><code>vector</code> grids, <code>long long</code> state</td><td>iterate states in dependency order</td><td>states × transitions</td></tr>
+      <tr><td>Interval DP</td><td><code>dp[l][r]</code> by increasing length</td><td><code>for (len=1…) for (l…) r=l+len-1</code></td><td>O(n³)</td></tr>
+      <tr><td>Bitmask DP (n ≤ 20)</td><td><code>dp[1&lt;&lt;n]</code></td><td><code>mask ^ (1&lt;&lt;i)</code></td><td>O(2ⁿ · n)</td></tr>
+      <tr><td>Backtracking (permutations/subsets/N-queens)</td><td>recursive <code>vector&lt;bool&gt;</code> used-flags</td><td>choose → recurse → un-choose</td><td>output-sensitive</td></tr>
+      <tr><td>Greedy (intervals, scheduling, jumps)</td><td><code>sort</code> + single pass</td><td>sort by end time</td><td>O(n log n)</td></tr>
+      <tr><td>Trie (prefix search)</td><td><code>struct</code> with <code>array&lt;int,26&gt;</code> children</td><td><code>nxt[c-'a']</code></td><td>O(len)</td></tr>
+      <tr><td>Heap of pairs (scheduling/meeting rooms)</td><td><code>priority_queue&lt;int, …, greater&lt;&gt;&gt;</code></td><td>push end, pop expired</td><td>O(n log n)</td></tr>
+      <tr><td>Median in a stream</td><td>two heaps (or two <code>multiset</code>s)</td><td>balance sizes</td><td>O(log n) per insert</td></tr>
+      <tr><td>LRU / design problems</td><td><code>unordered_map&lt;int, list&lt;int&gt;::iterator&gt;</code> + list, or <code>map</code> + <code>list</code></td><td>splice / move_to_front</td><td>O(1) per op</td></tr>
+    </tbody>
+  </table>
+  <div class="tip"><b>Say the complexity out loud.</b> Interviewers score the sentence “a hash map makes it O(n) instead of
+  O(n²)”, not just the code. For every pattern above, know (a) the complexity you achieve, (b) the naive baseline, and
+  (c) the space trade-off.</div>
+</section>
+
+<section class="chapter" id="ch12">
+  <h2><span class="num">12</span> Pitfalls that cost submissions</h2>
+  <p class="tagline">Each of these has silently failed thousands of correct-looking solutions. Read once, remember forever.</p>
+
+  <section class="sub">
+    <h3>12.1 Overflow, again (the top cause of wrong answers)</h3>
+    <pre><code>// 1. Multiplication promoted AFTER the multiply
+int a = 1e5, b = 1e5;
+long long bad = a * b;            // int*int computed in int → overflow
+long long ok  = 1LL * a * b;      // promote first
+
+// 2. accumulate's type comes from the INITIAL VALUE
+long long sum = accumulate(v.begin(), v.end(), 0);    // ✗ sums in int
+long long sum2 = accumulate(v.begin(), v.end(), 0LL); // ✓
+
+// 3. (lo + hi) / 2 overflow in binary search → lo + (hi - lo) / 2
+// 4. INT_MAX + something in relaxations → use a large but safe INF
+const long long INF = 1e18;                 // adding two INF = 2e18 &lt; 9.2e18 (max ll)
+// ✗ if (dist[u] + w &lt; dist[v]) with dist[u] == INT_MAX → overflow, WAs
+// ✓ either check dist[u] != INF first, or use ll with INF = 4e18 and never overflow by capping
+
+// 5. Counting: n(n-1)/2 for n = 1e5 is 5e9 → int is destroyed, ll is fine.
+// 6. Modular multiplication of two values near 1e9: a*b ≈ 1e18 → needs ll (fits), but
+//    squaring near 1e18 wraps — use __int128 for modular products when MOD &gt; 2^31.
+__int128 prod = (__int128)a * b % MOD;      // GCC/Clang extension, fine on the judge</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>12.2 The container traps</h3>
+    <table class="tbl">
+      <thead><tr><th>Trap</th><th>What happens</th><th>Correct version</th></tr></thead>
+      <tbody>
+        <tr><td><code>m[key]</code> to read</td><td>Inserts a default entry → wrong answers, memory growth</td><td><code>find()</code>/<code>count()</code>/<code>at()</code></td></tr>
+        <tr><td><code>unordered_map</code> iteration order</td><td>Non-deterministic → flaky tests</td><td>Sort keys, or use <code>map</code></td></tr>
+        <tr><td><code>set</code>, <code>unordered_set</code> with a mutable key</td><td>Lookups break after mutation</td><td>Erase, modify, re-insert</td></tr>
+        <tr><td><code>ms.erase(3)</code> on a multiset</td><td>Removes <b>all</b> copies</td><td><code>ms.erase(ms.find(3))</code></td></tr>
+        <tr><td><code>size() - 1</code> on an empty vector</td><td>Underflow to a huge unsigned value</td><td><code>v.empty() ? 0 : (int)v.size()-1</code></td></tr>
+        <tr><td>Looping <code>int i &lt; v.size()</code></td><td>Signed/unsigned comparison; UB when i goes negative</td><td><code>i &lt; (int)v.size()</code></td></tr>
+        <tr><td><code>vector&lt;bool&gt;</code></td><td>Packed bits: no <code>bool&amp;</code>, surprises with templates</td><td><code>vector&lt;char&gt;</code> or <code>bitset</code></td></tr>
+        <tr><td>Reference to a map value</td><td>Invalidated by rehash on insert</td><td>Do not hold <code>Value&amp;</code> across inserts</td></tr>
+        <tr><td>Sorting a set/priority_queue directly</td><td>Not allowed — they are already ordered</td><td>Copy to vector if you must sort differently</td></tr>
+        <tr><td><code>unordered_map</code> rehash cost</td><td>Spikes → TLE at n = 10⁶</td><td><code>reserve()</code> before the loop</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sub">
+    <h3>12.3 Recursion, strings, and off-by-one</h3>
+    <pre><code>// Off-by-one idioms you must get right
+for (int i = 0; i + k &lt;= n; ++i)                    // window [i, i+k)
+for (int i = 0; i + 1 &lt; n; ++i)                     // pair (i, i+1)
+for (int len = 1; len &lt;= n; ++len)                  // interval DP: by length
+    for (int l = 0; l + len - 1 &lt; n; ++l) { int r = l + len - 1; }
+int mid = lo + (hi - lo) / 2;                       // never (lo+hi)/2
+while (lo &lt;= hi) { ... }                            // inclusive bounds
+while (lo &lt; hi)  { ... }                            // half-open: converge on one answer
+
+// Recursion: the three questions to answer before coding
+// 1) What is the base case?            (nullptr / l >= r / index == n)
+// 2) What does the recursive call return? (an ANSWER, not a side effect if possible)
+// 3) Is depth a risk?                  (10^5-deep DFS on a chain → stack overflow)
+
+// Deep recursion fix: explicit stack
+void dfsIter(int src) {
+    vector&lt;int&gt; st{src};
+    while (!st.empty()) {
+        int u = st.back(); st.pop_back();
+        if (visited[u]) continue;
+        visited[u] = true;
+        for (int v : adj[u]) if (!visited[v]) st.push_back(v);
+    }
+}
+
+// String edge cases that fail tests
+"".substr(0, 1);                    // throws std::out_of_range → guard empty input
+s.size() - 1  where s is empty      // huge unsigned → guard first
+toupper(s[0]) assigned to char      // returns int: char c = toupper(s[0]);
+string::npos comparisons            // always compare against npos, never &gt;= 0
+
+// Empty-input checklist: vector empty? string empty? single element? all equal?
+// all negative? maximum values (overflow)? duplicates? k &gt; n? target absent?</code></pre>
+  </section>
+
+  <section class="sub">
+    <h3>12.4 Hash-degradation (anti-hash tests) and other judge-specific traps</h3>
+    <pre><code>// LeetCode and other judges include tests designed to break std::unordered_set&lt;int&gt;
+// with many values from the same hash bucket. Symptoms: correct solution TLEs.
+// Fixes, in order of preference:
+//   1) use a custom hash (custom_hash from ch. 8.3)
+//   2) use set&lt;int&gt;/map (O(log n), immune, but 3-5× slower on average)
+//   3) use a sorted vector + binary search when the data is static
+//   4) reserve() + max_load_factor(0.25) to reduce collisions
+
+// Other judge traps:
+// ✓ Recursion + deep trees: prefer iterative when the tree can be a line of 10^5 nodes.
+// ✓ Cin/cout without sync disabled: 10^5+ numbers → possible TLE.
+// ✓ std::endl flushes every time — use '\n'.
+// ✓ Nested vectors in hot loops: allocate the grid once, reuse it.
+// ✓ Global/static state persisting between test cases! LeetCode creates a new Solution
+//   object per test, but GLOBALS persist if you define them at file scope. Reset them.
+// ✓ Returning references/pointers to locals.
+// ✓ Modifying the input array when the problem forbids it.</code></pre>
+  </section>
+</section>

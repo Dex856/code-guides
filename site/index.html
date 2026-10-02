@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Code Guides — C++, Java &amp; Python for LeetCode</title>
+<meta name="description" content="Three complete, offline, self-contained guides for coding interviews: C++, Java and Python — plus matching LeetCode question banks with 6 easy / 12 medium / 12 hard per topic.">
+<style>
+:root{
+  --bg:#ffffff; --fg:#141b26; --muted:#57637a; --line:#e2e8f2; --card:#f5f8fd; --card2:#eef3fa;
+  --cpp:#5b4b8a; --java:#b07219; --py:#2f6f4f; --accent2:#0f766e;
+  --shadow:0 1px 2px rgba(16,24,40,.06),0 10px 28px rgba(16,24,40,.07);
+  --code:#0d1425; --codefg:#e2ebf8;
+}
+html[data-theme=dark]{
+  --bg:#0c1117; --fg:#e6edf7; --muted:#95a3b8; --line:#212b3a; --card:#141c27; --card2:#1a2331;
+  --cpp:#b6a6f0; --java:#f0b76a; --py:#7ddba9; --accent2:#5eead4;
+  --shadow:0 1px 2px rgba(0,0,0,.5),0 10px 28px rgba(0,0,0,.4);
+  --code:#080d16; --codefg:#e2ebf8;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+code,pre,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+.top{position:sticky;top:0;z-index:10;backdrop-filter:blur(10px);background:color-mix(in srgb,var(--bg) 92%,transparent);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:12px;padding:10px 20px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:750}
+.logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(145deg,#5b4b8a,#0f766e);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:800}
+.top .spacer{flex:1}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:10px;padding:7px 11px;font-size:13px;cursor:pointer}
+.btn:hover{border-color:var(--java)}
+header.hero{padding:54px 0 10px}
+h1{font-size:clamp(30px,5.2vw,50px);line-height:1.08;letter-spacing:-1px;margin:0 0 12px}
+.lede{color:var(--muted);font-size:17.5px;max-width:74ch;margin:0 0 22px}
+.badges{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:30px}
+.pill{font-size:12.5px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:4px 12px;color:var(--muted)}
+.pill.hot{border-color:var(--accent2);color:var(--accent2)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:18px;margin:12px 0 8px}
+.card{border:1px solid var(--line);background:var(--card);border-radius:18px;padding:20px 20px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.card h2{margin:0 0 4px;font-size:21px;letter-spacing:-.3px}
+.card .sub{color:var(--muted);font-size:13.5px;margin-bottom:12px}
+.card ul{margin:0 0 16px 18px;padding:0;font-size:14.3px;color:var(--fg)}
+.card li{margin:4px 0}
+.tag{display:inline-block;font-size:11.5px;border-radius:999px;padding:2px 9px;border:1px solid var(--line);color:var(--muted);margin-right:6px}
+.links{margin-top:auto;display:flex;flex-wrap:wrap;gap:9px}
+.links a{display:inline-block;border-radius:11px;padding:9px 14px;font-size:14px;font-weight:600;border:1px solid var(--line);background:var(--bg)}
+.links a.primary{color:#fff;border-color:transparent}
+.c-cpp .links a.primary{background:var(--cpp)}
+.c-java .links a.primary{background:var(--java)}
+.c-py .links a.primary{background:var(--py)}
+.c-cpp h2{color:var(--cpp)} .c-java h2{color:var(--java)} .c-py h2{color:var(--py)}
+.links a:hover{border-color:currentColor}
+section.block{margin:44px 0}
+section.block h2{font-size:23px;letter-spacing:-.3px;margin:0 0 6px}
+table{width:100%;border-collapse:collapse;font-size:14px;margin:14px 0}
+th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+th{background:var(--card);font-weight:650}
+tbody tr:nth-child(even) td{background:var(--card2)}
+pre{background:var(--code);color:var(--codefg);border-radius:14px;padding:15px 17px;overflow:auto;font-size:13.2px;line-height:1.6;border:1px solid #1b2436}
+.note{border:1px solid var(--line);border-left:4px solid var(--accent2);background:var(--card);border-radius:12px;padding:12px 15px;font-size:14.5px}
+footer{border-top:1px solid var(--line);margin-top:56px;padding:24px 0 70px;color:var(--muted);font-size:13.6px}
+@media(max-width:640px){header.hero{padding:34px 0 6px}}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="wrap">
+    <span class="logo">CG</span>
+    <span class="brand">Code Guides</span>
+    <span class="spacer"></span>
+    <button class="btn" id="theme">🌙 Theme</button>
+  </div>
+</div>
+
+<div class="wrap">
+<header class="hero">
+  <h1>Three languages.<br>One interview system.</h1>
+  <p class="lede">Self-contained, offline, searchable guides for <b>C++</b>, <b>Java</b> and <b>Python</b>, each written
+  specifically for solving LeetCode-style problems — the exact language subset that wins coding rounds, with hand-drawn
+  diagrams, paste-ready templates and a checklist of the traps that cost submissions. Every guide is paired with a question
+  bank organised by topic: <b>6 easy · 12 medium · 12 hard</b>, on a deliberately gentle slope.</p>
+  <div class="badges">
+    <span class="pill hot">No external requests — works offline</span>
+    <span class="pill">Inline SVG diagrams</span>
+    <span class="pill">Copy button on every snippet</span>
+    <span class="pill">Dark / light theme</span>
+    <span class="pill">Searchable with “/”</span>
+  </div>
+</header>
+
+<div class="grid">
+
+  <div class="card c-cpp">
+    <h2>C++ for LeetCode</h2>
+    <div class="sub">C++17/20/23 · STL-first · 16 chapters</div>
+    <ul>
+      <li>vector, string, unordered_map/set, priority_queue — the 20% you actually type</li>
+      <li>Comparators, lambdas, strict-weak-ordering, custom hash</li>
+      <li>Overflow, iterator invalidation, UB and the pitfalls list</li>
+      <li>Templates: graphs, DSU, binary search on answer, DP, trie</li>
+    </ul>
+    <div class="links">
+      <a class="primary" href="cpp-guide.html">Open the guide</a>
+      <a href="cpp-leetcode.html">Question bank</a>
+    </div>
+  </div>
+
+  <div class="card c-java">
+    <h2>Java for LeetCode</h2>
+    <div class="sub">Java 21/25 · Collections framework · 16 chapters</div>
+    <ul>
+      <li>Boxing &amp; the Integer cache, overflow, equality rules</li>
+      <li>HashMap / TreeMap / ArrayDeque / PriorityQueue with the complexity table</li>
+      <li>Comparator contract, StringBuilder discipline, JVM memory cost model</li>
+      <li>Templates: graphs, DSU, binary search frames, DP shapes, heaps</li>
+    </ul>
+    <div class="links">
+      <a class="primary" href="java-guide.html">Open the guide</a>
+      <a href="java-leetcode.html">Question bank</a>
+    </div>
+  </div>
+
+  <div class="card c-py">
+    <h2>Ultimate Python Guide</h2>
+    <div class="sub">Python 3.12 → 3.15 · 25 chapters</div>
+    <ul>
+      <li>The complete language reference — not only interview material</li>
+      <li>Version-by-version feature map, stdlib recipes, concurrency, memory, performance</li>
+      <li>Testing, packaging, gotchas, idioms, resources and roadmaps</li>
+      <li>34 hand-drawn diagrams and 114 runnable snippets</li>
+    </ul>
+    <div class="links">
+      <a class="primary" href="python-guide.html">Open the guide</a>
+      <a href="python-leetcode.html">Question bank</a>
+    </div>
+  </div>
+
+</div>
+
+<section class="block">
+  <h2>How the three fit together</h2>
+  <p class="lede" style="font-size:16px">Pick one language as your interview weapon and use the others for context. The
+  chapters, the diagrams and the templates are deliberately parallel: the same problem is solved with the same pattern in
+  each language, so you can compare <code>priority_queue</code>, <code>PriorityQueue</code> and <code>heapq</code> side by
+  side and stop confusing their conventions.</p>
+  <table>
+    <thead><tr><th>Task</th><th>C++</th><th>Java</th><th>Python</th></tr></thead>
+    <tbody>
+      <tr><td>Hash map</td><td><code>unordered_map</code></td><td><code>HashMap&lt;K,V&gt;</code></td><td><code>dict</code></td></tr>
+      <tr><td>Min-heap</td><td><code>priority_queue&lt;int,vector&lt;int&gt;,greater&lt;&gt;&gt;</code></td><td><code>new PriorityQueue&lt;&gt;()</code></td><td><code>heapq</code></td></tr>
+      <tr><td>Sorted map</td><td><code>map</code> / <code>set</code></td><td><code>TreeMap</code> / <code>TreeSet</code></td><td>no stdlib equivalent</td></tr>
+      <tr><td>Queue / stack</td><td><code>queue</code> / <code>stack</code> / <code>deque</code></td><td><code>ArrayDeque</code></td><td><code>collections.deque</code></td></tr>
+      <tr><td>String builder</td><td><code>string +=</code> is fine</td><td><code>StringBuilder</code> (required)</td><td><code>"".join(list)</code></td></tr>
+      <tr><td>Binary search</td><td><code>lower_bound</code></td><td>hand-written loop</td><td><code>bisect</code></td></tr>
+    </tbody>
+  </table>
+  <div class="note"><b>Suggested path:</b> read the guide for your language end to end (2–3 hours), then work the question
+  bank topic by topic — one topic per session, easy first, then medium, then hard. The bank pages mirror the guide chapters,
+  so any term you do not recognise links back to the explanation.</div>
+</section>
+
+<section class="block">
+  <h2>Offline by design</h2>
+  <p class="lede" style="font-size:16px">Every page in this site is a single HTML file with inline CSS, inline JavaScript and
+  inline SVG. There are no fonts, scripts, images or analytics loaded from anywhere. Download the folder, open
+  <code>index.html</code>, and everything works — on a plane, in an exam room, or ten years from now.</p>
+  <pre><code># serve locally exactly as GitHub Pages does
+python3 -m http.server 8000
+# then open http://localhost:8000</code></pre>
+</section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <p><b>Code Guides</b> — C++, Java and Python references with matching LeetCode question banks. Built as static HTML;
+    deployed with GitHub Pages.</p>
+    <p>Content is original and self-contained. Diagrams are hand-authored SVG.</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var root = document.documentElement, btn = document.getElementById("theme");
+  try { var t = localStorage.getItem("cg-theme"); if (t) root.setAttribute("data-theme", t); } catch(e){}
+  btn.textContent = root.getAttribute("data-theme") === "dark" ? "☀️ Theme" : "🌙 Theme";
+  btn.addEventListener("click", function(){
+    var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("cg-theme", next); } catch(e){}
+    btn.textContent = next === "dark" ? "☀️ Theme" : "🌙 Theme";
+  });
+})();
+</script>
+</body>
+</html>
