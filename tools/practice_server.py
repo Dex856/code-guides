@@ -96,7 +96,10 @@ CPP_PRELUDE = "#include <bits/stdc++.h>\nusing namespace std;\n"
 C_PRELUDE = ("#define _POSIX_C_SOURCE 200809L   /* strdup, getline, … under -std=c17 */\n"
              "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <math.h>\n"
              "#include <limits.h>\n#include <stdbool.h>\n#include <stdint.h>\n#include <ctype.h>\n"
-             "#include <stdarg.h>\n")
+             "#include <stdarg.h>\n"
+             "/* the node types LeetCode's judge normally provides */\n"
+             "struct ListNode { int val; struct ListNode *next; };\n"
+             "struct TreeNode { int val; struct TreeNode *left, *right; };\n")
 JAVA_PRELUDE = "import java.util.*;\nimport java.io.*;\n"
 
 

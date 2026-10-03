@@ -712,16 +712,24 @@ def c_demo_from_signature(ret_in: str, name: str, params: str, example: str, exp
 
         if isinstance(value, tuple) and len(value) == 2 and value[0] == "__buffer__":
             kind = base if base in ("int", "long", "long long", "char", "double") else "int"
-            decls.append(f"    {kind} {pname}[512];")          # the call fills this in
-            sizes[pname] = "512"
-            buffers.append(pname)
-            args.append(pname)
+            if ptr >= 2:                        # int **returnColumnSizes — the call writes *it
+                decls.append(f"    {kind} *{pname}_buf = malloc(sizeof({kind}) * 512);")
+                sizes[pname] = "512"
+                buffers.append(pname + "_buf")
+                args.append("&" + pname + "_buf")
+            else:
+                decls.append(f"    {kind} {pname}[512];")      # the call fills this in
+                sizes[pname] = "512"
+                buffers.append(pname)
+                args.append(pname)
             continue
         if ptr >= 2:
             if isinstance(value, list) and value and all(isinstance(x, str) for x in value):
                 decls.append("    char *%s[] = {%s};" % (pname, ", ".join('"%s"' % x for x in value)))
                 sizes[pname] = str(len(value))
             elif isinstance(value, list) and value and all(isinstance(x, list) for x in value):
+                if base == "char":
+                    return None                   # char ***paths: nested strings, no safe literal
                 fixed = re.findall(r"\[(\d+)\]", raw)   # int m[][6] — inner size is fixed
                 if "*" not in raw:
                     cols = int(fixed[-1]) if fixed else len(value[0])
@@ -775,15 +783,17 @@ def c_demo_from_signature(ret_in: str, name: str, params: str, example: str, exp
                      '    printf("]\\n");']
         elif not buffers:
             body += c_show_mutated(args, values, sizes)   # in place: show what changed
-    elif ret_ptr >= 1 and ret_t == "char":
+    elif ret_ptr == 1 and ret_t == "char":      # a flat string is printable, char ** is not
         body.append(f"    char *_r = {call};")
         body.append('    printf("%s\\n", _r ? _r : "");')
     elif ret_ptr >= 1:
+        if ret_ptr >= 2:
+            return None                     # int ** results are nested rows: not printed flat
         if not out_size:
             return None                     # an int* result needs its length from somewhere
         body.append(f"    int _n = 0;")
         body.append(f"    {ret_t} *_r = {call};")
-        body.append(f"    _n = _out_{out_size};")
+        body.append(f"    _n = {out_size};")
         body.append('    printf("[");')
         body.append('    for (int i = 0; i < _n; i++) printf(i ? ",%lld" : "%lld", (long long) _r[i]);')
         body.append('    printf("]\\n");')
