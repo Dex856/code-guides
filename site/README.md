@@ -6,6 +6,7 @@ Three self-contained, offline guides plus matching LeetCode question banks, publ
 |---|---|
 | `index.html` | Hub page with the language comparison table |
 | `cpp-guide.html` | **C++ for LeetCode** — 16 chapters: STL, comparators, pitfalls, templates, interview Q&A |
+| `practice.html` | **Practice terminal** — run Python / C++ / Java for any of the 480 problems (needs `python3 tools/practice_server.py`) |
 | `java-guide.html` | **Java for LeetCode** — 16 chapters: Collections, boxing, JVM costs, templates, interview Q&A |
 | `python-guide.html` | **Ultimate Python Guide** — 25 chapters, the full language reference |
 | `cpp-leetcode.html` | C++ question bank — per topic: 6 easy · 12 medium · 12 hard |
@@ -40,9 +41,12 @@ The included workflow (`.github/workflows/pages.yml`) uploads the `site/` direct
 Each guide is assembled by concatenating its parts in filename order:
 
 ```bash
-cd site/cpp && python3 -c "import pathlib;print(''.join(pathlib.Path(f'part{i}.html').read_text() for i in range(1,7)))" > cpp-guide.html
+bash site/build-all.sh        # guides + banks + problems.json + the docs/ mirror
 ```
 
-Edit the `part*.html` sources, never the merged file. Question banks are generated from a single JSON bank per topic
-(`site/leetcode/bank-*.json`) by `site/leetcode/build.py`, which renders the same problems with C++, Java and Python
-solutions.
+That assembles `cpp-guide.html` from `cpp/part*.html`, `java-guide.html` from `java/part*.html`, regenerates the three
+banks with `site/leetcode/build.py`, refreshes `site/leetcode/problems.json` with `build_bank_json.py` (the data behind
+the practice terminal), and copies everything into the `docs/` mirror the Pages workflow serves.
+
+Edit the `part*.html` sources, never the merged guide file. Question banks are generated from the per-topic Python
+sources `site/leetcode/bank_*.py`, which carry the same problems in C++, Java and Python.

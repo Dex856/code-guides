@@ -5,9 +5,16 @@ __pycache__/
 *.class
 *.o
 *.out
-tools/
+# tools/ holds one-off scripts; the practice runner is part of the product
+tools/*
+!tools/practice_server.py
+!tools/e2e_practice.py
+!tools/practice_test.js
 
 # npm / node caches
 .npm/
 node_modules/
 .cache/
+
+# local verification logs
+checks/

@@ -1056,13 +1056,14 @@ int maxProfit(int k, int[] prices) {
         "code": {
             "cpp": r"""// State = (stone, last jump); push the three next jumps forward
 bool canCross(vector<int>& stones) {
+    unordered_set<int> stoneSet(stones.begin(), stones.end());   // landing spots
     unordered_map<int, unordered_set<int>> reach;    // stone -> jump sizes
     reach[stones[0]].insert(0);
     for (int s : stones) {
         for (int jump : reach[s]) {
             for (int next : {jump - 1, jump, jump + 1}) {
                 if (next <= 0) continue;                     // k-1 must stay positive
-                if (reach.count(s + next)) reach[s + next].insert(next);
+                if (stoneSet.count(s + next)) reach[s + next].insert(next);
             }
         }
     }

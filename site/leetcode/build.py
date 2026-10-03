@@ -137,7 +137,9 @@ def render_problem(prob: dict, counters: dict, lang: str, flat: list, pos: dict)
     code = prob["code"][lang]
     out.append(f'    <pre><code>{esc_code(code)}</code></pre>')
     t, s = prob["complexity"]
-    out.append(f'    <p class="cx"><b>Complexity:</b> {inline_md(t)} time · {inline_md(s)} space.</p>')
+    out.append(f'    <p class="cx"><b>Complexity:</b> {inline_md(t)} time · {inline_md(s)} space. · '
+               f'<a class="trylink" href="practice.html?p={pid}" title="Open this problem in the practice terminal">'
+               f'⌨ practice it</a></p>')
     # previous / next problem — keeps the gentle slope one click away
     left = (f'<a class="pnav-a prev" href="#{prev[0]}"><span class="d">{prev[1]}</span> {inline_md(prev[2])}</a>'
             if prev else '<span class="pnav-a off">start of the bank</span>')
@@ -300,8 +302,11 @@ mark{{background:var(--accent2);color:#08110f;border-radius:3px;padding:0 2px}}
       <a href="cpp-leetcode.html">C++ bank</a>
       <a href="java-leetcode.html">Java bank</a>
       <a href="python-leetcode.html">Python bank</a>
+      <div class="mh">Practice</div>
+      <a href="practice.html">⌨ Practice terminal</a>
     </div>
   </details>
+  <a class="btn" href="practice.html" title="Write and run this language on the site">⌨ Practice</a>
   <button class="btn" id="theme" title="Toggle dark / light">🌙</button>
   <button class="btn" id="print" title="Print or save as PDF">🖨</button>
 </header>
@@ -390,6 +395,7 @@ def render(lang: str, banks: list[dict]) -> str:
 
 EXTRA_CSS = r"""
 /* ---- navigation additions (added by the UI upgrade) ---- */
+.trylink{font-weight:600;white-space:nowrap}
 .brand:hover{{text-decoration:none}}
 .brand>div{{line-height:1.25}}
 .btn.mini{{padding:4px 9px;font-size:12.2px}}

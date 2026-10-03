@@ -85,6 +85,7 @@ The run also prints the live link, e.g. `https://Dex856.github.io/code-guides/`.
 14. First load can 404 for ~60–90 s while the CDN warms up — then **hard-refresh**: `Ctrl+Shift+R` (Windows) / `Cmd+Shift+R` (Mac).
 
 You should see the hub, and from it:
+- `practice.html` — the three-language practice terminal (code runs with `python3 tools/practice_server.py`; on Pages it explains that and stays editable)
 - `cpp-guide.html`, `java-guide.html`, `python-guide.html`
 - `cpp-leetcode.html`, `java-leetcode.html`, `python-leetcode.html` — **480 problems each**, 16 topics, 6/12/12 per topic
 

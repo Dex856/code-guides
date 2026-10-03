@@ -31,6 +31,7 @@ a{color:inherit;text-decoration:none}
 .topnav a{font-size:13.2px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 11px;white-space:nowrap}
 .topnav a:hover{border-color:currentColor}
 .topnav a.cpp{color:var(--cpp)} .topnav a.java{color:var(--java)} .topnav a.py{color:var(--py)}
+.topnav a.term{color:var(--accent2);border-color:var(--accent2)}
 .btn{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:10px;padding:7px 11px;font-size:13px;cursor:pointer}
 .btn:hover{border-color:var(--java)}
 header.hero{padding:46px 0 8px}
@@ -90,6 +91,7 @@ footer{border-top:1px solid var(--line);margin-top:56px;padding:24px 0 70px;colo
       <a class="java" href="java-leetcode.html">480 problems</a>
       <a class="py" href="python-guide.html">Python guide</a>
       <a class="py" href="python-leetcode.html">480 problems</a>
+      <a class="term" href="practice.html">⌨ Practice terminal</a>
       <button class="btn" id="theme">🌙 Theme</button>
     </nav>
   </div>
@@ -103,7 +105,8 @@ footer{border-top:1px solid var(--line);margin-top:56px;padding:24px 0 70px;colo
   diagrams, paste-ready templates and a checklist of the traps that cost submissions. Every guide is paired with a question
   bank organised by topic: <b>6 easy · 12 medium · 12 hard</b>, on a deliberately gentle slope.</p>
   <div class="cta">
-    <a class="primary" href="cpp-leetcode.html">Start the 480-problem C++ bank →</a>
+    <a class="primary" href="practice.html">⌨ Open the practice terminal →</a>
+    <a href="cpp-leetcode.html">Start the 480-problem C++ bank</a>
     <a href="java-leetcode.html">Java bank</a>
     <a href="python-leetcode.html">Python bank</a>
   </div>
@@ -112,6 +115,7 @@ footer{border-top:1px solid var(--line);margin-top:56px;padding:24px 0 70px;colo
     <span><b>16</b> topics</span>
     <span><b>480</b> problems per language</span>
     <span><b>1 440</b> verified solutions</span>
+    <span><b>3</b> live terminals</span>
     <span><b>0</b> external requests</span>
   </div>
   <div class="badges">
@@ -125,14 +129,61 @@ footer{border-top:1px solid var(--line);margin-top:56px;padding:24px 0 70px;colo
 </header>
 
 <section class="block">
-  <h2><span class="n">01</span>Jump straight to a topic</h2>
+  <h2><span class="n">01</span>Practise: write it, run it, check it</h2>
+  <p class="lede" style="font-size:15.5px">The practice terminal compiles and runs real code on the site — pick a language,
+  load any of the 480 problems, and press Run. Each problem ships with a starter skeleton and a complete runnable solution, and
+  your output is checked against the official examples.</p>
+  <div class="grid">
+    <div class="card">
+      <h2 style="color:var(--py)">Python terminal</h2>
+      <div class="sub">python3 · stdin · output checked against the examples</div>
+      <ul>
+        <li>Load starter → fill in the function body</li>
+        <li>Or load the full solution and step through it line by line</li>
+        <li>Stdout, stderr, exit code and wall-clock time in one console</li>
+      </ul>
+      <div class="links"><a class="primary" style="background:var(--py)" href="practice.html">Open the terminal</a>
+        <a href="python-leetcode.html">Python bank</a></div>
+    </div>
+    <div class="card">
+      <h2 style="color:var(--cpp)">C++ terminal</h2>
+      <div class="sub">g++ -std=c++20 · real compilation errors</div>
+      <ul>
+        <li>Compiler diagnostics, warnings and hints, exactly as a judge would show them</li>
+        <li><code>bits/stdc++.h</code> and <code>using namespace std</code> added for you</li>
+        <li>10-second timeout, memory cap and truncated output built in</li>
+      </ul>
+      <div class="links"><a class="primary" style="background:var(--cpp)" href="practice.html?p=running-sum-of-1d-array">Try an example</a>
+        <a href="cpp-leetcode.html">C++ bank</a></div>
+    </div>
+    <div class="card">
+      <h2 style="color:var(--java)">Java terminal</h2>
+      <div class="sub">javac + java · java.util.* imported for you</div>
+      <ul>
+        <li>Write a full class with <code>main</code> — templates included</li>
+        <li>Runtime exceptions are shown with the real stack trace</li>
+        <li>Every problem has a ready-to-run <code>Main.java</code></li>
+      </ul>
+      <div class="links"><a class="primary" style="background:var(--java)" href="practice.html?p=valid-parentheses">Try an example</a>
+        <a href="java-leetcode.html">Java bank</a></div>
+    </div>
+  </div>
+  <div class="note"><b>Where the code actually runs.</b> Compilers cannot live inside a static website, so the terminal talks to a
+  small local server (<code>python3 tools/practice_server.py</code>) that ships with the project — that is the copy you get in the
+  workspace preview. On a plain static host (like GitHub Pages) the same page still loads, loads problems and lets you edit,
+  save and copy code; it just tells you that running needs the server. Nothing is sent anywhere else: the server only ever runs
+  your code locally, with a timeout, a CPU limit and capped output.</div>
+</section>
+
+<section class="block">
+  <h2><span class="n">02</span>Jump straight to a topic</h2>
   <p class="lede" style="font-size:15.5px">Every bank has the same 16 topics in the same order. Pick the language you are
   practising in — the topic links drop you exactly at that section, ready to work through easy → medium → hard.</p>
   <div class="tbook" id="tbook"></div>
 </section>
 
 <section class="block">
-  <h2><span class="n">02</span>Pick your guide</h2>
+  <h2><span class="n">03</span>Pick your guide</h2>
   <div class="grid">
 
     <div class="card c-cpp">
@@ -184,7 +235,7 @@ footer{border-top:1px solid var(--line);margin-top:56px;padding:24px 0 70px;colo
 </section>
 
 <section class="block">
-  <h2><span class="n">03</span>How the three fit together</h2>
+  <h2><span class="n">04</span>How the three fit together</h2>
   <p class="lede" style="font-size:16px">Pick one language as your interview weapon and use the others for context. The
   chapters, the diagrams and the templates are deliberately parallel: the same problem is solved with the same pattern in
   each language, so you can compare <code>priority_queue</code>, <code>PriorityQueue</code> and <code>heapq</code> side by
@@ -207,7 +258,7 @@ footer{border-top:1px solid var(--line);margin-top:56px;padding:24px 0 70px;colo
 </section>
 
 <section class="block">
-  <h2><span class="n">04</span>Offline by design</h2>
+  <h2><span class="n">05</span>Offline by design</h2>
   <p class="lede" style="font-size:16px">Every page in this site is a single HTML file with inline CSS, inline JavaScript and
   inline SVG. There are no fonts, scripts, images or analytics loaded from anywhere. Download the folder, open
   <code>index.html</code>, and everything works — on a plane, in an exam room, or ten years from now.</p>

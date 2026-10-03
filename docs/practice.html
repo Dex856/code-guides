@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Practice Terminal — run Python, C++ and Java on the site</title>
+<meta name="description" content="Write, compile and run Python, C++ and Java right on the site. Load any of the 480 problems, use its starter or full solution, and check your output against the official examples.">
+<style>
+:root{
+  --bg:#ffffff; --fg:#141b26; --muted:#57637a; --line:#e2e8f2; --card:#f5f8fd; --card2:#eef3fa;
+  --accent:#5b4b8a; --accent2:#0f766e; --py:#2f6f4f; --java:#b07219;
+  --ok:#166534; --ok-soft:#e8f6ee; --warn:#b3342a; --warn-soft:#fdecea;
+  --code:#0d1425; --codefg:#e2ebf8; --shadow:0 1px 2px rgba(16,24,40,.06),0 10px 28px rgba(16,24,40,.07);
+}
+html[data-theme=dark]{
+  --bg:#0c1117; --fg:#e6edf7; --muted:#95a3b8; --line:#212b3a; --card:#141c27; --card2:#1a2331;
+  --accent:#b6a6f0; --accent2:#5eead4; --py:#7ddba9; --java:#f0b76a;
+  --ok:#6dd39b; --ok-soft:#12261c; --warn:#f08a80; --warn-soft:#2a1a19;
+  --code:#080d16; --codefg:#e2ebf8; --shadow:0 1px 2px rgba(0,0,0,.5),0 10px 28px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+code,pre,textarea,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+.head{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:9px 16px}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;white-space:nowrap}
+.brand .logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(145deg,#5b4b8a,#0f766e);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:800}
+.brand small{display:block;font-weight:500;color:var(--muted);font-size:11.5px}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:9px;padding:7px 11px;font-size:13px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.primary{background:linear-gradient(120deg,#5b4b8a,#0f766e);color:#fff;border-color:transparent;font-weight:600}
+.btn.ghost{background:transparent}
+.tabs{display:flex;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.tabs button{border:0;background:var(--card);color:var(--fg);padding:7px 14px;font-size:13px;cursor:pointer;font-weight:600}
+.tabs button+button{border-left:1px solid var(--line)}
+.tabs button.on{color:#fff}
+.tabs button[data-lang=python].on{background:var(--py)}
+.tabs button[data-lang=cpp].on{background:var(--accent)}
+.tabs button[data-lang=java].on{background:var(--java)}
+.pill{font-size:11.6px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:3px 10px;color:var(--muted);white-space:nowrap}
+.pill.ok{border-color:var(--ok);color:var(--ok)}
+.pill.bad{border-color:var(--warn);color:var(--warn)}
+.spacer{flex:1}
+select,input[type=text]{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:9px;padding:7px 9px;font-size:13px;font-family:inherit}
+select{max-width:270px}
+.wrap{max-width:1500px;margin:0 auto;padding:16px 16px 60px}
+.grid{display:grid;grid-template-columns:minmax(300px,420px) minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:1000px){.grid{grid-template-columns:1fr}}
+.card{border:1px solid var(--line);background:var(--card);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow)}
+.card h2{margin:0 0 6px;font-size:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card h3{margin:12px 0 4px;font-size:13.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+#problem{max-height:none}
+#problem .statement{margin:.5rem 0}
+.ex{border:1px solid var(--line);border-radius:11px;overflow:hidden;margin:.6rem 0;background:var(--card2)}
+.ex .exh{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 10px;border-bottom:1px solid var(--line)}
+.ex pre{margin:0;border-radius:0}
+pre{background:var(--code);color:var(--codefg);border-radius:11px;padding:12px 14px;overflow:auto;font-size:12.8px;line-height:1.55;border:1px solid #1b2436;margin:.5rem 0;white-space:pre-wrap}
+.editorwrap{position:relative}
+textarea#code{width:100%;min-height:46vh;resize:vertical;background:var(--code);color:var(--codefg);border:1px solid #1b2436;border-radius:12px;padding:12px 13px;font-size:13px;line-height:1.55;outline:none;tab-size:4}
+textarea#code:focus{border-color:var(--accent)}
+.editorbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.editorbar .file{font-size:12.4px;color:var(--muted)}
+.grow{flex:1}
+textarea#stdin{width:100%;min-height:76px;resize:vertical;background:var(--card2);color:var(--fg);border:1px solid var(--line);border-radius:11px;padding:10px 12px;font-size:13px;outline:none}
+#console{background:var(--code);color:var(--codefg);border:1px solid #1b2436;border-radius:12px;padding:12px 14px;min-height:120px;max-height:44vh;overflow:auto;font-size:12.9px;line-height:1.55;white-space:pre-wrap}
+#console .meta{color:#7b8ba3}
+#console .err{color:#ff9d9d}
+#console .ok{color:#9ae08a}
+.verdict{margin-top:8px;font-size:13.4px;border-radius:10px;padding:8px 11px;border:1px solid var(--line);background:var(--card2);display:none}
+.verdict.on{display:block}
+.verdict.good{border-color:var(--ok);color:var(--ok);background:var(--ok-soft)}
+.verdict.bad{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
+.hint{font-size:12.8px;color:var(--muted)}
+details{border:1px solid var(--line);border-radius:11px;padding:8px 12px;background:var(--card)}
+details summary{cursor:pointer;font-weight:600;font-size:13.6px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.kbd{font-size:11.4px;border:1px solid var(--line);border-radius:6px;padding:1px 6px;color:var(--muted);background:var(--bg)}
+.note{border-left:4px solid var(--accent2);background:var(--card2);border-radius:9px;padding:9px 12px;font-size:13.2px;margin:10px 0}
+.note.warn{border-left-color:var(--warn)}
+.off{display:none!important}
+@media print{.head,.tabs,.btn{display:none!important}}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <div class="bar">
+    <a class="brand" href="index.html" title="Home">
+      <span class="logo">⌨</span>
+      <span>Practice Terminal<small>run Python · C++ · Java on the site</small></span>
+    </a>
+    <div class="tabs" id="tabs" role="tablist">
+      <button data-lang="python" class="on" type="button">Python</button>
+      <button data-lang="cpp" type="button">C++</button>
+      <button data-lang="java" type="button">Java</button>
+    </div>
+    <select id="picker" title="Load a problem from the question banks">
+      <option value="">— load a problem (480 available) —</option>
+    </select>
+    <span class="spacer"></span>
+    <span class="pill" id="health">checking runner…</span>
+    <button class="btn" id="run" type="button" title="Ctrl / Cmd + Enter">▶ Run</button>
+    <button class="btn ghost" id="theme" type="button" title="Dark / light">🌙</button>
+    <a class="btn ghost" href="index.html" title="All guides and banks">🏠</a>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="grid">
+
+    <!-- ------------------------------------------------ problem pane -->
+    <div class="card" id="pane">
+      <h2 id="ptitle">Scratch pad <span class="pill" id="pdiff">free mode</span></h2>
+      <div id="pmeta" class="hint">Write any program, type its input below and press Run. Or pick a problem from the dropdown to load its statement, a starter and its full solution.</div>
+      <div id="problem"></div>
+      <div class="row" id="pactions" style="margin-top:10px">
+        <button class="btn" id="starter" type="button">⟳ Starter</button>
+        <button class="btn" id="solution" type="button">👁 Load solution</button>
+        <button class="btn ghost" id="clearprob" type="button">✕ Clear problem</button>
+      </div>
+      <div class="note" id="runhelp">
+        <b>How the runner works.</b> Press <span class="kbd">▶ Run</span> (or <span class="kbd">Ctrl/⌘ + Enter</span>) and the code is
+        compiled and executed by a small local server — <code>python3</code>, <code>g++ -std=c++20</code> and <code>javac</code>/<code>java</code>.
+        Your program reads the box below as <b>stdin</b> and its output appears in the console.
+      </div>
+    </div>
+
+    <!-- ------------------------------------------------ editor + console -->
+    <div>
+      <div class="card">
+        <div class="editorbar">
+          <span class="file mono" id="filename">main.py</span>
+          <span class="spacer"></span>
+          <button class="btn ghost" id="copy" type="button">⧉ Copy</button>
+          <button class="btn ghost" id="template" type="button">＋ Blank template</button>
+          <button class="btn ghost" id="download" type="button">⭳ Save file</button>
+        </div>
+        <div class="editorwrap"><textarea id="code" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea></div>
+
+        <details style="margin-top:10px">
+          <summary>Standard input (stdin)</summary>
+          <textarea id="stdin" spellcheck="false" placeholder="Lines your program will read from stdin…"></textarea>
+          <div class="hint" id="stdinhint"></div>
+        </details>
+
+        <div class="row" style="margin-top:10px">
+          <button class="btn primary" id="run2" type="button">▶ Run</button>
+          <button class="btn ghost" id="stopHint" type="button" disabled title="runs are capped by the server">⏱ timeout 10 s</button>
+          <button class="btn ghost" id="clearout" type="button">⌫ Clear console</button>
+          <span class="pill" id="lastrun"></span>
+        </div>
+
+        <div id="console" class="mono" aria-live="polite"><span class="meta">$ ready — waiting for a run…</span></div>
+        <div class="verdict" id="verdict"></div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h2>Tip sheet</h2>
+        <div class="row">
+          <span class="pill">Tab = 4 spaces</span>
+          <span class="pill">Ctrl/⌘ + Enter = Run</span>
+          <span class="pill">Ctrl/⌘ + S = save file</span>
+          <span class="pill">drafts autosave per language</span>
+        </div>
+        <h3>Reading input — the pattern that always works</h3>
+        <pre><code># Python                          // C++                              // Java
+import sys                        int n; cin >> n;                    Scanner sc = new Scanner(System.in);
+data = sys.stdin.read().split()   vector&lt;int&gt; a(n);                    int n = sc.nextInt();
+                                  for (int i = 0; i &lt; n; i++)         int[] a = new int[n];
+                                  cin >> a[i];                        for (int i = 0; i &lt; n; i++) a[i] = sc.nextInt();</code></pre>
+        <div class="hint">LeetCode-style problems pass arguments to a function; a terminal needs a whole program, so either read stdin as above or hard-code the sample arguments — the “Load solution” button does the hard-coding for you.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var LANGS = ["python", "cpp", "java"];
+  var META = {
+    python: { file: "main.py", comment: "#", render: "python" },
+    cpp:    { file: "main.cpp", comment: "//", render: "cpp" },
+    java:   { file: "Main.java", comment: "//", render: "java" }
+  };
+  var TEMPLATES = {
+    python: 'import sys\n\ndef main():\n    data = sys.stdin.read().split()\n    print("hello from Python 3")\n\nif __name__ == "__main__":\n    main()\n',
+    cpp: 'int main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n\n    cout << "hello from C++" << \'\\n\';\n    return 0;\n}\n',
+    java: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("hello from Java");\n    }\n}\n'
+  };
+
+  var el = function (id) { return document.getElementById(id); };
+  var code = el("code"), stdin = el("stdin"), consoleBox = el("console"), health = el("health");
+  var lang = "python", problems = [], current = null, busy = false;
+  var drafts = {};
+
+  /* ---------------------------------------------------------- helpers */
+  function esc(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  function norm(s) {
+    return String(s).replace(/["']/g, "").replace(/\bTrue\b/g, "true")
+      .replace(/\bFalse\b/g, "false").replace(/\s+/g, "").toLowerCase();
+  }
+  function store(key, value) { try { localStorage.setItem(key, value); } catch (e) {} }
+  function restore(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+
+  function write(html) {
+    consoleBox.innerHTML = html;
+    consoleBox.scrollTop = consoleBox.scrollHeight;
+  }
+  function line(text, cls) {
+    write((consoleBox.dataset.started ? consoleBox.innerHTML : "") +
+          '<span' + (cls ? ' class="' + cls + '"' : "") + '>' + esc(text) + "</span>\n");
+    consoleBox.dataset.started = "1";
+  }
+
+  /* ---------------------------------------------------------- drafts */
+  function saveDraft() { drafts[lang] = code.value; store("practice-draft-" + lang, code.value); }
+  function loadDraft() {
+    var saved = drafts[lang] || restore("practice-draft-" + lang);
+    code.value = saved != null ? saved : TEMPLATES[lang];
+    el("filename").textContent = META[lang].file;
+  }
+  el("template").addEventListener("click", function () {
+    code.value = TEMPLATES[lang]; saveDraft();
+    write('<span class="meta">$ ' + META[lang].file + ' reset to the blank template</span>\n');
+  });
+  el("copy").addEventListener("click", function () {
+    var text = code.value;
+    var done = function () { write('<span class="meta">$ copied ' + text.length + " characters to the clipboard</span>\n"); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
+    else fallback();
+    function fallback() {
+      code.select(); document.execCommand("copy"); window.getSelection().removeAllRanges(); done();
+    }
+  });
+  el("download").addEventListener("click", function () {
+    var blob = new Blob([code.value], { type: "text/plain" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = META[lang].file;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  });
+  code.addEventListener("input", saveDraft);
+  code.addEventListener("keydown", function (ev) {                 // Tab inserts spaces
+    if (ev.key !== "Tab") return;
+    ev.preventDefault();
+    var start = this.selectionStart, end = this.selectionEnd;
+    this.value = this.value.slice(0, start) + "    " + this.value.slice(end);
+    this.selectionStart = this.selectionEnd = start + 4;
+    saveDraft();
+  });
+
+  /* ---------------------------------------------------------- language tabs */
+  function setLang(next) {
+    if (next === lang) return;
+    saveDraft();
+    lang = next;
+    Array.prototype.forEach.call(document.querySelectorAll("#tabs button"), function (b) {
+      b.classList.toggle("on", b.getAttribute("data-lang") === lang);
+    });
+    loadDraft();
+    stdin.placeholder = lang === "python" ? "Lines your program reads with input() / sys.stdin…"
+      : lang === "cpp" ? "Lines your program reads with cin >> …"
+      : "Lines your program reads with Scanner / BufferedReader…";
+    if (current && current.starter && current.starter[lang] && !drafts[lang]) {
+      code.value = current.starter[lang];
+    }
+    el("lastrun").textContent = "";
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("#tabs button"), function (b) {
+    b.addEventListener("click", function () { setLang(b.getAttribute("data-lang")); });
+  });
+
+  /* ---------------------------------------------------------- runner */
+  function setHealth(state, text) {
+    health.textContent = text;
+    health.className = "pill" + (state === "ok" ? " ok" : state === "bad" ? " bad" : "");
+  }
+
+  var canFetch = (typeof fetch === "function");
+  function staticCopy(why) {
+    setHealth("bad", "static copy \u2014 code cannot run here");
+    var note = document.getElementById("runhelp");
+    note.className = "note warn";
+    note.innerHTML = why;
+  }
+
+  if (!canFetch) {
+    staticCopy("<b>This copy is static, so nothing can execute.</b> No runner was found next to this page. " +
+      "Serve the project folder instead \u2014 <code>python3 tools/practice_server.py</code> then open " +
+      "<code>http://localhost:8000/practice.html</code> \u2014 and the pill at the top turns green. " +
+      "Picking problems, loading starters and solutions, editing and copying all work either way.");
+  } else fetch("api/health", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (info) {
+    var rt = info.runtimes || {};
+    var ready = LANGS.filter(function (l) { return rt[l]; });
+    if (ready.length === 3) setHealth("ok", "runner live · python · g++ · javac");
+    else if (ready.length) setHealth("", "runner partial · " + ready.join(" · "));
+    else setHealth("bad", "no compilers on this machine");
+  }).catch(function () {
+    staticCopy("<b>This copy is static, so nothing can execute.</b> The deployed GitHub Pages site cannot " +
+      "compile code (it is a plain file host). To get the real terminals, run the bundled server from the project " +
+      "folder — it needs <code>python3</code>, <code>g++</code> and <code>javac</code>:" +
+      "<pre><code>python3 tools/practice_server.py    # then open http://localhost:8000/practice.html</code></pre>" +
+      "Everything else on the page still works: pick a problem, load its starter or full solution, edit and copy it. " +
+      "<br><br><b>Running this from the project workspace instead?</b> Serve the same folder with " +
+      "<code>python3 tools/practice_server.py</code> and open " +
+      "<code>http://localhost:8000/practice.html</code> \u2014 the pill at the top turns green and Run compiles for real.");
+  });
+
+  function run() {
+    if (!canFetch) {
+      consoleBox.innerHTML = "";
+      write('<span class="err">\u2500\u2500 the runner is not reachable \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500</span>\n');
+      write('<span class="meta">start it with:  python3 tools/practice_server.py</span>\n');
+      return;
+    }
+    if (busy) return;
+    busy = true;
+    el("run").disabled = el("run2").disabled = true;
+    var payload = { lang: lang, code: code.value, stdin: stdin.value };
+    consoleBox.innerHTML = ""; consoleBox.dataset.started = "";
+    write('<span class="meta">$ ' + META[lang].file + " · " + code.value.split("\n").length + " lines · compiling…</span>\n");
+    var started = Date.now();
+
+    fetch("api/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).then(function (r) { return r.json(); }).then(function (res) {
+      var seconds = ((Date.now() - started) / 1000).toFixed(2);
+      if (res.stage === "compile") {
+        line("── compile failed ─────────────────────────────────", "err");
+        if (res.hint) line("hint: " + res.hint, "err");
+        line(res.stderr || res.stdout || "(no compiler output)", "err");
+      } else if (res.stage === "setup" || res.stage === "request" || res.stage === "server") {
+        line("── cannot run ────────────────────────────────────", "err");
+        line(res.stderr || "unknown error", "err");
+      } else {
+        if (res.stdout) line(res.stdout.replace(/\n$/, ""));
+        else line("(the program printed nothing)", "meta");
+        if (res.stderr) line(res.stderr.replace(/\n$/, ""), "err");
+        line("── exit code " + res.exit_code + " · " + seconds + " s wall clock ──",
+             res.ok ? "ok" : "err");
+      }
+      el("lastrun").textContent = res.stage + " · " + seconds + " s";
+      el("lastrun").className = "pill" + (res.ok ? " ok" : " bad");
+      checkVerdict(res);
+    }).catch(function (err) {
+      line("── the runner is not reachable ───────────────────", "err");
+      line(String(err), "err");
+      line("Start it with:  python3 tools/practice_server.py", "meta");
+    }).then(function () {
+      busy = false;
+      el("run").disabled = el("run2").disabled = false;
+    });
+  }
+  el("run").addEventListener("click", run);
+  el("run2").addEventListener("click", run);
+  el("clearout").addEventListener("click", function () {
+    consoleBox.innerHTML = '<span class="meta">$ cleared</span>';
+    el("verdict").className = "verdict";
+  });
+  document.addEventListener("keydown", function (ev) {
+    if ((ev.ctrlKey || ev.metaKey) && ev.key === "Enter") { ev.preventDefault(); run(); }
+    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "s") { ev.preventDefault(); el("download").click(); }
+  });
+
+  function checkVerdict(res) {
+    var box = el("verdict");
+    box.className = "verdict";
+    if (!current || !current.examples || !current.examples.length || !res || res.stage !== "run") return;
+    var got = norm(res.stdout || "");
+    for (var i = 0; i < current.examples.length; i++) {
+      var want = norm(current.examples[i][1]);
+      if (!got) break;
+      if (got === want) {
+        box.textContent = "✓ Output matches Example " + (i + 1) + " exactly.";
+        box.className = "verdict on good";
+        return;
+      }
+      var parts = String(current.examples[i][1]).split(" or ");
+      for (var j = 0; j < parts.length; j++) {
+        if (norm(parts[j]) === got) {
+          box.textContent = "✓ Output matches Example " + (i + 1) + " (one of the accepted answers).";
+          box.className = "verdict on good";
+          return;
+        }
+      }
+    }
+    box.textContent = "✗ Output does not match Example 1: expected " + current.examples[0][1] +
+      ". (Some problems accept several valid answers — compare carefully.)";
+    box.className = "verdict on bad";
+  }
+
+  /* ---------------------------------------------------------- problems */
+  (canFetch ? fetch("leetcode/problems.json", { cache: "force-cache" }) : Promise.reject(new Error("no fetch")))
+  .then(function (r) { return r.json(); }).then(function (data) {
+    problems = data.problems || [];
+    var picker = el("picker"), byTopic = {};
+    problems.forEach(function (p) {
+      var key = p.topic_n + ". " + p.topic;
+      (byTopic[key] = byTopic[key] || []).push(p);
+    });
+    Object.keys(byTopic).forEach(function (key) {
+      var group = document.createElement("optgroup");
+      group.label = key;
+      byTopic[key].forEach(function (p) {
+        var opt = document.createElement("option");
+        opt.value = p.slug;
+        opt.textContent = p.difficulty.charAt(0) + " · " + p.title;
+        group.appendChild(opt);
+      });
+      picker.appendChild(group);
+    });
+    document.getElementById("pmeta").innerHTML +=
+      ' <b>' + problems.length + ' problems loaded</b> — pick one above and the statement, a starter and its full solution appear here.';
+  }).catch(function () {
+    document.getElementById("pmeta").innerHTML +=
+      ' <span class="hint">(problems.json not reachable — running in scratch mode; serve the folder to load the banks.)</span>';
+  });
+
+  function showProblem(slug) {
+    var p = null;
+    for (var i = 0; i < problems.length; i++) if (problems[i].slug === slug) { p = problems[i]; break; }
+    if (!p) return;
+    current = p;
+    // one shot: replacing the title also replaces the pills inside it, so never
+    // touch #pdiff afterwards (it no longer exists)
+    el("ptitle").innerHTML = esc(p.title) +
+      ' <span class="pill ' + (p.difficulty === "Hard" ? "bad" : "") + '">' + p.difficulty + "</span>" +
+      ' <span class="pill">topic ' + p.topic_n + "</span>";
+    var html = ['<div class="hint">' + esc(p.topic) + " · " + esc(p.pattern) + "</div>"];
+    html.push('<p class="statement">' + p.statement + "</p>");
+    (p.examples || []).forEach(function (ex, i) {
+      html.push('<div class="ex"><div class="exh">Example ' + (i + 1) + '</div><pre><code>Input:  ' +
+        esc(ex[0]) + "\nOutput: " + esc(ex[1]) + "</code></pre></div>");
+    });
+    if (p.constraints && p.constraints.length)
+      html.push('<div class="hint"><b>Constraints:</b> ' + p.constraints.join(" · ") + "</div>");
+    html.push('<details style="margin-top:8px"><summary>Approach &amp; complexity</summary><p>' + p.approach +
+      '</p><div class="hint">' + esc(p.complexity[0]) + " time · " + esc(p.complexity[1]) + " space</div></details>");
+    el("problem").innerHTML = html.join("");
+    var hasStarter = p.starter && p.starter[lang];
+    var hasSolution = p.solution_run && p.solution_run[lang];
+    el("starter").disabled = !hasStarter;
+    el("solution").disabled = !hasSolution;
+    el("solution").title = hasSolution ? "Loads a complete program: the solution plus a main()/demo call"
+      : "No runnable demo was generated for this problem in " + lang + " — use the bank page's solution";
+    // picking a problem is an explicit action: load its starter right away
+    code.value = hasStarter ? p.starter[lang] : (p.code[lang] || TEMPLATES[lang]);
+    saveDraft();
+    store("practice-last-problem", slug);
+    var grid = document.querySelector(".grid");
+    if (grid && grid.scrollIntoView) grid.scrollIntoView({ block: "nearest" });
+  }
+
+  el("picker").addEventListener("change", function () {
+    if (el("picker").value) showProblem(el("picker").value);
+  });
+  el("starter").addEventListener("click", function () {
+    if (!current) return;
+    code.value = current.starter[lang] || TEMPLATES[lang];
+    saveDraft();
+    write('<span class="meta">$ starter loaded for ' + esc(current.title) + " (" + lang + ")</span>\n");
+  });
+  el("solution").addEventListener("click", function () {
+    if (!current) return;
+    var text = (current.solution_run && current.solution_run[lang]) || current.code[lang];
+    code.value = text;
+    saveDraft();
+    write('<span class="meta">$ full solution loaded — it already has an entry point, so ▶ Run works right away</span>\n');
+  });
+  el("clearprob").addEventListener("click", function () {
+    current = null;
+    el("ptitle").innerHTML = 'Scratch pad <span class="pill">free mode</span>';
+    el("problem").innerHTML = "";
+    el("picker").value = "";
+    el("starter").disabled = el("solution").disabled = false;
+    el("verdict").className = "verdict";
+  });
+
+  /* ---------------------------------------------------------- theme */
+  var root = document.documentElement, themeBtn = el("theme");
+  var saved = restore("practice-theme");
+  if (saved) root.setAttribute("data-theme", saved);
+  else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) root.setAttribute("data-theme", "dark");
+  themeBtn.textContent = root.getAttribute("data-theme") === "dark" ? "☀️" : "🌙";
+  themeBtn.addEventListener("click", function () {
+    var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    store("practice-theme", next);
+    themeBtn.textContent = next === "dark" ? "☀️" : "🌙";
+  });
+
+  /* ---------------------------------------------------------- boot */
+  loadDraft();
+  var wanted = new URLSearchParams(window.location.search).get("p") || restore("practice-last-problem");
+  var tries = 0;
+  var timer = setInterval(function () {
+    tries++;
+    if (problems.length) {
+      clearInterval(timer);
+      // the picker only has options once problems.json has landed, so the deep
+      // link has to be applied here rather than at the top of boot
+      var found = false;
+      for (var i = 0; i < problems.length; i++) if (problems[i].slug === wanted) { found = true; break; }
+      if (wanted && found) el("picker").value = wanted;
+      if (el("picker").value) showProblem(el("picker").value);
+    } else if (tries > 40) clearInterval(timer);
+  }, 250);
+})();
+</script>
+</body>
+</html>

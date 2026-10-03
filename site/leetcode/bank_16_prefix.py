@@ -1327,7 +1327,8 @@ int countRangeSum(int[] nums, int lower, int upper) {
         if (j > 0) {
             int low = lowerBound(sorted, m, prefix[j] - upper);
             int high = upperBound(sorted, m, prefix[j] - lower);
-            if (high >= low) answer += prefixCount(tree, high) - prefixCount(tree, low - 1);
+            // count the inserted ranks in [low, high - 1]; prefixCount(x) counts ranks < x
+            if (high > low) answer += prefixCount(tree, high) - prefixCount(tree, low);
         }
         add(tree, m, lowerBound(sorted, m, prefix[j]));
     }

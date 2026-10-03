@@ -22,6 +22,7 @@ PY
 
 echo "→ LeetCode banks"
 python3 leetcode/build.py
+python3 leetcode/build_bank_json.py
 
 echo "→ link check (local files referenced by the pages must exist)"
 python3 - <<'PY'
@@ -30,9 +31,9 @@ missing = []
 for page in pathlib.Path(".").glob("*.html"):
     for m in re.finditer(r'href="(?!https?:|#|mailto:)([^"#]+)', page.read_text()):
         link = m.group(1)
-        if "'" in link or "+" in link:          # built at runtime by JavaScript
+        if "'" in link or "+" in link or link.startswith("api/"):   # runtime / API routes
             continue
-        target = (page.parent / link).resolve()
+        target = (page.parent / link.split("?")[0]).resolve()
         if not target.exists():
             missing.append(f"{page.name} -> {link}")
 print("   missing links:", missing if missing else "none")
@@ -46,8 +47,10 @@ site = pathlib.Path(".")                 # build-all.sh runs inside site/
 docs = pathlib.Path("../docs")           # docs/ must sit at the repository root
 docs.mkdir(exist_ok=True)
 names = ["index.html", "cpp-guide.html", "java-guide.html", "python-guide.html",
-         "cpp-leetcode.html", "java-leetcode.html", "python-leetcode.html", ".nojekyll"]
+         "cpp-leetcode.html", "java-leetcode.html", "python-leetcode.html", "practice.html",
+         "leetcode/problems.json", ".nojekyll"]
 for n in names:
+    (docs / n).parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(site / n, docs / n)
 for f in docs.glob("*.html"):
     f.write_text(f.read_text().replace('href="../', 'href="'))
@@ -55,9 +58,9 @@ missing = []
 for f in docs.glob("*.html"):
     for m in re.finditer(r'href="(?!https?:|#|mailto:)([^"#]+)', f.read_text()):
         link = m.group(1)
-        if "'" in link or "+" in link:          # built at runtime by JavaScript
+        if "'" in link or "+" in link or link.startswith("api/"):   # runtime / API routes
             continue
-        if not (docs / link).exists():
+        if not (docs / link.split("?")[0]).exists():
             missing.append(f"{f.name} -> {link}")
 print("   docs/ updated:", len(names), "files · missing links:", missing or "none")
 PY

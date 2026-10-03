@@ -1321,7 +1321,10 @@ List<Integer> maximizeXor(int[] nums, int[][] queries) {
     int[] answer = new int[q], next = {0};
     for (int qi : order) {
         int x = queries[qi][0], limit = queries[qi][1];
-        while (next[0] < nums.length && nums[next[0]] <= limit) insertValue(child, nums[next[0]]++);
+        while (next[0] < nums.length && nums[next[0]] <= limit) {
+            insertValue(child, nums[next[0]]);      // insert the value, then move the pointer on
+            next[0]++;
+        }
         if (next[0] == 0) { answer[qi] = -1; continue; }   // nothing is small enough
         answer[qi] = bestXor(child, x);
     }

@@ -154,6 +154,8 @@ python-guide.html       Ultimate Python Guide — 25 chapters (357 KB, self-cont
 cpp-leetcode.html       C++ question bank
 java-leetcode.html      Java question bank
 python-leetcode.html    Python question bank
+practice.html           Practice terminal — Python / C++ / Java runner (static copy explains how to run locally)
+leetcode/problems.json  problem data for the terminal (480 problems, statements, starters, solutions)
 .nojekyll               tells Pages to serve the files as-is
 README.md               repository description
 ```
