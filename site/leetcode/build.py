@@ -29,7 +29,7 @@ import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 SITE = HERE.parent
-LANGS = ["cpp", "java", "python"]
+LANGS = ["cpp", "java", "python", "c"]
 
 LANG_META = {
     "cpp": dict(
@@ -80,6 +80,21 @@ LANG_META = {
                   "collections typing Optional List Dict Set Tuple defaultdict").split(),
         extra_builtins=["TreeNode", "ListNode", "Node"],
     ),
+    "c": dict(
+        guide="c-guide.html", title="C LeetCode Question Bank",
+        brand="C bank", sub="C17 solutions · compiled with gcc 14",
+        accent="#1b6ca8", accent2="#0f766e", key="cb-theme",
+        keywords=("auto break case char const continue default do double else enum extern float for goto if "
+                  "inline int long register restrict return short signed sizeof static struct switch typedef "
+                  "union unsigned void volatile while _Bool bool true false NULL size_t ssize_t ptrdiff_t "
+                  "int8_t int16_t int32_t int64_t uint8_t uint16_t uint32_t uint64_t").split(),
+        builtins=("printf scanf puts putchar getchar strlen strcpy strncpy strcmp strncmp strstr strchr strrchr "
+                  "strtok strcat memcpy memset memcmp qsort bsearch malloc calloc realloc free abs labs llabs "
+                  "fabs sqrt pow floor ceil log log2 exp fmax fmin fmod atoi atol atoll strtol strtoll strtod "
+                  "sprintf snprintf sscanf fgets stdin stdout stderr EOF SEEK_SET ceil log10 isalpha "
+                  "isdigit isspace tolower toupper getline strdup round").split(),
+        extra_builtins=["main", "Solution", "Node", "ListNode", "int", "char", "void", "long"],
+    ),
 }
 
 
@@ -93,7 +108,32 @@ def load_banks() -> list[dict]:
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)          # type: ignore[union-attr]
         banks.append({"topic": mod.TOPIC, "problems": mod.PROBLEMS, "file": path.name})
+    merge_c_solutions(banks)
     return banks
+
+
+C_DIR = HERE / "c"
+
+
+def merge_c_solutions(banks: list[dict]) -> int:
+    """Attach the hand-written C solution to every problem that has one.
+
+    The C sources live in site/leetcode/c/t<NN>_<topic>.py as CODE = {"slug": "...c code..."}
+    so the topic files stay readable and the bank files stay untouched.
+    """
+    code: dict[str, str] = {}
+    if C_DIR.is_dir():
+        for path in sorted(C_DIR.glob("t*.py")):
+            spec = importlib.util.spec_from_file_location(path.stem, path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)          # type: ignore[union-attr]
+            for slug, src in getattr(mod, "CODE", {}).items():
+                code.setdefault(slug, src.rstrip("\n") + "\n")
+    for bank in banks:
+        for prob in bank["problems"]:
+            if prob["slug"] in code:
+                prob["code"]["c"] = code[prob["slug"]]
+    return len(code)
 
 
 def esc_code(code: str) -> str:
@@ -134,11 +174,17 @@ def render_problem(prob: dict, counters: dict, lang: str, flat: list, pos: dict)
     if cons:
         out.append('    <p class="cons"><b>Constraints:</b> ' + "; ".join(inline_md(c) for c in cons) + ".</p>")
     out.append(f'    <p><b>Approach.</b> {inline_md(prob["approach"])}</p>')
-    code = prob["code"][lang]
-    out.append(f'    <pre><code>{esc_code(code)}</code></pre>')
+    code = prob["code"].get(lang, "")
+    if not code.strip() and lang == "c":
+        out.append('    <div class="ex"><div class="exh">No C solution</div>'
+                   '<pre><code class="nohl">This problem is a data-structure or design problem that reads much '
+                   'better in C++ or Java (linked list, tree, hash map, or a class to design).\n'
+                   'The full C++ and Java solutions are on their own pages.</code></pre></div>')
+    else:
+        out.append(f'    <pre><code>{esc_code(code)}</code></pre>')
     t, s = prob["complexity"]
     out.append(f'    <p class="cx"><b>Complexity:</b> {inline_md(t)} time · {inline_md(s)} space. · '
-               f'<a class="trylink" href="practice.html?p={pid}" title="Open this problem in the practice terminal">'
+               f'<a class="trylink" href="practice.html?p={pid}&amp;lang={lang}" title="Open this problem in the practice terminal">'
                f'⌨ practice it</a></p>')
     # previous / next problem — keeps the gentle slope one click away
     left = (f'<a class="pnav-a prev" href="#{prev[0]}"><span class="d">{prev[1]}</span> {inline_md(prev[2])}</a>'
@@ -302,6 +348,7 @@ mark{{background:var(--accent2);color:#08110f;border-radius:3px;padding:0 2px}}
       <a href="cpp-leetcode.html">C++ bank</a>
       <a href="java-leetcode.html">Java bank</a>
       <a href="python-leetcode.html">Python bank</a>
+      <a href="c-leetcode.html">C bank</a>
       <div class="mh">Practice</div>
       <a href="practice.html">⌨ Practice terminal</a>
     </div>
@@ -374,8 +421,9 @@ def render(lang: str, banks: list[dict]) -> str:
   <p><b>{meta["brand"]}</b> — {total} problems across {len(banks)} topics, with complete solutions in
   {meta["sub"].split("·")[0].strip()}.</p>
   <p class="small">Same problems in every language:
-    <a href="cpp-leetcode.html">C++</a> · <a href="java-leetcode.html">Java</a> · <a href="python-leetcode.html">Python</a>
+    <a href="cpp-leetcode.html">C++</a> · <a href="java-leetcode.html">Java</a> · <a href="python-leetcode.html">Python</a> · <a href="c-leetcode.html">C</a>
     &nbsp;|&nbsp; Guides: <a href="cpp-guide.html">C++</a> · <a href="java-guide.html">Java</a> · <a href="python-guide.html">Python</a>
+    &nbsp;|&nbsp; Banks: <a href="cpp-leetcode.html">C++</a> · <a href="java-leetcode.html">Java</a> · <a href="python-leetcode.html">Python</a> · <a href="c-leetcode.html">C</a>
     &nbsp;|&nbsp; <a href="index.html">Home</a></p>
 </footer>
 

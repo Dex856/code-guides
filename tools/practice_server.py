@@ -93,6 +93,10 @@ def clip(text: str) -> str:
 # --------------------------------------------------------------------------- #
 PY_PRELUDE = ""
 CPP_PRELUDE = "#include <bits/stdc++.h>\nusing namespace std;\n"
+C_PRELUDE = ("#define _POSIX_C_SOURCE 200809L   /* strdup, getline, … under -std=c17 */\n"
+             "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <math.h>\n"
+             "#include <limits.h>\n#include <stdbool.h>\n#include <stdint.h>\n#include <ctype.h>\n"
+             "#include <stdarg.h>\n")
 JAVA_PRELUDE = "import java.util.*;\nimport java.io.*;\n"
 
 
@@ -103,7 +107,7 @@ def run_python(code: str, stdin_text: str) -> dict:
         pathlib.Path(d, "main.py").write_text(code)
         rc, out, err, ms = run(["python3", "-X", "utf8", "main.py"], d, stdin_text, RUN_TIMEOUT)
     return {"ok": rc == 0, "stage": "run", "exit_code": rc, "stdout": clip(out),
-            "stderr": clip(err), "time_ms": ms}
+            "stderr": clip(err) + signal_note(rc, "python"), "time_ms": ms}
 
 
 def run_cpp(code: str, stdin_text: str) -> dict:
@@ -119,7 +123,24 @@ def run_cpp(code: str, stdin_text: str) -> dict:
                     "hint": fallback_hint(err, "cpp")}
         rc, out, err, ms = run(["./prog"], d, stdin_text, RUN_TIMEOUT)
     return {"ok": rc == 0, "stage": "run", "exit_code": rc, "stdout": clip(out),
-            "stderr": clip(err), "time_ms": ms}
+            "stderr": clip(err) + signal_note(rc, "cpp"), "time_ms": ms}
+
+
+def run_c(code: str, stdin_text: str) -> dict:
+    if not have("gcc"):
+        return {"ok": False, "stage": "setup", "stderr": "gcc is not installed on this machine."}
+    src = code if "#include" in code else C_PRELUDE + code
+    with tempfile.TemporaryDirectory() as d:
+        pathlib.Path(d, "main.c").write_text(src)
+        rc, out, err, ms = run(["gcc", "-std=c17", "-O2", "-Wall", "-o", "prog", "main.c", "-lm"], d,
+                               timeout=COMPILE_TIMEOUT)
+        if rc != 0:
+            return {"ok": False, "stage": "compile", "exit_code": rc,
+                    "stdout": clip(out), "stderr": clip(err), "time_ms": ms,
+                    "hint": fallback_hint(err, "c")}
+        rc, out, err, ms = run(["./prog"], d, stdin_text, RUN_TIMEOUT)
+    return {"ok": rc == 0, "stage": "run", "exit_code": rc, "stdout": clip(out),
+            "stderr": clip(err) + signal_note(rc, "c"), "time_ms": ms}
 
 
 def run_java(code: str, stdin_text: str) -> dict:
@@ -154,7 +175,22 @@ def run_java(code: str, stdin_text: str) -> dict:
         rc, out, err, ms = run(["java", "-Xss64m", "-Xmx" + str(MEMORY_MB) + "m", "-cp", d, cls], d,
                                stdin_text, RUN_TIMEOUT, limit_memory=False)
     return {"ok": rc == 0, "stage": "run", "exit_code": rc, "stdout": clip(out),
-            "stderr": clip(err), "time_ms": ms}
+            "stderr": clip(err) + signal_note(rc, "java"), "time_ms": ms}
+
+
+SIGNALS = {2: "SIGINT", 4: "SIGILL", 6: "SIGABRT", 8: "SIGFPE", 9: "SIGKILL", 11: "SEGFAULT"}
+
+
+def signal_note(rc: int, lang: str) -> str:
+    """A killed program deserves a sentence, not an empty error."""
+    if rc < 0:
+        name = SIGNALS.get(-rc, f"signal {-rc}")
+        if name == "SEGFAULT":
+            if lang in ("c", "cpp"):
+                return "\n[the program crashed with a segmentation fault — usually an out-of-range index or a null pointer]\n"
+            return "\n[the program crashed]\n"
+        return f"\n[the program was killed by {name} — most often an out-of-memory or timeout kill]\n"
+    return ""
 
 
 def fallback_hint(err: str, lang: str) -> str:
@@ -166,10 +202,27 @@ def fallback_hint(err: str, lang: str) -> str:
         return "A name (or a needed #include) is missing — the terminal already adds bits/stdc++.h + using namespace std when you omit includes."
     if lang == "java" and "cannot find symbol" in low:
         return "Java needs an import for that class — the terminal adds java.util.* and java.io.* automatically when you omit imports."
+    if lang == "c":
+        if "implicit declaration of function" in low:
+            found = re.search(r"implicit declaration of function .([\w]+)", err)
+            name = found.group(1) if found else "a function"
+            return (f"`{name}` has no declaration before this line. C is compiled top-down — "
+                    "add a prototype above main(), or move the function up. (string/malloc/math "
+                    "helpers are already included.)")
+        if "undeclared" in low:
+            return ("One of these names was never declared. The terminal already includes stdio, stdlib, "
+                    "string, math, limits, stdbool, stdint and ctype, so check the spelling or declare the variable.")
+        if "expected declaration" in low or "expected ';'" in low:
+            return "The compiler expected a declaration or semicolon — a good place to look is just above the reported line."
+        if "was not declared in this scope" in low or "unknown type name" in low:
+            return ("A type or name is unknown at this point — types must be complete (define structs before use) "
+                    "and functions declared before they are called.")
+        if "ld returned" in low or "undefined reference to `main'" in low:
+            return "The compiler could not find main(). A runnable C file needs `int main(void) { ... }`."
     return ""
 
 
-RUNNERS = {"python": run_python, "cpp": run_cpp, "java": run_java}
+RUNNERS = {"python": run_python, "cpp": run_cpp, "java": run_java, "c": run_c}
 
 
 # --------------------------------------------------------------------------- #
@@ -197,7 +250,7 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json({
                 "ok": True,
                 "runtimes": {name: have(tool) for name, tool in
-                             (("python", "python3"), ("cpp", "g++"), ("java", "javac"))},
+                             (("python", "python3"), ("cpp", "g++"), ("java", "javac"), ("c", "gcc"))},
                 "limits": {"run_timeout_s": RUN_TIMEOUT, "compile_timeout_s": COMPILE_TIMEOUT,
                            "memory_mb": MEMORY_MB, "max_output_chars": MAX_OUTPUT},
             })
@@ -244,12 +297,13 @@ class Handler(SimpleHTTPRequestHandler):
 
 def main() -> int:
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
-    missing = [t for t in ("python3", "g++", "javac") if not have(t)]
+    missing = [t for t in ("python3", "g++", "javac", "gcc") if not have(t)]
     print("Code Guides practice server")
     print(f"  site : {SITE}")
     print(f"  url  : http://localhost:{port}/          (practice: /practice.html)")
     print(f"  runs : python3={'yes' if have('python3') else 'NO'}"
-          f"  g++={'yes' if have('g++') else 'NO'}  javac={'yes' if have('javac') else 'NO'}")
+          f"  g++={'yes' if have('g++') else 'NO'}  javac={'yes' if have('javac') else 'NO'}"
+          f"  gcc={'yes' if have('gcc') else 'NO'}")
     if missing:
         print(f"  note : missing {', '.join(missing)} — those terminals will report it")
     print(f"  limits: {RUN_TIMEOUT}s run · {COMPILE_TIMEOUT}s compile · {MEMORY_MB} MB · "

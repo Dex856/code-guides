@@ -30,6 +30,9 @@ def run(lang, code, stdin=""):
 
 def norm(s):
     s = s.strip().replace("\r\n", "\n")
+    # examples sometimes list acceptable alternatives:  1   or   2
+    if " or " in s and "[" not in s.split(" or ")[0]:
+        s = s.split(" or ")[0]
     lines = []
     for ln in s.split("\n"):
         ln = ln.strip().strip('"').replace("True", "true").replace("False", "false")
@@ -45,18 +48,18 @@ def main():
     print(f"problems.json: {data['count']} problems ({len(json.dumps(data))/1e6:.2f} MB over HTTP)")
 
     runnable = [p for p in data["problems"]
-                if p.get("solution_run") and all(p["solution_run"].get(l) for l in ("python", "cpp", "java"))
+                if p.get("solution_run") and all(p["solution_run"].get(l) for l in ("python", "cpp", "java", "c"))
                 and p.get("examples")]
     rng = random.Random(int(sys.argv[2]) if len(sys.argv) > 2 else 20261003)
     rng.shuffle(runnable)
     runnable = runnable[:SAMPLE]
 
-    tally = {l: [0, 0] for l in ("python", "cpp", "java")}   # [ok, fail]
+    tally = {l: [0, 0] for l in ("python", "cpp", "java", "c")}   # [ok, fail]
     failures = []
     shown = 0
     for p in runnable:
         want = norm(p["examples"][0][1]) if p.get("examples") else None
-        for lang in ("python", "cpp", "java"):
+        for lang in ("python", "cpp", "java", "c"):
             code = (p.get("solution_run") or {}).get(lang)
             if not code:
                 continue

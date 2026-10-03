@@ -47,7 +47,8 @@ site = pathlib.Path(".")                 # build-all.sh runs inside site/
 docs = pathlib.Path("../docs")           # docs/ must sit at the repository root
 docs.mkdir(exist_ok=True)
 names = ["index.html", "cpp-guide.html", "java-guide.html", "python-guide.html",
-         "cpp-leetcode.html", "java-leetcode.html", "python-leetcode.html", "practice.html",
+         "cpp-leetcode.html", "java-leetcode.html", "python-leetcode.html", "c-leetcode.html",
+         "practice.html",
          "leetcode/problems.json", ".nojekyll"]
 for n in names:
     (docs / n).parent.mkdir(parents=True, exist_ok=True)

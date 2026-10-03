@@ -115,7 +115,7 @@ footer{border-top:1px solid var(--line);margin-top:56px;padding:24px 0 70px;colo
     <span><b>16</b> topics</span>
     <span><b>480</b> problems per language</span>
     <span><b>1 440</b> verified solutions</span>
-    <span><b>3</b> live terminals</span>
+    <span><b>4</b> live terminals</span>
     <span><b>0</b> external requests</span>
   </div>
   <div class="badges">
@@ -130,8 +130,8 @@ footer{border-top:1px solid var(--line);margin-top:56px;padding:24px 0 70px;colo
 
 <section class="block">
   <h2><span class="n">01</span>Practise: write it, run it, check it</h2>
-  <p class="lede" style="font-size:15.5px">The practice terminal compiles and runs real code on the site — pick a language,
-  load any of the 480 problems, and press Run. Each problem ships with a starter skeleton and a complete runnable solution, and
+  <p class="lede" style="font-size:15.5px">The practice terminal compiles and runs real code on the site — pick Python,
+  C++, Java or C, load any of the 480 problems, and press Run. Each problem ships with a starter skeleton and a complete runnable solution, and
   your output is checked against the official examples.</p>
   <div class="grid">
     <div class="card">
@@ -155,6 +155,17 @@ footer{border-top:1px solid var(--line);margin-top:56px;padding:24px 0 70px;colo
       </ul>
       <div class="links"><a class="primary" style="background:var(--cpp)" href="practice.html?p=running-sum-of-1d-array">Try an example</a>
         <a href="cpp-leetcode.html">C++ bank</a></div>
+    </div>
+    <div class="card">
+      <h2 style="color:var(--c,#1b6ca8)">C terminal</h2>
+      <div class="sub">gcc -std=c17 · stdio, stdlib, string, math and friends included</div>
+      <ul>
+        <li>A fourth bank page carries the same 480 problems with C solutions</li>
+        <li>Pointers, arrays, <code>qsort</code>, hand-rolled hash tables — the C way</li>
+        <li>Segfaults and out-of-bounds reports come back with a plain-English note</li>
+      </ul>
+      <div class="links"><a class="primary" style="background:#1b6ca8" href="practice.html?lang=c&amp;p=running-sum-of-1d-array">Open C</a>
+        <a href="c-leetcode.html">C bank</a></div>
     </div>
     <div class="card">
       <h2 style="color:var(--java)">Java terminal</h2>
@@ -284,7 +295,7 @@ python3 -m http.server 8000
     "Trees & BSTs","Graphs & Union-Find","Dynamic Programming","Greedy & Intervals",
     "Heaps, Top-K & Design","Tries & String Algorithms","Backtracking & Recursion",
     "Bit Manipulation","Math & Number Theory","Prefix Sums & Range Queries"];
-  var banks = [["cpp-leetcode.html","C++"],["java-leetcode.html","Java"],["python-leetcode.html","Py"]];
+  var banks = [["cpp-leetcode.html","C++"],["java-leetcode.html","Java"],["python-leetcode.html","Py"],["c-leetcode.html","C"]];
   var box = document.getElementById("tbook"), out = [];
   TOPICS.forEach(function(name, i){
     var n = String(i + 1).padStart(2, "0");

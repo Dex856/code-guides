@@ -141,9 +141,17 @@ def cpp_vector_literal(inner: str, values) -> str | None:
 
 
 def split_top(text: str, sep: str = ",") -> list[str]:
-    parts, depth, buf = [], 0, ""
+    parts, depth, buf, quote = [], 0, "", None
     for ch in text:
-        if ch in "<([{":
+        if quote:
+            buf += ch
+            if ch == quote:
+                quote = None
+            continue
+        if ch in "\"'":
+            quote = ch
+            buf += ch
+        elif ch in "<([{":
             depth += 1
             buf += ch
         elif ch in ">)]}":
@@ -479,9 +487,375 @@ def cpp_starter(solution: str) -> str:
 
 
 # --------------------------------------------------------------------------- #
+#  C demos
+# --------------------------------------------------------------------------- #
+C_SCALAR = {"int": "%lld", "long": "%lld", "long long": "%lld", "short": "%lld",
+            "unsigned": "%llu", "unsigned int": "%llu", "size_t": "%llu",
+            "double": "%g", "float": "%g", "char": "%c"}
+SIZE_ROLE = ("returnsize", "returncolumnsize", "outsize")
+
+
+def c_base_type(param: str) -> tuple[str, str, int]:
+    """`const int *nums` → ("int", "nums", 1).  ("", "", 0) when it is not plain C."""
+    t = re.sub(r"\b(const|volatile|restrict|static|register)\b", " ", param)
+    t = " ".join(t.split())
+    if t in ("void", ""):
+        return ("void", "", 0)
+    m = re.match(r"^(.*?)(\s*\*+\s*|\s+)(\w+)\s*((?:\[[^\]]*\])*)$", t)
+    if not m:
+        return ("", "", 0)
+    head, stars, name, arr = m.group(1).strip(), m.group(2), m.group(3), m.group(4)
+    ptr = stars.count("*") + len(re.findall(r"\[[^\]]*\]", arr))
+    head = re.sub(r"\b(struct|enum|union)\s+(\w+)", r"\2", head).strip()
+    return (head, name, ptr)
+
+
+def c_example_values(params: str, example: str) -> dict | None:
+    """The example's values, keyed by parameter name.
+
+    The banks mix three styles, so all three are understood:
+        nums = [2,7,11,15], target = 9      named
+        [3, 1, 9, 4, 9]                     positional, with numsSize / n implied
+        [[1,2,3],[4,5,6]], k = 2            mixed, and matrix dimensions implied
+    """
+    sig = [c_base_type(p) for p in split_top(params)]
+    positional: list = []
+    named: dict = {}
+    for raw in split_top(example):
+        txt = raw.strip()
+        if "=" in txt:
+            key, _, val = txt.partition("=")
+            try:
+                named[key.strip()] = ast.literal_eval(val.strip())
+            except (ValueError, SyntaxError):
+                return None
+        else:
+            # a trailing line like "0   (the answer)" is commentary, not a value
+            try:
+                positional.append(ast.literal_eval(txt))
+            except (ValueError, SyntaxError):
+                if named:
+                    break
+                return None
+    if not positional and not named:
+        return None
+
+    def dims_of(value) -> list[int]:
+        dims = []
+        while isinstance(value, list):
+            dims.append(len(value))
+            value = value[0] if value else None
+        return dims
+
+    out: dict = {}
+    last_array = None
+    k = 0
+    pending_dims = 0
+    for base, pname, ptr in sig:
+        if base == "void" and not pname:
+            continue
+        low = pname.lower()
+        if ptr and (low in SIZE_ROLE or low.endswith(("count", "size", "length"))):
+            continue                                     # filled by the call itself
+        if pname in named:
+            out[pname] = named[pname]
+            if ptr:
+                last_array = pname
+            continue
+        if not ptr and base in ("int", "unsigned", "size_t", "long", "long long"):
+            if last_array and not isinstance(out.get(last_array), tuple):
+                tails = (last_array.lower() + "size", last_array.lower() + "len",
+                         last_array.lower() + "length", "n", "size")
+                if low in tails:
+                    out[pname] = ("__len__", last_array)
+                    continue
+            nxt = positional[k] if k < len(positional) else None
+            if isinstance(nxt, list):
+                dims = dims_of(nxt)
+                if pending_dims < len(dims):
+                    out[pname] = ("__num__", dims[pending_dims])   # rows, then cols
+                    pending_dims += 1
+                    continue
+            if nxt is None and last_array and not isinstance(out.get(last_array), tuple):
+                out[pname] = ("__len__", last_array)               # median(a, n, b, m)
+                continue
+            return None
+        if k < len(positional):
+            out[pname] = positional[k]
+            k += 1
+        elif ptr:
+            out[pname] = ("__buffer__", base)              # an output the call fills in
+        else:
+            return None
+        if ptr:
+            last_array = pname
+            pending_dims = 0
+    # an unfilled pointer is only believable as an output buffer when nothing after it
+    # depends on it (otherwise the signature and the example simply do not match)
+    names = [p for _, p, _ in sig if p]
+    for index, (base, pname, ptr) in enumerate(sig):
+        if not ptr or not isinstance(out.get(pname), tuple):
+            continue
+        for _, later, lptr in sig[index + 1:]:
+            if later and (later.lower() in SIZE_ROLE or later.lower().endswith(("count", "size", "length"))):
+                continue
+            return None
+    return out
+
+
+def c_show_mutated(args: list[str], values: dict, sizes: dict) -> list[str]:
+    """`printf` lines that show the first array / matrix / string the call worked on."""
+    for name in args:
+        value = values.get(name)
+        if isinstance(value, tuple):
+            continue
+        if isinstance(value, str):
+            return [f'    printf("%s\\n", {name});']
+        if isinstance(value, list) and value and all(isinstance(x, list) for x in value):
+            rows = sizes.get(name, "0")
+            cols = sizes.get("__cols_" + name, "0")
+            return [f'    for (int i = 0; i < {rows}; i++) {{',
+                    '        printf("[");',
+                    f'        for (int j = 0; j < {cols}; j++) printf(j ? ",%lld" : "%lld", (long long) {name}[i][j]);',
+                    '        printf(i + 1 < ' + rows + ' ? "], " : "]");',
+                    '    }',
+                    '    printf("\\n");']
+        if isinstance(value, list):
+            length = sizes.get(name, "0")
+            return ['    printf("[");',
+                    f'    for (int i = 0; i < {length}; i++) printf(i ? ",%lld" : "%lld", (long long) {name}[i]);',
+                    '    printf("]\\n");']
+    return []
+
+
+C_SIGNATURE = re.compile(r"^([A-Za-z_][A-Za-z_0-9 \t*]*?)\s*(\**\s*\w+)\s*\(([^;{]*)\)\s*\{", re.M)
+
+
+def c_signatures(src: str) -> list[tuple[str, str, str, bool]]:
+    """(return type, name, params, is_static) for every function defined in `src`."""
+    found = []
+    for m in C_SIGNATURE.finditer(src):
+        head = " ".join(m.group(1).split())
+        if head in ("if", "for", "while", "switch", "else", "return", "sizeof", "do"):
+            continue
+        stars = m.group(2)[:len(m.group(2)) - len(m.group(2).lstrip("*"))]
+        name = m.group(2).lstrip("* ").strip()
+        ret = (head + " " + stars).strip()
+        if name in ("main",) or "Solution" in ret:
+            continue
+        found.append((ret, name, m.group(3), "static" in ret))
+    return found
+
+
+def c_demo(code: str, example: str, expected: str = "") -> str | None:
+    """A runnable C `main` for the first example — or None when C is a poor fit."""
+    if NODE_MARKERS.search(code) or JUDGE_APIS.search(code):
+        return None
+    src = strip_comments(code)
+    if "->" in src or re.search(r"\bstruct\b", src):
+        return None                                  # linked lists, trees, tries, design classes
+    signatures = c_signatures(src)
+    # helpers marked static come first in some files, so try the public ones before them
+    signatures.sort(key=lambda t: t[3])
+    for ret, name, params, _ in signatures:
+        built = c_demo_from_signature(ret, name, params, example, expected)
+        if built:
+            return built
+    return None
+
+
+def c_demo_from_signature(ret_in: str, name: str, params: str, example: str, expected: str = "") -> str | None:
+    ret_raw = re.sub(r"\b(static|inline)\b", " ", ret_in).strip()
+    ret_t, ret_ptr = c_base_type(ret_raw + " __ret")[0], ret_raw.count("*")
+    values = c_example_values(params, example)
+    if not values:
+        return None
+
+    rows_prefix: list[str] = []      # matrix rows, declared before the row-pointer arrays
+    buffers: list[str] = []          # output buffers filled in by the call
+    decls: list[str] = []            # declarations in parameter order
+    sizes: dict[str, str] = {}       # declared name → its length expression
+    args: list[str] = []
+    out_size = None                  # a `*returnSize` style parameter, if any
+
+    for raw in split_top(params):
+        base, pname, ptr = c_base_type(raw)
+        if base == "void" and not pname:
+            continue                       # `int f(void)`
+        if not pname or not base:
+            return None
+        low = pname.lower()
+        if ptr and (low in SIZE_ROLE or low.endswith(("count", "size", "length"))):
+            out_size = pname                              # `int *outCount`, `int *returnSize`, …
+            args.append("&" + pname)
+            continue
+        if base == "void":
+            return None                                   # `const void *` helpers need casts
+        value = values.get(pname)
+        if value is None:
+            return None
+
+        # a dimension the example implies: rows / cols of a matrix
+        if isinstance(value, tuple) and len(value) == 2 and value[0] == "__num__":
+            decls.append(f"    int {pname} = {value[1]};")
+            args.append(pname)
+            continue
+
+        # a size the example leaves implicit: numsSize / wordLen / n / size
+        if isinstance(value, tuple) and len(value) == 2 and value[0] == "__len__":
+            if value[1] not in sizes:
+                return None
+            decls.append(f"    int {pname} = {sizes[value[1]]};")
+            sizes[pname] = sizes[value[1]]
+            args.append(pname)
+            continue
+
+        if isinstance(value, tuple) and len(value) == 2 and value[0] == "__buffer__":
+            kind = base if base in ("int", "long", "long long", "char", "double") else "int"
+            decls.append(f"    {kind} {pname}[512];")          # the call fills this in
+            sizes[pname] = "512"
+            buffers.append(pname)
+            args.append(pname)
+            continue
+        if ptr >= 2:
+            if isinstance(value, list) and value and all(isinstance(x, str) for x in value):
+                decls.append("    char *%s[] = {%s};" % (pname, ", ".join('"%s"' % x for x in value)))
+                sizes[pname] = str(len(value))
+            elif isinstance(value, list) and value and all(isinstance(x, list) for x in value):
+                fixed = re.findall(r"\[(\d+)\]", raw)   # int m[][6] — inner size is fixed
+                if "*" not in raw:
+                    cols = int(fixed[-1]) if fixed else len(value[0])
+                    rows_lit = ", ".join(c_int_literal(list(row) + [0] * (cols - len(row)), base)
+                                         for row in value)
+                    decls.append(f"    {base} {pname}[{len(value)}][{cols}] = {{{rows_lit}}};")
+                else:                                     # int **m — rows plus a row-pointer array
+                    row_names = []
+                    for i, row in enumerate(value):
+                        rows_prefix.append(f"    {base} {pname}_{i}[] = {c_int_literal(row, base)};")
+                        row_names.append(f"{pname}_{i}")
+                    decls.append(f"    {base} *{pname}[] = {{{', '.join(row_names)}}};")
+                sizes[pname] = str(len(value))
+                sizes["__cols_" + pname] = str(len(value[0]))
+            else:
+                return None
+        elif ptr == 1:
+            if isinstance(value, str):
+                # a mutable buffer: several of these functions edit the string in place
+                mutable = "const" not in raw
+                decls.append(f'    {"char " + pname + "[]" if mutable else "const char *" + pname} = "{value}";')
+                sizes[pname] = str(len(value))
+            elif isinstance(value, list) and (
+                    all(not isinstance(x, (list, str)) for x in value)
+                    or (base == "char" and all(isinstance(x, str) and len(x) == 1 for x in value))):
+                decls.append(f"    {base} {pname}[] = {c_int_literal(value, base)};")
+                sizes[pname] = str(len(value))
+            else:
+                return None
+        else:
+            if base in ("bool", "_Bool"):
+                decls.append(f"    bool {pname} = {'true' if value else 'false'};")
+            elif base == "char" and isinstance(value, str):
+                decls.append(f"    char {pname} = '{value}';")
+            elif base in ("double", "float") and isinstance(value, (int, float)):
+                decls.append(f"    {base} {pname} = {float(value)};")
+            elif isinstance(value, int) and not isinstance(value, bool):
+                decls.append(f"    {base} {pname} = {value};")
+            else:
+                return None
+        args.append(pname)
+
+    call = f"{name}({', '.join(args)})"
+    body: list[str] = []
+    if ret_raw.strip() == "void":
+        body.append(f"    {call};")
+        if buffers and out_size:
+            body += ['    printf("[");',
+                     f'    for (int i = 0; i < {out_size}; i++)',
+                     f'        printf(i ? ",%lld" : "%lld", (long long) {buffers[0]}[i]);',
+                     '    printf("]\\n");']
+        elif not buffers:
+            body += c_show_mutated(args, values, sizes)   # in place: show what changed
+    elif ret_ptr >= 1 and ret_t == "char":
+        body.append(f"    char *_r = {call};")
+        body.append('    printf("%s\\n", _r ? _r : "");')
+    elif ret_ptr >= 1:
+        if not out_size:
+            return None                     # an int* result needs its length from somewhere
+        body.append(f"    int _n = 0;")
+        body.append(f"    {ret_t} *_r = {call};")
+        body.append(f"    _n = _out_{out_size};")
+        body.append('    printf("[");')
+        body.append('    for (int i = 0; i < _n; i++) printf(i ? ",%lld" : "%lld", (long long) _r[i]);')
+        body.append('    printf("]\\n");')
+    elif ret_t in ("bool", "_Bool"):
+        body.append(f'    printf({call} ? "true\\n" : "false\\n");')
+    elif ret_t in C_SCALAR and ret_t in ("int", "bool", "_Bool") and (
+            re.match(r"(is|has|can|check|valid|contains|search|match)", name)
+            or expected.strip().lower() in ("true", "false")):
+        body.append(f'    printf({call} ? "true\\n" : "false\\n");')   # C has no bool return: show one
+    elif ret_t in C_SCALAR:
+        fmt = C_SCALAR[ret_t]
+        cast = "(long long)" if "%ll" in fmt else ""
+        body.append(f'    printf("{fmt}\\n", {cast} {call});')
+    else:
+        return None
+
+    decls = rows_prefix + decls
+    if out_size:
+        decls.append(f"    int {out_size} = 0;")
+    return ("\nint main(void) {\n" + "\n".join(decls) + "\n" + "\n".join(body)
+            + "\n    return 0;\n}\n")
+
+
+def c_int_literal(values, kind: str) -> str:
+    """A C initialiser list: numbers, or characters (given as numbers or as 'x')."""
+    if kind == "char":
+        chars = [v if isinstance(v, str) else chr(int(v)) for v in values]
+        return "{" + ", ".join("'%s'" % ch for ch in chars) + "}"
+    return "{" + ", ".join(repr(v) for v in values) + "}"
+
+
+C_STARTER = '''int main(void) {
+    // TODO: read the input, compute, print the answer
+    printf("0\\n");
+    return 0;
+}
+'''
+
+
+def c_starter(solution: str) -> str:
+    src = strip_comments(solution)
+    public = [sig for sig in c_signatures(src) if not sig[3]] or c_signatures(src)
+    if not public:
+        return C_STARTER
+    ret, name, params, _ = public[0]
+    stub = "    return NULL;" if "*" in ret else ("    return;" if ret.strip() == "void" else "    return 0;")
+    return (f"{ret} {name}({params});   /* TODO: implement below, then call it from main */\n\n"
+            f"{ret} {name}({params}) {{\n{stub}   /* TODO */\n}}\n\n"
+            f"int main(void) {{\n"
+            f"    /* call {name}(...) with the sample arguments and print the result */\n"
+            f"    return 0;\n}}\n")
+
+
+# --------------------------------------------------------------------------- #
 #  main
 # --------------------------------------------------------------------------- #
+def load_c_sources() -> dict[str, str]:
+    """site/leetcode/c/t<NN>_<topic>.py → {"slug": "C code"} (same files the bank pages use)."""
+    code: dict[str, str] = {}
+    c_dir = HERE / "c"
+    if c_dir.is_dir():
+        for path in sorted(c_dir.glob("t*.py")):
+            spec = importlib.util.spec_from_file_location(path.stem, path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)          # type: ignore[union-attr]
+            for slug, src in getattr(mod, "CODE", {}).items():
+                code.setdefault(slug, src.rstrip("\n") + "\n")
+    return code
+
+
 def main() -> int:
+    c_code = load_c_sources()
     banks = []
     for path in sorted(HERE.glob("bank_*.py")):
         spec = importlib.util.spec_from_file_location(path.stem, path)
@@ -490,12 +864,13 @@ def main() -> int:
         banks.append({"topic": mod.TOPIC, "problems": mod.PROBLEMS})
 
     topics, problems = [], []
-    stats = {"total": 0, "demo_py": 0, "demo_cpp": 0, "demo_java": 0}
+    stats = {"total": 0, "demo_py": 0, "demo_cpp": 0, "demo_java": 0, "demo_c": 0, "code_c": 0}
     for ti, bank in enumerate(banks, 1):
         topics.append({"n": ti, "name": bank["topic"]["name"], "tagline": bank["topic"]["tagline"]})
         for prob in bank["problems"]:
             stats["total"] += 1
             example = prob["examples"][0][0] if prob.get("examples") else ""
+            want_c = prob["examples"][0][1] if prob.get("examples") else ""
             entry = {
                 "slug": prob["slug"], "title": prob["title"], "difficulty": prob["difficulty"],
                 "topic_n": ti, "topic": bank["topic"]["name"], "pattern": prob["pattern"],
@@ -531,15 +906,30 @@ def main() -> int:
                                                  + "\n".join(body) + "\n"
                                                  "    }\n}\n")
                 stats["demo_java"] += 1
+            # ---- c
+            src_c = c_code.get(prob["slug"], "")
+            if src_c:
+                entry["code"]["c"] = src_c
+                stats["code_c"] += 1
+                entry["starter"]["c"] = c_starter(src_c)
+                demo_c = c_demo(src_c, example, want_c)
+                if demo_c:
+                    entry["solution_run"]["c"] = src_c.rstrip() + "\n" + demo_c
+                    stats["demo_c"] += 1
+            else:
+                entry["code"]["c"] = ""
             problems.append(entry)
 
     payload = {"count": len(problems), "topics": topics, "problems": problems,
-               "demos": {"python": stats["demo_py"], "cpp": stats["demo_cpp"], "java": stats["demo_java"]}}
+               "demos": {"python": stats["demo_py"], "cpp": stats["demo_cpp"],
+                         "java": stats["demo_java"], "c": stats["demo_c"]}}
     OUT.write_text(json.dumps(payload, separators=(",", ":"), ensure_ascii=False))
     print(f"wrote {OUT.relative_to(SITE.parent)}  ({OUT.stat().st_size/1024/1024:.2f} MB)")
     print(f"  problems: {stats['total']}")
     print(f"  runnable demos: python {stats['demo_py']}/{stats['total']}"
-          f" · c++ {stats['demo_cpp']}/{stats['total']} · java {stats['demo_java']}/{stats['total']}")
+          f" · c++ {stats['demo_cpp']}/{stats['total']} · java {stats['demo_java']}/{stats['total']}"
+          f" · c {stats['demo_c']}/{stats['code_c']} written")
+    print(f"  C solutions written: {stats['code_c']}/{stats['total']}")
     return 0
 
 

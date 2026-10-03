@@ -15,9 +15,11 @@ const PROBLEM = {
   pattern: "one pass", statement: "Return the sum of the two numbers.",
   examples: [["nums = [1,2], k = 3", "6"]], constraints: ["1 <= n"], approach: "Add them.",
   complexity: ["O(1)", "O(1)"],
-  code: { python: "def f(a,k):\n    return a+k", cpp: "int f(int a, int k){ return a+k; }", java: "int f(int a, int k){ return a+k; }" },
-  starter: { python: "def f(a, k):\n    pass", cpp: "// stub", java: "// stub" },
-  solution_run: { python: "def f(a,k):\n    return a+k\n\nprint(f(1, 3))", cpp: "// full c++", java: "// full java" },
+  code: { python: "def f(a,k):\n    return a+k", cpp: "int f(int a, int k){ return a+k; }",
+          java: "int f(int a, int k){ return a+k; }", c: "int f(int a, int k){ return a + k; }" },
+  starter: { python: "def f(a, k):\n    pass", cpp: "// stub", java: "// stub", c: "// c stub" },
+  solution_run: { python: "def f(a,k):\n    return a+k\n\nprint(f(1, 3))", cpp: "// full c++",
+                  java: "// full java", c: "/* full c */" },
 };
 const PROBLEM_TWO = Object.assign({}, PROBLEM, { slug: "second", title: "Second One" });
 
@@ -36,7 +38,7 @@ const dom = new JSDOM(html, {
       const body = opts && opts.body ? JSON.parse(opts.body) : null;
       calls.push({ url, body });
       if (String(url).includes("api/health"))
-        return Promise.resolve({ json: () => Promise.resolve({ ok: true, runtimes: { python: true, cpp: true, java: true } }) });
+        return Promise.resolve({ json: () => Promise.resolve({ ok: true, runtimes: { python: true, cpp: true, java: true, c: true } }) });
       if (String(url).includes("problems.json"))
         return Promise.resolve({ json: () => Promise.resolve({ count: 2, topics: [], problems: [PROBLEM, PROBLEM_TWO] }) });
       if (String(url).includes("api/run")) {
@@ -102,6 +104,24 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
         el("code").value.includes(DEEP ? "def f(a, k)" : "hello from Python"));
   click(cppTab);
   check("C++ draft survives the round-trip", el("code").value.includes("my cpp"));
+
+  // ---- C tab
+  click(document.querySelector('#tabs button[data-lang="c"]'));
+  check("C tab sets main.c", el("filename").textContent === "main.c", el("filename").textContent);
+  check("C template is a runnable program", el("code").value.includes("int main(void)"), JSON.stringify(el("code").value.slice(0, 30)));
+  el("picker").value = "sum-two";
+  el("picker").dispatchEvent(new window.Event("change", { bubbles: true }));
+  await wait(60);
+  check("C starter loaded for the problem", el("code").value.includes("c stub"), JSON.stringify(el("code").value.slice(0, 26)));
+  click(el("run"));
+  await wait(120);
+  const cCall = calls.filter((c) => String(c.url).includes("api/run")).pop();
+  check("Run posts lang=c", cCall && cCall.body.lang === "c", cCall && cCall.body.lang);
+  check("C can also load the shipped solution", (function () {
+    click(el("solution"));
+    return el("code").value.includes("full c");
+  })());
+  click(cppTab);                                   // back to C++ for the checks below
 
   // ---- load a problem
   el("picker").value = "sum-two";

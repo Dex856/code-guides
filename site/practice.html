@@ -3,18 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Practice Terminal — run Python, C++ and Java on the site</title>
-<meta name="description" content="Write, compile and run Python, C++ and Java right on the site. Load any of the 480 problems, use its starter or full solution, and check your output against the official examples.">
+<title>Practice Terminal — run Python, C++, Java and C on the site</title>
+<meta name="description" content="Write, compile and run Python, C++, Java and C right on the site. Load any of the 480 problems, use its starter or full solution, and check your output against the official examples.">
 <style>
 :root{
   --bg:#ffffff; --fg:#141b26; --muted:#57637a; --line:#e2e8f2; --card:#f5f8fd; --card2:#eef3fa;
-  --accent:#5b4b8a; --accent2:#0f766e; --py:#2f6f4f; --java:#b07219;
+  --accent:#5b4b8a; --accent2:#0f766e; --py:#2f6f4f; --java:#b07219; --c:#1b6ca8;
   --ok:#166534; --ok-soft:#e8f6ee; --warn:#b3342a; --warn-soft:#fdecea;
   --code:#0d1425; --codefg:#e2ebf8; --shadow:0 1px 2px rgba(16,24,40,.06),0 10px 28px rgba(16,24,40,.07);
 }
 html[data-theme=dark]{
   --bg:#0c1117; --fg:#e6edf7; --muted:#95a3b8; --line:#212b3a; --card:#141c27; --card2:#1a2331;
-  --accent:#b6a6f0; --accent2:#5eead4; --py:#7ddba9; --java:#f0b76a;
+  --accent:#b6a6f0; --accent2:#5eead4; --py:#7ddba9; --java:#f0b76a; --c:#7cc4f0;
   --ok:#6dd39b; --ok-soft:#12261c; --warn:#f08a80; --warn-soft:#2a1a19;
   --code:#080d16; --codefg:#e2ebf8; --shadow:0 1px 2px rgba(0,0,0,.5),0 10px 28px rgba(0,0,0,.4);
 }
@@ -40,6 +40,7 @@ a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
 .tabs button[data-lang=python].on{background:var(--py)}
 .tabs button[data-lang=cpp].on{background:var(--accent)}
 .tabs button[data-lang=java].on{background:var(--java)}
+.tabs button[data-lang=c].on{background:var(--c)}
 .pill{font-size:11.6px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:3px 10px;color:var(--muted);white-space:nowrap}
 .pill.ok{border-color:var(--ok);color:var(--ok)}
 .pill.bad{border-color:var(--warn);color:var(--warn)}
@@ -90,12 +91,13 @@ details summary{cursor:pointer;font-weight:600;font-size:13.6px}
   <div class="bar">
     <a class="brand" href="index.html" title="Home">
       <span class="logo">⌨</span>
-      <span>Practice Terminal<small>run Python · C++ · Java on the site</small></span>
+      <span>Practice Terminal<small>run Python · C++ · Java · C on the site</small></span>
     </a>
     <div class="tabs" id="tabs" role="tablist">
       <button data-lang="python" class="on" type="button">Python</button>
       <button data-lang="cpp" type="button">C++</button>
       <button data-lang="java" type="button">Java</button>
+      <button data-lang="c" type="button">C</button>
     </div>
     <select id="picker" title="Load a problem from the question banks">
       <option value="">— load a problem (480 available) —</option>
@@ -180,16 +182,18 @@ data = sys.stdin.read().split()   vector&lt;int&gt; a(n);                    int
 <script>
 (function () {
   "use strict";
-  var LANGS = ["python", "cpp", "java"];
+  var LANGS = ["python", "cpp", "java", "c"];
   var META = {
     python: { file: "main.py", comment: "#", render: "python" },
     cpp:    { file: "main.cpp", comment: "//", render: "cpp" },
-    java:   { file: "Main.java", comment: "//", render: "java" }
+    java:   { file: "Main.java", comment: "//", render: "java" },
+    c:      { file: "main.c",    comment: "//", render: "c" }
   };
   var TEMPLATES = {
     python: 'import sys\n\ndef main():\n    data = sys.stdin.read().split()\n    print("hello from Python 3")\n\nif __name__ == "__main__":\n    main()\n',
     cpp: 'int main() {\n    ios::sync_with_stdio(false);\n    cin.tie(nullptr);\n\n    cout << "hello from C++" << \'\\n\';\n    return 0;\n}\n',
-    java: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("hello from Java");\n    }\n}\n'
+    java: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("hello from Java");\n    }\n}\n',
+    c: 'int main(void) {\n    /* gcc -std=c17 — stdio, stdlib, string, math and friends are included\n       for you, and -lm is linked */\n    printf("hello from C\\n");\n    return 0;\n}\n'
   };
 
   var el = function (id) { return document.getElementById(id); };
@@ -297,7 +301,7 @@ data = sys.stdin.read().split()   vector&lt;int&gt; a(n);                    int
   } else fetch("api/health", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (info) {
     var rt = info.runtimes || {};
     var ready = LANGS.filter(function (l) { return rt[l]; });
-    if (ready.length === 3) setHealth("ok", "runner live · python · g++ · javac");
+    if (ready.length === LANGS.length) setHealth("ok", "runner live · python · g++ · javac · gcc");
     else if (ready.length) setHealth("", "runner partial · " + ready.join(" · "));
     else setHealth("bad", "no compilers on this machine");
   }).catch(function () {
@@ -498,7 +502,10 @@ data = sys.stdin.read().split()   vector&lt;int&gt; a(n);                    int
 
   /* ---------------------------------------------------------- boot */
   loadDraft();
-  var wanted = new URLSearchParams(window.location.search).get("p") || restore("practice-last-problem");
+  var qs = new URLSearchParams(window.location.search);
+  var wantLang = qs.get("lang");
+  if (wantLang && LANGS.indexOf(wantLang) >= 0) setLang(wantLang);
+  var wanted = qs.get("p") || restore("practice-last-problem");
   var tries = 0;
   var timer = setInterval(function () {
     tries++;
