@@ -13,7 +13,8 @@ _Last updated: 2026-10-02_
 | **Question banks, topics 1–16** — Arrays & Strings · Two Pointers & Sliding Window · Hashing & Frequency Maps · Stacks, Queues & Monotonic Structures · Binary Search & Sorted Structures · Linked Lists · Trees & BSTs · Graphs & Union-Find · Dynamic Programming · Greedy & Intervals · Heaps, Top-K & Design · Tries & String Algorithms · Backtracking & Recursion · Bit Manipulation · Math & Number Theory · Prefix Sums & Range Queries · **480 problems (96 easy · 192 medium · 192 hard)** | `site/{cpp,java,python}-leetcode.html` | ✅ **all 480 C++ and 480 Java solutions compile** (judge-API stubs included so every snippet is self-contained); Python solutions pass hundreds of example checks plus thousands of randomised brute-force comparisons; documented example inputs cross-checked against LeetCode with the GraphQL API |
 | GitHub Pages workflow | `.github/workflows/pages.yml` | ✅ pages artifact + deploy job |
 | One-command publisher | `push.sh` | ✅ ready (needs a token, see below) |
-| Rebuild script | `site/build-all.sh` | ✅ regenerates both guides + the three banks |
+| Rebuild script | `site/build-all.sh` | ✅ regenerates both guides + the three banks; its link check ignores JavaScript-built hrefs |
+| **Navigation upgrade** (all 7 pages) | `site/index.html`, `site/leetcode/build.py`, the guide parts | ✅ topic grid on the home page; Home button + all-pages menu on every guide; bank pages gained a difficulty filter, collapsible topic list with per-topic done counters, a done/✓ tracker that persists in `localStorage`, a topic jump-select and prev/next problem links — **this also fixed a long-standing bug where all three bank pages threw a `SyntaxError` on load, which had killed their sidebar, search, copy buttons and theme toggle** (verified with jsdom: 25/25 functional checks × 3 pages) |
 
 ## Question banks — all 16 topics shipped
 

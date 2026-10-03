@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Code Guides — C++, Java &amp; Python for LeetCode</title>
-<meta name="description" content="Three complete, offline, self-contained guides for coding interviews: C++, Java and Python — plus matching LeetCode question banks with 6 easy / 12 medium / 12 hard per topic.">
+<meta name="description" content="Three complete, offline, self-contained guides for coding interviews: C++, Java and Python — plus matching LeetCode question banks with 480 problems each (6 easy / 12 medium / 12 hard per topic).">
 <style>
 :root{
   --bg:#ffffff; --fg:#141b26; --muted:#57637a; --line:#e2e8f2; --card:#f5f8fd; --card2:#eef3fa;
@@ -23,26 +23,34 @@ body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 -apple-system,
 code,pre,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
 a{color:inherit;text-decoration:none}
 .wrap{max-width:1180px;margin:0 auto;padding:0 20px}
-.top{position:sticky;top:0;z-index:10;backdrop-filter:blur(10px);background:color-mix(in srgb,var(--bg) 92%,transparent);border-bottom:1px solid var(--line)}
-.top .wrap{display:flex;align-items:center;gap:12px;padding:10px 20px}
+.top{position:sticky;top:0;z-index:20;backdrop-filter:blur(10px);background:color-mix(in srgb,var(--bg) 92%,transparent);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:10px;padding:10px 20px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:10px;font-weight:750}
 .logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(145deg,#5b4b8a,#0f766e);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:800}
-.top .spacer{flex:1}
+.topnav{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.topnav a{font-size:13.2px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 11px;white-space:nowrap}
+.topnav a:hover{border-color:currentColor}
+.topnav a.cpp{color:var(--cpp)} .topnav a.java{color:var(--java)} .topnav a.py{color:var(--py)}
 .btn{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:10px;padding:7px 11px;font-size:13px;cursor:pointer}
 .btn:hover{border-color:var(--java)}
-header.hero{padding:54px 0 10px}
+header.hero{padding:46px 0 8px}
 h1{font-size:clamp(30px,5.2vw,50px);line-height:1.08;letter-spacing:-1px;margin:0 0 12px}
-.lede{color:var(--muted);font-size:17.5px;max-width:74ch;margin:0 0 22px}
-.badges{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:30px}
+.lede{color:var(--muted);font-size:17.5px;max-width:74ch;margin:0 0 20px}
+.cta{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 14px}
+.cta a{display:inline-block;border-radius:12px;padding:11px 18px;font-size:15px;font-weight:650;border:1px solid var(--line);background:var(--bg)}
+.cta a.primary{color:#fff;border-color:transparent;background:linear-gradient(120deg,#5b4b8a,#0f766e)}
+.cta a:hover{transform:translateY(-1px)}
+.stats{display:flex;gap:18px;flex-wrap:wrap;margin:14px 0 0;color:var(--muted);font-size:13.6px}
+.stats b{color:var(--fg);font-size:15px}
+.badges{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 6px}
 .pill{font-size:12.5px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:4px 12px;color:var(--muted)}
 .pill.hot{border-color:var(--accent2);color:var(--accent2)}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:18px;margin:12px 0 8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:18px;margin:26px 0 8px}
 .card{border:1px solid var(--line);background:var(--card);border-radius:18px;padding:20px 20px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column}
 .card h2{margin:0 0 4px;font-size:21px;letter-spacing:-.3px}
 .card .sub{color:var(--muted);font-size:13.5px;margin-bottom:12px}
 .card ul{margin:0 0 16px 18px;padding:0;font-size:14.3px;color:var(--fg)}
 .card li{margin:4px 0}
-.tag{display:inline-block;font-size:11.5px;border-radius:999px;padding:2px 9px;border:1px solid var(--line);color:var(--muted);margin-right:6px}
 .links{margin-top:auto;display:flex;flex-wrap:wrap;gap:9px}
 .links a{display:inline-block;border-radius:11px;padding:9px 14px;font-size:14px;font-weight:600;border:1px solid var(--line);background:var(--bg)}
 .links a.primary{color:#fff;border-color:transparent}
@@ -51,8 +59,16 @@ h1{font-size:clamp(30px,5.2vw,50px);line-height:1.08;letter-spacing:-1px;margin:
 .c-py .links a.primary{background:var(--py)}
 .c-cpp h2{color:var(--cpp)} .c-java h2{color:var(--java)} .c-py h2{color:var(--py)}
 .links a:hover{border-color:currentColor}
-section.block{margin:44px 0}
+section.block{margin:46px 0}
 section.block h2{font-size:23px;letter-spacing:-.3px;margin:0 0 6px}
+section.block h2 .n{color:var(--muted);font-weight:600;margin-right:8px}
+.tbook{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:8px 18px;margin:16px 0 4px}
+.trow{display:flex;align-items:center;gap:10px;border:1px solid var(--line);background:var(--card);border-radius:11px;padding:8px 11px}
+.tnum{flex:0 0 auto;width:26px;height:26px;border-radius:8px;background:linear-gradient(145deg,#5b4b8a,#0f766e);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700}
+.tname{flex:1 1 auto;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tlinks{flex:0 0 auto;display:flex;gap:5px}
+.tlinks a{font-size:11.8px;border:1px solid var(--line);border-radius:999px;padding:2px 8px;color:var(--muted)}
+.tlinks a:hover{color:var(--fg);border-color:currentColor}
 table{width:100%;border-collapse:collapse;font-size:14px;margin:14px 0}
 th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
 th{background:var(--card);font-weight:650}
@@ -60,16 +76,22 @@ tbody tr:nth-child(even) td{background:var(--card2)}
 pre{background:var(--code);color:var(--codefg);border-radius:14px;padding:15px 17px;overflow:auto;font-size:13.2px;line-height:1.6;border:1px solid #1b2436}
 .note{border:1px solid var(--line);border-left:4px solid var(--accent2);background:var(--card);border-radius:12px;padding:12px 15px;font-size:14.5px}
 footer{border-top:1px solid var(--line);margin-top:56px;padding:24px 0 70px;color:var(--muted);font-size:13.6px}
-@media(max-width:640px){header.hero{padding:34px 0 6px}}
+@media(max-width:640px){header.hero{padding:30px 0 6px}.topnav{width:100%;margin-left:0}}
 </style>
 </head>
 <body>
 <div class="top">
   <div class="wrap">
-    <span class="logo">CG</span>
-    <span class="brand">Code Guides</span>
-    <span class="spacer"></span>
-    <button class="btn" id="theme">🌙 Theme</button>
+    <a class="brand" href="index.html"><span class="logo">CG</span> <span>Code Guides</span></a>
+    <nav class="topnav" aria-label="Site sections">
+      <a class="cpp" href="cpp-guide.html">C++ guide</a>
+      <a class="cpp" href="cpp-leetcode.html">480 problems</a>
+      <a class="java" href="java-guide.html">Java guide</a>
+      <a class="java" href="java-leetcode.html">480 problems</a>
+      <a class="py" href="python-guide.html">Python guide</a>
+      <a class="py" href="python-leetcode.html">480 problems</a>
+      <button class="btn" id="theme">🌙 Theme</button>
+    </nav>
   </div>
 </div>
 
@@ -80,66 +102,89 @@ footer{border-top:1px solid var(--line);margin-top:56px;padding:24px 0 70px;colo
   specifically for solving LeetCode-style problems — the exact language subset that wins coding rounds, with hand-drawn
   diagrams, paste-ready templates and a checklist of the traps that cost submissions. Every guide is paired with a question
   bank organised by topic: <b>6 easy · 12 medium · 12 hard</b>, on a deliberately gentle slope.</p>
+  <div class="cta">
+    <a class="primary" href="cpp-leetcode.html">Start the 480-problem C++ bank →</a>
+    <a href="java-leetcode.html">Java bank</a>
+    <a href="python-leetcode.html">Python bank</a>
+  </div>
+  <div class="stats">
+    <span><b>3</b> guides</span>
+    <span><b>16</b> topics</span>
+    <span><b>480</b> problems per language</span>
+    <span><b>1 440</b> verified solutions</span>
+    <span><b>0</b> external requests</span>
+  </div>
   <div class="badges">
-    <span class="pill hot">No external requests — works offline</span>
+    <span class="pill hot">Works offline</span>
     <span class="pill">Inline SVG diagrams</span>
     <span class="pill">Copy button on every snippet</span>
     <span class="pill">Dark / light theme</span>
-    <span class="pill">Searchable with “/”</span>
+    <span class="pill">Search with “/”</span>
+    <span class="pill">Track your progress ✓</span>
   </div>
 </header>
 
-<div class="grid">
-
-  <div class="card c-cpp">
-    <h2>C++ for LeetCode</h2>
-    <div class="sub">C++17/20/23 · STL-first · 16 chapters</div>
-    <ul>
-      <li>vector, string, unordered_map/set, priority_queue — the 20% you actually type</li>
-      <li>Comparators, lambdas, strict-weak-ordering, custom hash</li>
-      <li>Overflow, iterator invalidation, UB and the pitfalls list</li>
-      <li>Templates: graphs, DSU, binary search on answer, DP, trie</li>
-    </ul>
-    <div class="links">
-      <a class="primary" href="cpp-guide.html">Open the guide</a>
-      <a href="cpp-leetcode.html">Question bank</a>
-    </div>
-  </div>
-
-  <div class="card c-java">
-    <h2>Java for LeetCode</h2>
-    <div class="sub">Java 21/25 · Collections framework · 16 chapters</div>
-    <ul>
-      <li>Boxing &amp; the Integer cache, overflow, equality rules</li>
-      <li>HashMap / TreeMap / ArrayDeque / PriorityQueue with the complexity table</li>
-      <li>Comparator contract, StringBuilder discipline, JVM memory cost model</li>
-      <li>Templates: graphs, DSU, binary search frames, DP shapes, heaps</li>
-    </ul>
-    <div class="links">
-      <a class="primary" href="java-guide.html">Open the guide</a>
-      <a href="java-leetcode.html">Question bank</a>
-    </div>
-  </div>
-
-  <div class="card c-py">
-    <h2>Ultimate Python Guide</h2>
-    <div class="sub">Python 3.12 → 3.15 · 25 chapters</div>
-    <ul>
-      <li>The complete language reference — not only interview material</li>
-      <li>Version-by-version feature map, stdlib recipes, concurrency, memory, performance</li>
-      <li>Testing, packaging, gotchas, idioms, resources and roadmaps</li>
-      <li>34 hand-drawn diagrams and 114 runnable snippets</li>
-    </ul>
-    <div class="links">
-      <a class="primary" href="python-guide.html">Open the guide</a>
-      <a href="python-leetcode.html">Question bank</a>
-    </div>
-  </div>
-
-</div>
+<section class="block">
+  <h2><span class="n">01</span>Jump straight to a topic</h2>
+  <p class="lede" style="font-size:15.5px">Every bank has the same 16 topics in the same order. Pick the language you are
+  practising in — the topic links drop you exactly at that section, ready to work through easy → medium → hard.</p>
+  <div class="tbook" id="tbook"></div>
+</section>
 
 <section class="block">
-  <h2>How the three fit together</h2>
+  <h2><span class="n">02</span>Pick your guide</h2>
+  <div class="grid">
+
+    <div class="card c-cpp">
+      <h2>C++ for LeetCode</h2>
+      <div class="sub">C++17/20/23 · STL-first · 16 chapters</div>
+      <ul>
+        <li>vector, string, unordered_map/set, priority_queue — the 20% you actually type</li>
+        <li>Comparators, lambdas, strict-weak-ordering, custom hash</li>
+        <li>Overflow, iterator invalidation, UB and the pitfalls list</li>
+        <li>Templates: graphs, DSU, binary search on answer, DP, trie</li>
+      </ul>
+      <div class="links">
+        <a class="primary" href="cpp-guide.html">Open the guide</a>
+        <a href="cpp-leetcode.html">480 problems</a>
+      </div>
+    </div>
+
+    <div class="card c-java">
+      <h2>Java for LeetCode</h2>
+      <div class="sub">Java 21/25 · Collections framework · 16 chapters</div>
+      <ul>
+        <li>Boxing &amp; the Integer cache, overflow, equality rules</li>
+        <li>HashMap / TreeMap / ArrayDeque / PriorityQueue with the complexity table</li>
+        <li>Comparator contract, StringBuilder discipline, JVM memory cost model</li>
+        <li>Templates: graphs, DSU, binary search frames, DP shapes, heaps</li>
+      </ul>
+      <div class="links">
+        <a class="primary" href="java-guide.html">Open the guide</a>
+        <a href="java-leetcode.html">480 problems</a>
+      </div>
+    </div>
+
+    <div class="card c-py">
+      <h2>Ultimate Python Guide</h2>
+      <div class="sub">Python 3.12 → 3.15 · 25 chapters</div>
+      <ul>
+        <li>The complete language reference — not only interview material</li>
+        <li>Version-by-version feature map, stdlib recipes, concurrency, memory, performance</li>
+        <li>Testing, packaging, gotchas, idioms, resources and roadmaps</li>
+        <li>34 hand-drawn diagrams and 114 runnable snippets</li>
+      </ul>
+      <div class="links">
+        <a class="primary" href="python-guide.html">Open the guide</a>
+        <a href="python-leetcode.html">480 problems</a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="block">
+  <h2><span class="n">03</span>How the three fit together</h2>
   <p class="lede" style="font-size:16px">Pick one language as your interview weapon and use the others for context. The
   chapters, the diagrams and the templates are deliberately parallel: the same problem is solved with the same pattern in
   each language, so you can compare <code>priority_queue</code>, <code>PriorityQueue</code> and <code>heapq</code> side by
@@ -156,12 +201,13 @@ footer{border-top:1px solid var(--line);margin-top:56px;padding:24px 0 70px;colo
     </tbody>
   </table>
   <div class="note"><b>Suggested path:</b> read the guide for your language end to end (2–3 hours), then work the question
-  bank topic by topic — one topic per session, easy first, then medium, then hard. The bank pages mirror the guide chapters,
-  so any term you do not recognise links back to the explanation.</div>
+  bank topic by topic — one topic per session, easy first, then medium, then hard. Inside a bank you can filter by
+  difficulty, collapse the topic list, and mark problems done to watch the counter fill up. The bank pages mirror the guide
+  chapters, so any term you do not recognise links back to the explanation.</div>
 </section>
 
 <section class="block">
-  <h2>Offline by design</h2>
+  <h2><span class="n">04</span>Offline by design</h2>
   <p class="lede" style="font-size:16px">Every page in this site is a single HTML file with inline CSS, inline JavaScript and
   inline SVG. There are no fonts, scripts, images or analytics loaded from anywhere. Download the folder, open
   <code>index.html</code>, and everything works — on a plane, in an exam room, or ten years from now.</p>
@@ -173,14 +219,31 @@ python3 -m http.server 8000
 
 <footer>
   <div class="wrap">
-    <p><b>Code Guides</b> — C++, Java and Python references with matching LeetCode question banks. Built as static HTML;
-    deployed with GitHub Pages.</p>
+    <p><b>Code Guides</b> — C++, Java and Python references with matching LeetCode question banks (480 problems each).
+    Built as static HTML; deployed with GitHub Pages.</p>
     <p>Content is original and self-contained. Diagrams are hand-authored SVG.</p>
   </div>
 </footer>
 
 <script>
 (function(){
+  /* ---- topic grid: same 16 topics in every bank ---- */
+  var TOPICS = ["Arrays & Strings","Two Pointers & Sliding Window","Hashing & Frequency Maps",
+    "Stacks, Queues & Monotonic Structures","Binary Search & Sorted Structures","Linked Lists",
+    "Trees & BSTs","Graphs & Union-Find","Dynamic Programming","Greedy & Intervals",
+    "Heaps, Top-K & Design","Tries & String Algorithms","Backtracking & Recursion",
+    "Bit Manipulation","Math & Number Theory","Prefix Sums & Range Queries"];
+  var banks = [["cpp-leetcode.html","C++"],["java-leetcode.html","Java"],["python-leetcode.html","Py"]];
+  var box = document.getElementById("tbook"), out = [];
+  TOPICS.forEach(function(name, i){
+    var n = String(i + 1).padStart(2, "0");
+    var links = banks.map(function(b){ return '<a href="' + b[0] + '#t' + n + '">' + b[1] + "</a>"; }).join("");
+    out.push('<div class="trow"><span class="tnum">' + (i + 1) + '</span><span class="tname">' + name +
+             '</span><span class="tlinks">' + links + "</span></div>");
+  });
+  box.innerHTML = out.join("");
+
+  /* ---- theme ---- */
   var root = document.documentElement, btn = document.getElementById("theme");
   try { var t = localStorage.getItem("cg-theme"); if (t) root.setAttribute("data-theme", t); } catch(e){}
   btn.textContent = root.getAttribute("data-theme") === "dark" ? "☀️ Theme" : "🌙 Theme";

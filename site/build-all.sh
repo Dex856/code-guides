@@ -29,9 +29,12 @@ import pathlib, re
 missing = []
 for page in pathlib.Path(".").glob("*.html"):
     for m in re.finditer(r'href="(?!https?:|#|mailto:)([^"#]+)', page.read_text()):
-        target = (page.parent / m.group(1)).resolve()
+        link = m.group(1)
+        if "'" in link or "+" in link:          # built at runtime by JavaScript
+            continue
+        target = (page.parent / link).resolve()
         if not target.exists():
-            missing.append(f"{page.name} -> {m.group(1)}")
+            missing.append(f"{page.name} -> {link}")
 print("   missing links:", missing if missing else "none")
 PY
 echo "done."
@@ -51,8 +54,11 @@ for f in docs.glob("*.html"):
 missing = []
 for f in docs.glob("*.html"):
     for m in re.finditer(r'href="(?!https?:|#|mailto:)([^"#]+)', f.read_text()):
-        if not (docs / m.group(1)).exists():
-            missing.append(f"{f.name} -> {m.group(1)}")
+        link = m.group(1)
+        if "'" in link or "+" in link:          # built at runtime by JavaScript
+            continue
+        if not (docs / link).exists():
+            missing.append(f"{f.name} -> {link}")
 print("   docs/ updated:", len(names), "files · missing links:", missing or "none")
 PY
 echo "done."

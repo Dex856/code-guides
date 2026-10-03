@@ -134,6 +134,17 @@ mark{background:var(--accent2);color:#08110f;border-radius:3px;padding:0 2px}
   pre{background:#f5f7fa;color:#111;border-color:#ccc}
   .tok-k,.tok-s,.tok-c,.tok-n,.tok-f,.tok-d,.tok-b,.tok-t{color:#111!important;font-style:normal}
 }
+
+/* ---- cross-page navigation (Home + menu) ---- */
+.hmenu{position:relative}
+.hmenu>summary{list-style:none;cursor:pointer}
+.hmenu>summary::-webkit-details-marker{display:none}
+.hmenu[open]>summary{border-color:var(--accent)}
+.hmenubody{position:absolute;right:0;top:36px;z-index:70;background:var(--bg);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:8px;min-width:240px}
+.hmenubody a{display:block;padding:6px 9px;border-radius:8px;color:var(--fg);font-size:13.4px}
+.hmenubody a:hover{background:var(--card2);text-decoration:none}
+.hmenubody .mh{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:8px 9px 3px}
+@media print{.hmenu{display:none!important}}
 </style>
 </head>
 <body>
@@ -153,6 +164,21 @@ mark{background:var(--accent2);color:#08110f;border-radius:3px;padding:0 2px}
     <span class="hint">/</span>
     <div id="results"></div>
   </div>
+  <a class="btn" href="index.html" title="Home — all guides and banks">🏠</a>
+  <details class="hmenu">
+    <summary class="btn" title="All pages">☰</summary>
+    <div class="hmenubody">
+      <a href="index.html">🏠 Home</a>
+      <div class="mh">Guides</div>
+      <a href="cpp-guide.html">C++ for LeetCode</a>
+      <a href="java-guide.html">Java for LeetCode</a>
+      <a href="python-guide.html">Ultimate Python guide</a>
+      <div class="mh">Question banks — 480 problems each</div>
+      <a href="cpp-leetcode.html">C++ bank</a>
+      <a href="java-leetcode.html">Java bank</a>
+      <a href="python-leetcode.html">Python bank</a>
+    </div>
+  </details>
   <button class="btn" id="theme" title="Toggle dark / light">🌙</button>
   <button class="btn" id="print" title="Print or save as PDF">🖨</button>
 </header>

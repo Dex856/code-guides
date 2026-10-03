@@ -112,15 +112,19 @@ DIFF_CLASS = {"Easy": "pill", "Medium": "pill", "Hard": "pill hot"}
 PREFIX = {"Easy": "E", "Medium": "M", "Hard": "H"}
 
 
-def render_problem(prob: dict, counters: dict, lang: str) -> str:
+def render_problem(prob: dict, counters: dict, lang: str, flat: list, pos: dict) -> str:
     d = prob["difficulty"]
     counters[d] = counters.get(d, 0) + 1
     tag = f"{PREFIX[d]}{counters[d]}"
     pid = prob["slug"]
+    i = pos[pid]
+    prev = flat[i - 1] if i > 0 else None
+    nxt = flat[i + 1] if i + 1 < len(flat) else None
     out = []
-    out.append(f'  <section class="sub" id="{pid}">')
+    out.append(f'  <section class="sub" id="{pid}" data-diff="{d}" data-slug="{pid}">')
     out.append(f'    <h3><span class="pn">{tag}</span> {inline_md(prob["title"])} '
-               f'<span class="{DIFF_CLASS[d]}">{d}</span> <span class="muted small">· {inline_md(prob["pattern"])}</span></h3>')
+               f'<span class="{DIFF_CLASS[d]}">{d}</span> <span class="muted small">· {inline_md(prob["pattern"])}</span>'
+               f'<button class="donebtn" type="button" data-slug="{pid}" title="Mark this problem as done">✓ Done</button></h3>')
     out.append(f'    <p><b>Problem.</b> {inline_md(prob["statement"])}</p>')
     for i, ex in enumerate(prob.get("examples", []), 1):
         inp, outp = ex
@@ -134,11 +138,29 @@ def render_problem(prob: dict, counters: dict, lang: str) -> str:
     out.append(f'    <pre><code>{esc_code(code)}</code></pre>')
     t, s = prob["complexity"]
     out.append(f'    <p class="cx"><b>Complexity:</b> {inline_md(t)} time · {inline_md(s)} space.</p>')
+    # previous / next problem — keeps the gentle slope one click away
+    left = (f'<a class="pnav-a prev" href="#{prev[0]}"><span class="d">{prev[1]}</span> {inline_md(prev[2])}</a>'
+            if prev else '<span class="pnav-a off">start of the bank</span>')
+    right = (f'<a class="pnav-a next" href="#{nxt[0]}"><span class="d">{nxt[1]}</span> {inline_md(nxt[2])}</a>'
+             if nxt else '<span class="pnav-a off">end of the bank</span>')
+    out.append(f'    <div class="pnav">{left}{right}</div>')
     out.append("  </section>")
     return "\n".join(out)
 
 
-def render_topic(idx: int, bank: dict, lang: str) -> str:
+def flat_entries(banks: list[dict]) -> list[tuple]:
+    """[(slug, label, title, difficulty, topic number)] in reading order."""
+    flat = []
+    for ti, bank in enumerate(banks, 1):
+        seen: dict[str, int] = {}
+        for prob in bank["problems"]:
+            d = prob["difficulty"]
+            seen[d] = seen.get(d, 0) + 1
+            flat.append((prob["slug"], f"{PREFIX[d]}{seen[d]}", prob["title"], d, ti))
+    return flat
+
+
+def render_topic(idx: int, bank: dict, lang: str, flat: list, pos: dict) -> str:
     topic = bank["topic"]
     probs = bank["problems"]
     counters: dict[str, int] = {}
@@ -148,13 +170,18 @@ def render_topic(idx: int, bank: dict, lang: str) -> str:
             '  <div class="card"><p><b>What this topic trains.</b> ' + inline_md(topic["focus"]) + '</p>',
             '<p class="small muted">Ordering: ' + inline_md(topic.get("ordering", "")) + '</p></div>']
     for prob in probs:
-        body.append(render_problem(prob, counters, lang))
+        body.append(render_problem(prob, counters, lang, flat, pos))
     body.append("</section>")
     return "\n".join(body)
 
 
 def build_shell(lang: str, banks: list[dict]) -> str:
     meta = LANG_META[lang]
+    counts = {"Easy": 0, "Medium": 0, "Hard": 0}
+    for bank in banks:
+        for prob in bank["problems"]:
+            counts[prob["difficulty"]] += 1
+    total = sum(counts.values())
     head = f'''<!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
@@ -175,12 +202,14 @@ html[data-theme=dark]{{
   --shadow:0 1px 2px rgba(0,0,0,.5),0 8px 24px rgba(0,0,0,.35);
 }}
 *{{box-sizing:border-box}}
-html{{scroll-behavior:smooth;scroll-padding-top:76px}}
+html{{scroll-behavior:smooth;scroll-padding-top:104px}}
 body{{margin:0;background:var(--bg);color:var(--fg);font:15.5px/1.66 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}}
 code,pre,kbd,.mono{{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}}
 a{{color:var(--accent);text-decoration:none}} a:hover{{text-decoration:underline}}
 #progress{{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,{meta["accent"]},{meta["accent2"]});width:0;z-index:60}}
-.topbar{{position:sticky;top:0;z-index:50;display:flex;gap:12px;align-items:center;padding:9px 16px;background:var(--bg);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}}
+.head{{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}}
+.topbar{{display:flex;gap:10px;align-items:center;padding:9px 16px;flex-wrap:wrap}}
+.filterbar{{display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding:0 16px 9px;font-size:12.6px}}
 .brand{{display:flex;align-items:center;gap:9px;font-weight:700;white-space:nowrap}}
 .brand .logo{{width:26px;height:26px;border-radius:7px;background:linear-gradient(145deg,{meta["accent"]},{meta["accent2"]});color:#fff;display:grid;place-items:center;font-size:12px;font-weight:800}}
 .brand small{{font-weight:500;color:var(--muted);font-size:11.5px}}
@@ -196,7 +225,7 @@ a{{color:var(--accent);text-decoration:none}} a:hover{{text-decoration:underline
 .btn{{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:9px;padding:7px 10px;font-size:13px;cursor:pointer;white-space:nowrap}}
 .btn:hover{{border-color:var(--accent)}}
 .layout{{display:grid;grid-template-columns:290px minmax(0,1fr);gap:28px;max-width:1440px;margin:0 auto;padding:0 18px 80px}}
-#toc{{position:sticky;top:60px;align-self:start;max-height:calc(100vh - 82px);overflow:auto;padding:14px 6px 40px 0;font-size:13.4px;border-right:1px solid var(--line)}}
+#toc{{position:sticky;top:104px;align-self:start;max-height:calc(100vh - 128px);overflow:auto;padding:14px 6px 40px 0;font-size:13.4px;border-right:1px solid var(--line)}}
 #toc .navhead{{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:8px 8px 6px}}
 .navch>a{{display:block;padding:5px 9px;border-radius:8px;color:var(--fg);font-weight:600}}
 .navch>a:hover{{background:var(--card);text-decoration:none}}
@@ -212,11 +241,11 @@ main{{min-width:0;padding-top:8px}}
 .badges{{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}}
 .pill{{font-size:11.5px;border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:3px 10px;color:var(--muted);white-space:nowrap}}
 .pill.hot{{border-color:var(--warn);color:var(--warn)}}
-.chapter{{margin:42px 0 0;scroll-margin-top:78px}}
+.chapter{{margin:42px 0 0;scroll-margin-top:108px}}
 .chapter>h2{{display:flex;align-items:center;gap:12px;font-size:clamp(19px,2.9vw,26px);margin:0 0 4px;letter-spacing:-.3px}}
 .chapter>h2 .num{{flex:0 0 auto;display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:linear-gradient(145deg,{meta["accent"]},{meta["accent"]});color:#fff;font-size:14px;font-weight:700}}
 .chapter>.tagline{{color:var(--muted);margin:0 0 6px;font-size:14.4px}}
-.sub{{margin:26px 0 0;scroll-margin-top:78px;border-top:1px solid var(--line);padding-top:14px}}
+.sub{{margin:26px 0 0;scroll-margin-top:108px;border-top:1px solid var(--line);padding-top:14px}}
 .sub h3{{font-size:17.2px;margin:0 0 8px;display:flex;flex-wrap:wrap;align-items:center;gap:9px}}
 .sub h3 .pn{{display:inline-grid;place-items:center;min-width:34px;height:26px;padding:0 7px;border-radius:8px;background:var(--accent);color:#fff;font-size:12.5px;font-weight:700}}
 h4{{font-size:15px;margin:15px 0 6px}}
@@ -241,24 +270,52 @@ pre:hover .copy{{opacity:1}} .copy:hover{{color:#fff;border-color:#4d6b8f}}
 #top{{position:fixed;right:18px;bottom:18px;z-index:50;display:none}} #top.on{{display:block}}
 footer{{border-top:1px solid var(--line);margin-top:56px;padding:22px 18px 60px;color:var(--muted);font-size:13.4px;text-align:center}}
 mark{{background:var(--accent2);color:#08110f;border-radius:3px;padding:0 2px}}
-@media print{{.topbar,#toc,#top,.copy,#progress{{display:none!important}} .layout{{display:block;max-width:none}} .sub{{page-break-inside:avoid}} body{{font-size:11.5pt}} pre{{background:#f5f7fa;color:#111;border-color:#ccc}} .tok-k,.tok-s,.tok-c,.tok-n,.tok-f,.tok-b,.tok-t{{color:#111!important;font-style:normal}}}}
+@media print{{.head,.filterbar,#toc,#top,.copy,#progress,.pnav,.donebtn,.sel,.donebadge,.menu{{display:none!important}} .layout{{display:block;max-width:none}} .sub{{page-break-inside:avoid}} body{{font-size:11.5pt}} pre{{background:#f5f7fa;color:#111;border-color:#ccc}} .tok-k,.tok-s,.tok-c,.tok-n,.tok-f,.tok-b,.tok-t{{color:#111!important;font-style:normal}}}}
 </style>
 </head>
 <body>
 <div id="progress"></div>
 
+<div class="head">
 <header class="topbar">
-  <div class="brand"><span class="logo">{lang.upper() if lang != "python" else "PY"}</span>
-    <div>{meta["brand"]}<br><small>16 topics · 6 easy · 12 medium · 12 hard each</small></div>
-  </div>
+  <a class="brand" href="index.html" title="Back to the home page"><span class="logo">{lang.upper() if lang != "python" else "PY"}</span>
+    <div>{meta["brand"]}<br><small>{total} problems · 16 topics · 6 easy · 12 medium · 12 hard</small></div>
+  </a>
   <div class="searchwrap">
-    <input id="q" type="search" placeholder="Search problems — try “window”, “palindrome”, “heap”, “prefix”…" autocomplete="off" spellcheck="false">
+    <input id="q" type="search" placeholder="Search all {total} problems — try “window”, “palindrome”, “heap”, “prefix”…" autocomplete="off" spellcheck="false">
     <span class="hint">/</span>
     <div id="results"></div>
   </div>
+  <select id="jump" class="btn sel" aria-label="Jump to a topic"><option value="">Jump to topic…</option></select>
+  <span class="donebadge" id="donebadge" title="Problems you marked as done">✓ 0 / {total} done</span>
+  <details class="menu">
+    <summary class="btn" title="All pages">☰ Pages</summary>
+    <div class="menubody">
+      <a href="index.html">🏠 Home</a>
+      <div class="mh">Guides</div>
+      <a href="cpp-guide.html">C++ for LeetCode</a>
+      <a href="java-guide.html">Java for LeetCode</a>
+      <a href="python-guide.html">Ultimate Python</a>
+      <div class="mh">Question banks</div>
+      <a href="cpp-leetcode.html">C++ bank</a>
+      <a href="java-leetcode.html">Java bank</a>
+      <a href="python-leetcode.html">Python bank</a>
+    </div>
+  </details>
   <button class="btn" id="theme" title="Toggle dark / light">🌙</button>
   <button class="btn" id="print" title="Print or save as PDF">🖨</button>
 </header>
+<div class="filterbar">
+  <span class="fslab">Show</span>
+  <button class="fchip on" data-f="all" type="button">All <b>{total}</b></button>
+  <button class="fchip" data-f="Easy" type="button">Easy <b>{counts["Easy"]}</b></button>
+  <button class="fchip" data-f="Medium" type="button">Medium <b>{counts["Medium"]}</b></button>
+  <button class="fchip" data-f="Hard" type="button">Hard <b>{counts["Hard"]}</b></button>
+  <span class="fslab">Topic list</span>
+  <button class="btn mini" id="toggleall" type="button">Expand all</button>
+  <button class="btn mini" id="resetdone" type="button">Reset “done”</button>
+</div>
+</div>
 
 <div class="layout">
   <nav id="toc" aria-label="Contents"></nav>
@@ -298,9 +355,11 @@ def build_index_sidebar(banks: list[dict], lang: str) -> str:
 
 def render(lang: str, banks: list[dict]) -> str:
     meta = LANG_META[lang]
+    flat = flat_entries(banks)
+    pos = {e[0]: i for i, e in enumerate(flat)}
     parts = [build_shell(lang, banks)]
     for i, bank in enumerate(banks, 1):
-        parts.append(render_topic(i, bank, lang))
+        parts.append(render_topic(i, bank, lang, flat, pos))
     total = sum(len(b["problems"]) for b in banks)
     parts.append(f'''
   </main>
@@ -317,8 +376,10 @@ def render(lang: str, banks: list[dict]) -> str:
 
 <button id="top" class="btn" title="Back to top">↑ Top</button>
 ''')
-    comment_alt = (r"(\/\/[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\/)" if lang == "python"
-                   else r"(\/\/[^\n]*|\/\*[\s\S]*?\*\/)")
+    # NOTE: this string is spliced into a JS *string literal*, so every backslash
+    # must be doubled here or the literal collapses and new RegExp() throws.
+    comment_alt = (r"(\\/\\/[^\\n]*|#[^\\n]*|\\/\\*[\\s\\S]*?\\*\\/)" if lang == "python"
+                   else r"(\\/\\/[^\\n]*|\\/\\*[\\s\\S]*?\\*\\/)")
     parts.append(SCRIPT.replace("__KEY__", meta["key"])
                  .replace("__KEYWORDS__", ",".join(f'"{k}"' for k in meta["keywords"]))
                  .replace("__BUILTINS__", ",".join(f'"{b}"' for b in meta["builtins"] + meta.get("extra_builtins", [])))
@@ -326,6 +387,219 @@ def render(lang: str, banks: list[dict]) -> str:
     parts.append("</body>\n</html>\n")
     return "\n".join(parts)
 
+
+EXTRA_CSS = r"""
+/* ---- navigation additions (added by the UI upgrade) ---- */
+.brand:hover{{text-decoration:none}}
+.brand>div{{line-height:1.25}}
+.btn.mini{{padding:4px 9px;font-size:12.2px}}
+.sel{{font-size:12.8px;padding:6px 8px;max-width:190px}}
+.fslab{{color:var(--muted);font-size:11.4px;letter-spacing:.06em;text-transform:uppercase}}
+.fchip{{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:999px;padding:3px 11px;cursor:pointer;font:inherit;font-size:12.5px}}
+.fchip b{{font-weight:700;opacity:.75}}
+.fchip:hover{{border-color:var(--accent)}}
+.fchip.on{{background:var(--accent);border-color:transparent;color:#fff}}
+.fchip.on b{{opacity:1}}
+.donebadge{{font-size:12.4px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:4px 11px;color:var(--muted);white-space:nowrap}}
+.donebadge.full{{border-color:var(--ok);color:var(--ok)}}
+details.menu{{position:relative}}
+details.menu>summary{{list-style:none;cursor:pointer}}
+details.menu>summary::-webkit-details-marker{{display:none}}
+details.menu[open]>summary{{border-color:var(--accent)}}
+.menubody{{position:absolute;right:0;top:36px;z-index:70;background:var(--bg);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:8px;min-width:230px}}
+.menubody a{{display:block;padding:6px 9px;border-radius:8px;color:var(--fg);font-size:13.4px}}
+.menubody a:hover{{background:var(--card2);text-decoration:none}}
+.menubody .mh{{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:8px 9px 3px}}
+/* collapsible topic list */
+.navch>a{{display:flex;align-items:center;gap:6px}}
+.navch>a .nch-num{{opacity:.55;min-width:14px}}
+.navch>a .nch-cnt{{margin-left:auto;font-size:11px;font-weight:600;color:var(--muted);background:var(--card2);border-radius:999px;padding:1px 7px}}
+.navch.has-children>a::before{{content:"▸";font-size:10px;opacity:.6}}
+.navch.open.has-children>a::before{{content:"▾"}}
+.navch:not(.open)>ul{{display:none}}
+.navch.done>a .nch-cnt{{color:var(--ok);background:var(--ok-soft)}}
+.navch.tophide{{display:none}}
+/* per-problem controls */
+.sub h3{{position:relative}}
+.donebtn{{margin-left:auto;border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:999px;padding:3px 11px;font:inherit;font-size:12px;cursor:pointer;white-space:nowrap}}
+.donebtn:hover{{border-color:var(--ok);color:var(--ok)}}
+.donebtn.on{{background:var(--ok);border-color:transparent;color:#fff}}
+.sub.done{{opacity:.72}}
+.sub.done .pn{{background:var(--ok)}}
+.sub.done h3::after{{content:" ✓";color:var(--ok)}}
+.sub.fhide{{display:none}}
+.pnav{{display:flex;gap:10px;justify-content:space-between;margin:16px 0 2px;font-size:13px}}
+.pnav-a{{flex:1 1 0;min-width:0;border:1px solid var(--line);border-radius:10px;padding:7px 11px;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--card)}}
+.pnav-a:hover{{border-color:var(--accent);text-decoration:none;color:var(--accent)}}
+.pnav-a.next{{text-align:right}}
+.pnav-a .d{{font-weight:700;opacity:.7;margin-right:4px}}
+.pnav-a.next .d{{margin:0 0 0 4px}}
+.pnav-a.off{{border-style:dashed;color:var(--muted);text-align:center}}
+@media(max-width:720px){{.pnav{{flex-direction:column}}}}
+@media print{{.sub.done{{opacity:1}}}}
+"""
+
+EXTRA_SCRIPT = r'''
+<script>
+/* ---------------------------------------------------------------- *
+ *  Navigation upgrade: done-tracking, difficulty filter, collapsing
+ *  topic list, topic jump.  Pure client-side, no storage of anything
+ *  but "which problems you marked done", kept in localStorage.
+ * ---------------------------------------------------------------- */
+(function () {
+  "use strict";
+  var DONE_KEY = "__DONEKEY__";
+  var store = {};
+  try { store = JSON.parse(localStorage.getItem(DONE_KEY) || "{}") || {}; } catch (e) { store = {}; }
+  var save = function () { try { localStorage.setItem(DONE_KEY, JSON.stringify(store)); } catch (e) {} };
+
+  var chapters = [].slice.call(document.querySelectorAll("section.chapter"));
+  var subs = [].slice.call(document.querySelectorAll(".sub"));
+  var total = subs.length;
+
+  /* ---- done marks ------------------------------------------------ */
+  var badge = document.getElementById("donebadge");
+  function countsByChapter() {
+    var out = [];
+    chapters.forEach(function (ch) {
+      var list = [].slice.call(ch.querySelectorAll(".sub"));
+      var done = list.filter(function (s) { return store[s.getAttribute("data-slug")]; }).length;
+      out.push({ ch: ch, done: done, size: list.length, pct: list.length ? done / list.length : 0 });
+    });
+    return out;
+  }
+  function refresh() {
+    var done = 0;
+    subs.forEach(function (s) {
+      var on = !!store[s.getAttribute("data-slug")];
+      s.classList.toggle("done", on);
+      if (on) done++;
+      var btn = s.querySelector(".donebtn");
+      if (btn) { btn.classList.toggle("on", on); btn.textContent = on ? "✓ Done" : "✓ Done"; }
+    });
+    if (badge) {
+      badge.textContent = "✓ " + done + " / " + total + " done";
+      badge.classList.toggle("full", done === total && total > 0);
+    }
+    countsByChapter().forEach(function (c) {
+      var nav = document.querySelector('.navch[data-ch="' + c.ch.id + '"]');
+      if (!nav) return;
+      var span = nav.querySelector(".nch-cnt");
+      if (span) span.textContent = c.done + "/" + c.size;
+      nav.classList.toggle("done", c.size > 0 && c.done === c.size);
+    });
+  }
+  document.addEventListener("click", function (ev) {
+    var btn = ev.target.closest && ev.target.closest(".donebtn");
+    if (!btn) return;
+    var slug = btn.getAttribute("data-slug");
+    if (store[slug]) delete store[slug]; else store[slug] = 1;
+    save(); refresh();
+  });
+  var resetBtn = document.getElementById("resetdone");
+  if (resetBtn) resetBtn.addEventListener("click", function () {
+    if (!Object.keys(store).length) return;
+    if (window.confirm("Clear all “done” marks on this page?")) { store = {}; save(); refresh(); }
+  });
+
+  /* ---- difficulty filter ---------------------------------------- */
+  var chips = [].slice.call(document.querySelectorAll(".fchip"));
+  var filter = "all";
+  function applyFilter() {
+    subs.forEach(function (s) {
+      var d = s.getAttribute("data-diff");
+      s.classList.toggle("fhide", filter !== "all" && d !== filter);
+    });
+    // sidebar: hide entries and topics that have nothing to show
+    document.querySelectorAll("#toc .navch").forEach(function (nav) {
+      var any = false;
+      nav.querySelectorAll("li").forEach(function (li) {
+        var diff = li.getAttribute("data-diff");
+        var hide = filter !== "all" && diff !== filter;
+        li.style.display = hide ? "none" : "";
+        if (!hide) any = true;
+      });
+      nav.classList.toggle("tophide", !any);
+    });
+    chips.forEach(function (c) { c.classList.toggle("on", c.getAttribute("data-f") === filter); });
+    try { localStorage.setItem(DONE_KEY + "-filter", filter); } catch (e) {}
+  }
+  chips.forEach(function (c) {
+    c.addEventListener("click", function () { filter = c.getAttribute("data-f"); applyFilter(); });
+  });
+  try {
+    var savedFilter = localStorage.getItem(DONE_KEY + "-filter");
+    if (savedFilter && ["all", "Easy", "Medium", "Hard"].indexOf(savedFilter) >= 0) {
+      filter = savedFilter;
+      chips.forEach(function (c) { c.classList.toggle("on", c.getAttribute("data-f") === filter); });
+    }
+  } catch (e) {}
+
+  /* ---- topic list: collapse / expand ----------------------------- */
+  subs.forEach(function (s) {
+    var li = document.createElement("li");
+    li.setAttribute("data-diff", s.getAttribute("data-diff"));
+    var nav = document.querySelector('#toc a[href="#' + s.id + '"]');
+    if (nav && nav.parentNode) { li = nav.parentNode; li.setAttribute("data-diff", s.getAttribute("data-diff")); }
+  });
+  document.querySelectorAll("#toc .navch").forEach(function (nav) {
+    if (nav.querySelector("ul li")) nav.classList.add("has-children");
+    var head = nav.querySelector(":scope > a");
+    if (head) head.addEventListener("click", function () { nav.classList.add("open"); });
+  });
+  var toggleAll = document.getElementById("toggleall");
+  var allOpen = false;
+  if (toggleAll) toggleAll.addEventListener("click", function () {
+    allOpen = !allOpen;
+    document.querySelectorAll("#toc .navch").forEach(function (n) { n.classList.toggle("open", allOpen); });
+    toggleAll.textContent = allOpen ? "Collapse all" : "Expand all";
+  });
+
+  /* ---- jump to topic --------------------------------------------- */
+  var jump = document.getElementById("jump");
+  if (jump) {
+    chapters.forEach(function (ch) {
+      var h2 = ch.querySelector("h2");
+      var opt = document.createElement("option");
+      opt.value = ch.id;
+      opt.textContent = h2 ? h2.textContent.replace(/\\s+/g, " ").trim() : ch.id;
+      jump.appendChild(opt);
+    });
+    jump.addEventListener("change", function () {
+      if (!jump.value) return;
+      var nav = document.querySelector('.navch[data-ch="' + jump.value + '"]');
+      if (nav) nav.classList.add("open");
+      window.location.hash = jump.value;
+      jump.value = "";
+    });
+  }
+
+  /* ---- keep the active topic open -------------------------------- */
+  var current = null;
+  function markActive() {
+    var best = null, bestTop = -Infinity;
+    chapters.forEach(function (ch) {
+      var t = ch.getBoundingClientRect().top;
+      if (t < 150 && t > bestTop) { bestTop = t; best = ch; }
+    });
+    if (best && best !== current) {
+      current = best;
+      var nav = document.querySelector('.navch[data-ch="' + best.id + '"]');
+      if (nav) nav.classList.add("open");
+    }
+  }
+  var ticking = false;
+  window.addEventListener("scroll", function () {
+    if (ticking) return; ticking = true;
+    requestAnimationFrame(function () { markActive(); ticking = false; });
+  }, { passive: true });
+
+  refresh();
+  applyFilter();
+  markActive();
+})();
+</script>
+'''
 
 SCRIPT = r'''
 <script>
@@ -404,13 +678,15 @@ SCRIPT = r'''
     var h2 = ch.querySelector("h2");
     var num = h2.querySelector(".num") ? h2.querySelector(".num").textContent : "";
     var title = h2.textContent.replace(/^\s*\d+\s*/, "").trim();
-    html.push('<div class="navch" data-ch="' + ch.id + '"><a href="#' + ch.id + '"><span style="opacity:.6">' + num + '</span> ' + title + "</a>");
+    html.push('<div class="navch" data-ch="' + ch.id + '"><a href="#' + ch.id + '"><span class="nch-num">' + num + '</span> ' + title + '<span class="nch-cnt"></span></a>');
     var subs = ch.querySelectorAll("h3");
     if (subs.length) {
       html.push("<ul>");
       Array.prototype.forEach.call(subs, function(h3){
         if (!h3.parentNode.id) h3.parentNode.id = ch.id + "-" + slugOf(h3.textContent);
-        html.push('<li><a href="#' + h3.parentNode.id + '">' + h3.textContent + "</a></li>");
+        var hClone = h3.cloneNode(true);
+        var hBtn = hClone.querySelector(".donebtn"); if (hBtn) hBtn.remove();
+        html.push('<li><a href="#' + h3.parentNode.id + '">' + hClone.textContent + "</a></li>");
       });
       html.push("</ul>");
     }
@@ -425,9 +701,16 @@ SCRIPT = r'''
     if (!list.length) list = [ch];
     Array.prototype.forEach.call(list, function(blk){
       var heading = blk.querySelector("h3");
-      var title = heading ? heading.textContent.trim() : chtitle;
+      var title = chtitle;
+      if (heading) {
+        var hClone = heading.cloneNode(true);
+        var dbtn = hClone.querySelector(".donebtn"); if (dbtn) dbtn.remove();
+        title = hClone.textContent.replace(/\s+/g, " ").trim();
+      }
       var id = blk.id || ch.id;
-      var text = blk.textContent.replace(/\s+/g," ").trim();
+      var clone = blk.cloneNode(true);
+      clone.querySelectorAll(".donebtn,.pnav").forEach(function(n){ n.remove(); });
+      var text = clone.textContent.replace(/\s+/g," ").trim();
       INDEX.push({ id: id, title: title, ch: chtitle, text: text, lower: (title + " " + text).toLowerCase() });
     });
   });
@@ -518,6 +801,8 @@ def main() -> int:
         return 1
     for lang in LANGS:
         page = render(lang, banks)
+        page = page.replace("</style>", EXTRA_CSS + "</style>", 1)
+        page = page.replace("</body>", EXTRA_SCRIPT.replace("__DONEKEY__", LANG_META[lang]["key"] + "-done") + "</body>", 1)
         out = SITE / f"{lang}-leetcode.html"
         out.write_text(page)
         print(f"{out.name:24s} {len(page)/1024:8.1f} KB")
